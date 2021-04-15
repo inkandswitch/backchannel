@@ -1,4 +1,5 @@
-# backchannel
+# Backchannel
+
 
 Digital identity plays a significant role in modern computing. In almost all examples of socially driven computing interactions between two or more users, digital identities rely on user profiles and unique identifiers to help users cognitively recognise and validate their intended recipient or collaborator. 
 
@@ -16,10 +17,12 @@ a cohesive, easily understood interface. This prototype will satisfy certain
 cases of heightened risk without dramatic configuration or expertise required
 on behalf of network participants.
 
-## Developers
+## Contributing
 
-[Read the docs](/docs) for more information about how it works and how to get
-started contributing!
+* [Database](docs/database.md)
+* [Protocol](docs/protocol.md)
+* [Contributing & Code of Conduct](docs/contributing.md)
+
 
 ```
 npm install
