@@ -1,9 +1,5 @@
 # backchannel
 
-Local-first address book.
-
-## What is the problem, and why is it hard?
-
 Digital identity plays a significant role in modern computing. In almost all examples of socially driven computing interactions between two or more users, digital identities rely on user profiles and unique identifiers to help users cognitively recognise and validate their intended recipient or collaborator. 
 
 These digital identity paradigms carry significant risks. Attackers leverage digital identity systems, compromising accounts to impersonate trusted users and manipulating targets into completing tasks or disclosing information. In these cases, a well designed digital identity that features a strong presentational layer is used as a disguise by the attacker. This disguise plays a critical role in the success of the attack, and example of *weaponised design* in which the curatorial user interface is used as a tool to convince a target of an attacker's legitimacy, regardless of the strength of any cryptography.
@@ -13,7 +9,7 @@ This rationalist implementation digital identity systems – *I curate, therefor
 ## What is the new technical idea; why can we succeed now?
 
 This project proposes a cross platform desktop application consisting of
-a novel combination of out-of-band Identity verification techniques backed by
+a novel combination of out-of-band identity verification techniques backed by
 strong cryptography, and supported by a modernised Pet Name address book
 system. This prototype will allow two people to share content safely in
 a cohesive, easily understood interface. This prototype will satisfy certain
@@ -38,6 +34,17 @@ npm run watch
 ```
 npm start
 ```
+
+# Contributors
+
+* Karissa McKelvey, @okdistribute, Lead 
+* Ben Royer, Design
+
+# Advisors
+
+* [Cade Diehm](https://shiba.computer/)
+* Peter van Hardenberg, @pvh
+* سلمان الجماز, @saljam
 
 # License
 
