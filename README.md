@@ -39,6 +39,17 @@ npm run watch
 npm start
 ```
 
+# Contributors
+
+* Karissa McKelvey, @okdistribute, Lead 
+* Ben Royer, Design
+
+# Advisors
+
+* [Cade Diehm](https://shiba.computer/)
+* Peter van Hardenberg, @pvh
+* سلمان الجماز, @saljam
+
 # License
 
 MIT
