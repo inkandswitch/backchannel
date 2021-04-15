@@ -1,5 +1,10 @@
 import React, { useState }  from 'react';
-import { Code } from './wormhole';
+import { Wormhole, Code } from './wormhole';
+import { arrayToHex } from 'enc-utils';
+
+let wormhole = new Wormhole((err) => {
+  console.error(err)
+})
 
 // Amount of time to show immediate user feedback
 let USER_FEEDBACK_TIMER = 5000;
@@ -15,19 +20,17 @@ const CodeView = () => {
     setErrorMsg(err.message);
   }
 
-  //window.wormhole.listContacts().then(console.log).catch(console.error)
-
   function handleChange (event) {
-    console.log('change', event.target.value)
     setErrorMsg("");
     setCode(event.target.value)
   }
 
   function onClickRedeem () {
-    window.wormhole.redeemCode(code)
-      .then((wormhole) => {
+    wormhole.redeemCode(code)
+      .then((wormhole: any) => {
         setErrorMsg("");
         console.log('got a secure connection to wormhole')
+        setKey(arrayToHex(wormhole.key))
       })
       .catch((err: Error) => {
         onError(err)
@@ -46,13 +49,15 @@ const CodeView = () => {
       setGenerated(false);
     }, USER_FEEDBACK_TIMER);
 
-    window.wormhole.generateCode(filename)
+    wormhole.generateCode(filename)
       .then((code: string) => {
         console.log('got code', code)
         setKey(code)
         setErrorMsg("");
-        window.wormhole.factory.announce(code).then((wormhole) => {
+        wormhole.factory.announce(code).then((connection) => {
           console.log('got a secure connection to wormhole')
+          setKey(arrayToHex(connection.key))
+          //backchannel.start(connection)
         })
       })
       .catch((err: Error) => {

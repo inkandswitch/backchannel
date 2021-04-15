@@ -6,8 +6,7 @@ export type Code = string
 const URL = 'ws://relay.magic-wormhole.io:4000/v1'
 const APPID = 'lothar.com/wormhole/text-or-file-xfer'
 
-
-export class RPC extends EventEmitter {
+export class Wormhole extends EventEmitter {
   factory: WormholeFactory
 
   constructor (onError: Function) {
