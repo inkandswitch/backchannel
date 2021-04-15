@@ -1,0 +1,24 @@
+<html>
+  <head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
+  </head>
+  <body>
+    <div id="root"> </div>
+    <script type="module"> 
+      import init, { start, msg, finish } from './lib/spake2/spake2_wasm.js';
+
+      window.spake2 = {
+        start,
+        msg, 
+        finish
+      }
+
+      async function run () {
+        await init();
+      }
+      run();
+
+    </script>
+    <script src="bundle.js"></script>
+  </body>
+</html>
