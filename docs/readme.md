@@ -8,6 +8,12 @@ a cohesive, easily understood interface. This prototype will satisfy certain
 cases of heightened risk without dramatic configuration or expertise required
 on behalf of network participants.
 
+## Table of Contents
+
+* [Database](docs/database.md)
+* [Protocol](docs/protocol.md)
+* [Contributing & Code of Conduct](docs/contributing.md)
+
 ## Questions
 
 - How (and in what context) are identity systems best integrated into local-first software?
