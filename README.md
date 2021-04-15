@@ -2,6 +2,9 @@
 
 Local-first address book.
 
+[Read the docs](/docs) for more information about how it works and how to get
+started contributing!
+
 ## Development
 
 ```
