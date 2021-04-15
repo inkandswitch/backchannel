@@ -1,4 +1,14 @@
-### Questions
+# Backchannel
+
+This project proposes a cross platform desktop application consisting of
+a novel combination of out-of-band Identity verification techniques backed by
+strong cryptography, and supported by a modernised Pet Name address book
+system. This prototype will allow two people to share content safely in
+a cohesive, easily understood interface. This prototype will satisfy certain
+cases of heightened risk without dramatic configuration or expertise required
+on behalf of network participants.
+
+## Questions
 
 - How (and in what context) are identity systems best integrated into local-first software?
 - How can we establish an identity system that is more resistant to phishing attacks?
