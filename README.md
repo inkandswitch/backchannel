@@ -1,20 +1,18 @@
 # Backchannel
 
 Backchannel is a cross platform progressive web application combining novel
-out-of-band identity verification techniques backed by
-strong cryptography with a modernised pet name address book. 
+out-of-band identity verification techniques with a modernised pet name address book system. 
 
 This prototype will allow two people to share content safely in
 a cohesive, easily understood interface. It will satisfy certain
 cases of heightened risk without dramatic configuration or expertise required
 on behalf of network participants.
 
-## Contributing
+## Getting started
 
 * [Database](docs/database.md)
 * [Protocol](docs/protocol.md)
 * [Contributing & Code of Conduct](docs/contributing.md)
-
 
 ```
 npm install
