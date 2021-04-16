@@ -1,10 +1,11 @@
 # Backchannel
 
-This project proposes a cross platform desktop application consisting of
-a novel combination of out-of-band identity verification techniques backed by
-strong cryptography, and supported by a modernised Pet Name address book
-system. This prototype will allow two people to share content safely in
-a cohesive, easily understood interface. This prototype will satisfy certain
+Backchannel is a cross platform progressive web application combining novel
+out-of-band identity verification techniques backed by
+strong cryptography with a modernised pet name address book. 
+
+This prototype will allow two people to share content safely in
+a cohesive, easily understood interface. It will satisfy certain
 cases of heightened risk without dramatic configuration or expertise required
 on behalf of network participants.
 
