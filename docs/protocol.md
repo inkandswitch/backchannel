@@ -35,9 +35,9 @@ Once the PAKE handshake is complete, both PeerA and PeerB will have a shared sec
 
 In this phase, we use the *key* as an identifier for a particular document. We use a hash of the *key* to find other devices with copies of the document. We use the hash so that network eavesdroppers or the signaling server cannot learn the *key*.
 
-1. Compute a Blake3 hash of the *key (*[https://github.com/BLAKE3-team/BLAKE3](https://github.com/BLAKE3-team/BLAKE3))
-2. Announce this Blake3 hash to the server.
-3. Connect peers interested in the same topic over the server.
+1. Compute a hash of the *key (e.g., *[https://github.com/BLAKE3-team/BLAKE3](https://github.com/BLAKE3-team/BLAKE3))
+2. Announce this hash to the server.
+3. Connect peers interested in the same hash over the server.
 4. Encrypt contents using the NOISE protocol.
 
 At this point, we have strong proof that the connected device possesses a copy of the same derived secret key established in VERIFY phase. 
