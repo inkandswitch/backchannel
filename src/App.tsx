@@ -1,4 +1,5 @@
 import React, { useState }  from 'react';
+import { copyToClipboard } from './web'
 import { Backchannel, Contact } from './backchannel'
 
 let backchannel = new Backchannel()
@@ -39,16 +40,17 @@ const CodeView = () => {
     setGenerated(true);
     setErrorMsg("");
 
-    // Reset the state after a certain amount of time
+    // Reset after a certain amount of time
     setTimeout(() => {
       setGenerated(false);
     }, USER_FEEDBACK_TIMER);
 
     try { 
       let code = await backchannel.getCode()
-      console.log('got code', code)
+      console.log('code copied to clipboard', code)
       setKey(code)
       setErrorMsg("");
+      await copyToClipboard(code)
       let contact = await backchannel.announce(code)
       setKey(contact.key)
     } catch (err) {
@@ -59,7 +61,7 @@ const CodeView = () => {
 
   return (
     <div>
-      <h1>MAGIC WORMHOLE</h1>
+      <h1>Backchannel</h1>
       <div className="Hello">
         <button disabled={generated} onClick={onClickGenerate}>
             Generate

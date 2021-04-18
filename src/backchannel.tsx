@@ -1,14 +1,37 @@
-import Wormhole from './wormhole';
-import type { MagicWormhole, Code } from './wormhole';
-import { arrayToHex } from 'enc-utils';
+import Wormhole from './wormhole'
+import type { MagicWormhole, Code } from './wormhole'
+import { arrayToHex } from 'enc-utils'
+
+let APP_VERSIONS = {
+  'alpha': true
+}
+
+export type ContactMetadata = {
+  moniker: string
+}
 
 export class Contact {
   connection: any 
   key: string
+  metadata: ContactMetadata
 
   constructor (connection: any) {
     this.connection = connection
     this.key = arrayToHex(connection.key)
+  }
+
+  async compatible () {
+    let theirVersions = await this.connection.checkVersion(APP_VERSIONS)
+    return theirVersions['alpha'] === true
+  }
+
+  update (metadata: ContactMetadata) {
+    this.metadata = metadata
+    this._save()
+  }
+
+  _save () {
+
   }
 }
 
@@ -34,7 +57,9 @@ export class Backchannel {
 
   async accept (code: Code) : Promise<Contact>{
     let connection = await this.wormhole.accept(code)
-    return new Contact(connection)
+    let contact = new Contact(connection)
+    if (!await contact.compatible()) throw new Error('Incompatible versions, please upgrade.')
+    return contact
   }
 
 
