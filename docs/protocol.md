@@ -35,16 +35,12 @@ Once the PAKE handshake is complete, both PeerA and PeerB will have a shared sec
 
 In this phase, we use the *key* as an identifier for a particular document. We use a hash of the *key* to find other devices with copies of the document. We use the hash so that network eavesdroppers or the signaling server cannot learn the *key*.
 
-Ideally, clients will use WebRTC to perform offers and answers to achieve a direct peer-to-peer connection with fallback to a TURN server. The benefits of WebRTC are that (1) it works on all platforms, (2) there are robust and well-tested libraries, (3) it performs NAT traversal which  improves speed for sharing large files, and (4) it automatically performs DTLS encryption which prevents eavesdropping, tampering, or message forgery.
+1. Compute a hash of the *key (e.g., *[https://github.com/BLAKE3-team/BLAKE3](https://github.com/BLAKE3-team/BLAKE3))
+2. Announce this hash to the server.
+3. Connect peers interested in the same hash over the server.
+4. Encrypt contents using the NOISE protocol.
 
-One of the key security problems with WebRTC is that the signaling server needs to be trusted with the connection metadata, including IP addresses. To remove the signaling server from the trust model, we can use the *key* to establish the authenticity of the WebRTC metadata.
-
-1. Compute a Blake3 hash of the *key (*[https://github.com/BLAKE3-team/BLAKE3](https://github.com/BLAKE3-team/BLAKE3))
-2. Announce this Blake3 hash to the signaling server.
-3. Perform WebRTC handshake — encrypt the WebRTC offer and answer using secret box with the *key.*
-4. Create direct connection between peers using WebRTC.
-
-At this point, we have strong proof that the connected device possesses a copy of the same derived secret key established in VERIFY phase. The resulting WebRTC connection is then encrypted using DTLS.
+At this point, we have strong proof that the connected device possesses a copy of the same derived secret key established in VERIFY phase. 
 
 **Phase SYNC. Sharing data over an encrypted connection.**
 
@@ -54,9 +50,10 @@ For the backchannel prototype, we may want to upgrade to the Automerge protocol 
 
 ## Architecture
 
-There is a Signaling Server which routes packets between peers who have connected to the same *slot.* The slot should be a string.
+There is a Signaling Server which routes packets between peers who have connected to the same *slot.* This server is a [magic-wormhole server](https://github.com/magic-wormhole/magic-wormhole).  The server should be configured in `journaled` mode which allows for asyncronous data storage.
 
-Each client connects to the Signaling Server over a Web Socket connection.
+Each client connects to the magic wormhole server over a Web Socket connection. Data is stored in the fileSystem API on Chrome, and IndexedDb otherwise.
 
-Data is stored on the local filesystem when a desktop application, the fileSystem API on Chrome, and IndexedDb otherwise.
+## Using WebRTC (optional)
 
+To achieve peer-to-peer connections in the browser, clients can use WebRTC to perform offers and answers. The benefits of WebRTC are that (1) it works on all platforms, (2) there are robust and well-tested libraries, (3) it performs NAT traversal which  improves speed for sharing large files, and (4) it automatically performs DTLS encryption which prevents eavesdropping, tampering, or message forgery. One of the key security problems with WebRTC is that the signaling server needs to be trusted with the connection metadata, including IP addresses. To remove the signaling server from the trust model, we can use the *key* to establish the authenticity of the WebRTC metadata.
