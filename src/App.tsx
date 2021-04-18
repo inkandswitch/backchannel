@@ -1,10 +1,7 @@
 import React, { useState }  from 'react';
-import { Wormhole, Code } from './wormhole';
-import { arrayToHex } from 'enc-utils';
+import { Backchannel, Contact } from './backchannel'
 
-let wormhole = new Wormhole((err) => {
-  console.error(err)
-})
+let backchannel = new Backchannel()
 
 // Amount of time to show immediate user feedback
 let USER_FEEDBACK_TIMER = 5000;
@@ -25,45 +22,39 @@ const CodeView = () => {
     setCode(event.target.value)
   }
 
-  function onClickRedeem () {
-    wormhole.redeemCode(code)
-      .then((wormhole: any) => {
-        setErrorMsg("");
-        console.log('got a secure connection to wormhole')
-        setKey(arrayToHex(wormhole.key))
-      })
-      .catch((err: Error) => {
-        onError(err)
-      })
+  async function onClickRedeem () {
+    try { 
+      let contact = await backchannel.accept(code)
+      setErrorMsg("");
+      console.log('got a secure connection to wormhole')
+      setKey(contact.key)
+    } catch (err)  {
+      onError(err)
+    }
   }
 
-  function onClickGenerate () {
+  async function onClickGenerate () {
     // When a new code is generated
     // no news is good news.
     setGenerated(true);
     setErrorMsg("");
-    let filename = 'fakefilename.txt'
 
     // Reset the state after a certain amount of time
     setTimeout(() => {
       setGenerated(false);
     }, USER_FEEDBACK_TIMER);
 
-    wormhole.generateCode(filename)
-      .then((code: string) => {
-        console.log('got code', code)
-        setKey(code)
-        setErrorMsg("");
-        wormhole.factory.announce(code).then((connection) => {
-          console.log('got a secure connection to wormhole')
-          setKey(arrayToHex(connection.key))
-          //backchannel.start(connection)
-        })
-      })
-      .catch((err: Error) => {
-        setGenerated(false);
-        onError(err)
-      })
+    try { 
+      let code = await backchannel.getCode()
+      console.log('got code', code)
+      setKey(code)
+      setErrorMsg("");
+      let contact = await backchannel.announce(code)
+      setKey(contact.key)
+    } catch (err) {
+      setGenerated(false);
+      onError(err)
+    }
   }
 
   return (
