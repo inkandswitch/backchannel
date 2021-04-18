@@ -18,9 +18,9 @@ on behalf of network participants.
 
 ## Table of Contents
 
-* [Database](docs/database.md)
-* [Protocol](docs/protocol.md)
-* [Contributing & Code of Conduct](docs/contributing.md)
+* [Database](database.md)
+* [Protocol](protocol.md)
+* [Contributing & Code of Conduct](contributing.md)
 
 ## Questions
 
