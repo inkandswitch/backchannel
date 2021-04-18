@@ -12,7 +12,7 @@
   "license": "MIT",
   "dependencies": {
     "enc-utils": "^3.0.0",
-    "magic-wormhole": "file:../magic-wormhole-js",
+    "magic-wormhole": "github:okdistribute/magic-wormhole-js#browser",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "util": "^0.12.3"
