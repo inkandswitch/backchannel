@@ -1,32 +1,33 @@
 import Wormhole from './wormhole'
-import type { MagicWormhole, Code } from './wormhole'
+import type { SecureWormhole, MagicWormhole, Code } from './wormhole'
 import { arrayToHex } from 'enc-utils'
-
-let APP_VERSIONS = {
-  'alpha': true
-}
-
-export type ContactMetadata = {
-  moniker: string
-}
+import { Database, IContact } from './db'
 
 export class Contact {
-  connection: any 
-  key: string
-  metadata: ContactMetadata
+  connection: SecureWormhole
+  metadata: IContact
 
-  constructor (connection: any) {
+  constructor (connection: SecureWormhole, metadata: IContact) {
     this.connection = connection
-    this.key = arrayToHex(connection.key)
-  }
-
-  update (metadata: ContactMetadata) {
     this.metadata = metadata
-    this._save()
   }
 
-  _save () {
+  set moniker (moniker: string) {
+    this.metadata.moniker = moniker
+  }
 
+  get moniker () {
+    return this.metadata.moniker || 'anonymous'
+  }
+
+  get key () {
+    return this.metadata.key
+  }
+
+  static create (connection: SecureWormhole) {
+    return new Contact(connection, { 
+      key: arrayToHex(connection.key)
+    })
   }
 }
 
@@ -35,15 +36,15 @@ export class Contact {
  */
 export class Backchannel {
   wormhole: MagicWormhole
+  db: Database 
 
-  constructor () {
+  constructor (dbName) {
     this.wormhole = Wormhole()
-  }
-
-  async announce (code: Code): Promise<Contact> {
-    let connection = await this.wormhole.announce(code)
-    let contact = new Contact(connection)
-    return contact
+    this.db = new Database(dbName)
+    // TODO: catch this error upstream and inform the user properly
+    this.db.open().catch(err => {
+      console.error(`Database open failed : ${err.stack}`)
+    })
   }
 
   async getCode (): Promise<Code> {
@@ -51,29 +52,25 @@ export class Backchannel {
     return code;
   }
 
-  async accept (code: Code) : Promise<Contact>{
-    console.log('accepting')
-    let connection = await this.wormhole.accept(code)
-    console.log('got contact')
-    let contact = new Contact(connection)
+  // sender/initiator
+  async announce (code: Code): Promise<Contact> {
+    let connection = await this.wormhole.announce(code)
+    let contact = Contact.create(connection)
     return contact
   }
 
-  addContact (key: string, name: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      resolve('OK')
-    })
+  // redeemer/receiver
+  async accept (code: Code) : Promise<Contact>{
+    let connection = await this.wormhole.accept(code)
+    let contact = Contact.create(connection)
+    return contact
   }
 
-  listContacts (): Promise<any> {
-    return new Promise((resolve, reject) => {
-      resolve(['Joe', 'Dan', 'Jennie'])
-    })
+  async listContacts () {
+    return this.db.contacts.toArray()
   }
 
-
-  /*
-  async openExisting (contactId): Promise<Contact> {
+  async saveContact (contact: Contact) {
+    return this.db.contacts.put(contact.metadata)
   }
-  */
 }

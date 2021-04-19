@@ -2,7 +2,9 @@ import React, { useState }  from 'react';
 import { copyToClipboard } from './web'
 import { Backchannel, Contact } from './backchannel'
 
-let backchannel = new Backchannel()
+let dbName = "backchannel_" + window.location.hash
+console.log(dbName)
+let backchannel = new Backchannel(dbName)
 
 // Amount of time to show immediate user feedback
 let USER_FEEDBACK_TIMER = 5000;
@@ -24,6 +26,7 @@ const CodeView = () => {
   }
 
   async function onClickRedeem () {
+    console.log('on click redeem')
     try { 
       let contact = await backchannel.accept(code)
       setErrorMsg("");
@@ -52,6 +55,7 @@ const CodeView = () => {
       setErrorMsg("");
       await copyToClipboard(code)
       let contact = await backchannel.announce(code)
+      console.log('got a secure connection to wormhole')
       setKey(contact.key)
     } catch (err) {
       setGenerated(false);

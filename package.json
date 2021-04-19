@@ -11,6 +11,7 @@
   "author": "Karissa McKelvey",
   "license": "MIT",
   "dependencies": {
+    "dexie": "^3.0.3",
     "enc-utils": "^3.0.0",
     "magic-wormhole": "github:okdistribute/magic-wormhole-js#browser",
     "react": "^17.0.2",
