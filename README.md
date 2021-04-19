@@ -39,6 +39,11 @@ For the websocket relay
 npm run relay
 ```
 
+## Testing
+
+Open two browsers that are not in private browsing mode. Opening a private window doesn't work
+with IndexedDB.
+
 # Contributors
 
 * Karissa McKelvey, @okdistribute, Lead 
