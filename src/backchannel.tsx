@@ -2,12 +2,19 @@ import Wormhole from './wormhole'
 import type { SecureWormhole, MagicWormhole, Code } from './wormhole'
 import { arrayToHex } from 'enc-utils'
 import { Database, IContact } from './db'
+import { Client } from '@localfirst/relay-client'
+import { randomBytes } from 'crypto'
+import events from 'events'
 
-export class Contact {
+// TODO: configuring this externally
+let RELAY_URL = 'ws://localhost:3000'
+
+export class Contact extends events.EventEmitter {
   connection: SecureWormhole
   metadata: IContact
 
   constructor (connection: SecureWormhole, metadata: IContact) {
+    super()
     this.connection = connection
     this.metadata = metadata
   }
@@ -21,13 +28,16 @@ export class Contact {
   }
 
   get key () {
+    console.log(this.metadata.key)
     return this.metadata.key
   }
 
   static create (connection: SecureWormhole) {
-    return new Contact(connection, { 
+    let metadata = { 
       key: arrayToHex(connection.key)
-    })
+    }
+    console.log('creating contact', metadata)
+    return new Contact(connection, metadata)
   }
 }
 
@@ -37,14 +47,41 @@ export class Contact {
 export class Backchannel {
   wormhole: MagicWormhole
   db: Database 
+  client: Client
 
   constructor (dbName) {
     this.wormhole = Wormhole()
     this.db = new Database(dbName)
+    console.log('creating client')
+    this.client = new Client({
+      url: RELAY_URL
+    })
     // TODO: catch this error upstream and inform the user properly
     this.db.open().catch(err => {
       console.error(`Database open failed : ${err.stack}`)
     })
+  }
+
+  // Join a document and start connecting to peers that have it
+  joinDocument (documentId) {
+    console.log('joining document')
+    this.client
+      .join(documentId)
+      .on('peer.connect', ({ userName, socket, documentId }) => {
+        socket.addEventListener('open', () => {
+          console.log('sending hello')
+          socket.onerror = err => {
+            console.error('error', err)
+            console.trace(err)
+          }
+          socket.onmessage = e => {
+            console.log('onmessage')
+            const { data } = e
+            console.log(data.toString())
+          }
+          socket.send('hello ' + Math.random())
+        })
+      })
   }
 
   async getCode (): Promise<Code> {

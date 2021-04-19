@@ -18,14 +18,25 @@ on behalf of network participants.
 npm install
 ```
 
-In separate terminals, run 
+In separate terminals, run the following commands:
+
+
+For creating the javascript bundle
 
 ```
 npm run watch
 ```
 
+For hosting the static dist folder
+
 ```
 npm start
+```
+
+For the websocket relay
+
+```
+npm run relay
 ```
 
 # Contributors

@@ -5,6 +5,14 @@ import { Backchannel, Contact } from './backchannel'
 let dbName = "backchannel_" + window.location.hash
 console.log(dbName)
 let backchannel = new Backchannel(dbName)
+let contact = null
+
+// temp haxx0rs.
+function doTheThing (contact) {
+  console.log('connected')
+  console.log('joining document', contact.metadata.key)
+  backchannel.joinDocument(contact.metadata.key)
+}
 
 // Amount of time to show immediate user feedback
 let USER_FEEDBACK_TIMER = 5000;
@@ -25,16 +33,19 @@ const CodeView = () => {
     setCode(event.target.value)
   }
 
+
   async function onClickRedeem () {
     console.log('on click redeem')
     try { 
-      let contact = await backchannel.accept(code)
+      contact = await backchannel.accept(code)
       setErrorMsg("");
       console.log('got a secure connection to wormhole')
       setKey(contact.key)
     } catch (err)  {
       onError(err)
     }
+
+    doTheThing(contact)
   }
 
   async function onClickGenerate () {
@@ -54,13 +65,15 @@ const CodeView = () => {
       setKey(code)
       setErrorMsg("");
       await copyToClipboard(code)
-      let contact = await backchannel.announce(code)
+      contact = await backchannel.announce(code)
       console.log('got a secure connection to wormhole')
       setKey(contact.key)
     } catch (err) {
       setGenerated(false);
       onError(err)
     }
+
+    doTheThing(contact)
   }
 
   return (
