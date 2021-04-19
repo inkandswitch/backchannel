@@ -20,11 +20,6 @@ export class Contact {
     this.key = arrayToHex(connection.key)
   }
 
-  async compatible () {
-    let theirVersions = await this.connection.checkVersion(APP_VERSIONS)
-    return theirVersions['alpha'] === true
-  }
-
   update (metadata: ContactMetadata) {
     this.metadata = metadata
     this._save()
@@ -47,7 +42,8 @@ export class Backchannel {
 
   async announce (code: Code): Promise<Contact> {
     let connection = await this.wormhole.announce(code)
-    return new Contact(connection)
+    let contact = new Contact(connection)
+    return contact
   }
 
   async getCode (): Promise<Code> {
@@ -56,12 +52,12 @@ export class Backchannel {
   }
 
   async accept (code: Code) : Promise<Contact>{
+    console.log('accepting')
     let connection = await this.wormhole.accept(code)
+    console.log('got contact')
     let contact = new Contact(connection)
-    if (!await contact.compatible()) throw new Error('Incompatible versions, please upgrade.')
     return contact
   }
-
 
   addContact (key: string, name: string): Promise<string> {
     return new Promise((resolve, reject) => {
