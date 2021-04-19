@@ -10,8 +10,8 @@ let contact = null
 // temp haxx0rs.
 function doTheThing (contact) {
   console.log('connected')
-  console.log('joining document', contact.metadata.key)
-  backchannel.joinDocument(contact.metadata.key)
+  console.log('joining document', contact.metadata.documents[0])
+  backchannel.joinDocument(contact.metadata.documents[0])
 }
 
 // Amount of time to show immediate user feedback

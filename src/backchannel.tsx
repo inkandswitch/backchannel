@@ -27,14 +27,11 @@ export class Contact extends events.EventEmitter {
     return this.metadata.moniker || 'anonymous'
   }
 
-  get key () {
-    console.log(this.metadata.key)
-    return this.metadata.key
-  }
-
   static create (connection: SecureWormhole) {
+    // TODO: right now each contact only has one document
+    // we may need to refactor this particular flow in the future
     let metadata = { 
-      key: arrayToHex(connection.key)
+      documents: [arrayToHex(connection.key)]
     }
     console.log('creating contact', metadata)
     return new Contact(connection, metadata)

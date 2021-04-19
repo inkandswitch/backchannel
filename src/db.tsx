@@ -3,7 +3,7 @@ import Dexie from 'dexie'
 export interface IContact {
   id?: number,
   moniker?: string,
-  key: string
+  documents: Array<string>
 }
 
 export class Database extends Dexie {
@@ -13,7 +13,7 @@ export class Database extends Dexie {
     super(dbname)
     
     this.version(1).stores({
-      contacts: 'id++,moniker,key'
+      contacts: 'id++,moniker,*documents'
     })
 
     this.contacts = this.table('contacts')
