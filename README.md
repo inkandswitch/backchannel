@@ -41,8 +41,9 @@ npm run relay
 
 ## Testing
 
-Open two browsers that are not in private browsing mode. Opening a private window doesn't work
-with IndexedDB.
+Open two browser windows that are not in private browsing mode. They can be
+tabs in the same browser program. Opening a private window doesn't work with
+IndexedDB.
 
 # Contributors
 
