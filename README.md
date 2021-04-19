@@ -32,6 +32,7 @@ npm start
 
 * Karissa McKelvey, @okdistribute, Lead 
 * Ben Royer, Design
+* Chris Sun, @daiyi, Frontend/UI
 
 # Advisors
 
