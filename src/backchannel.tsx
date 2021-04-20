@@ -75,6 +75,7 @@ export class Backchannel {
             console.log('onmessage')
             const { data } = e
             console.log(data.toString())
+            // TODO: save message in the database
           }
           socket.send('hello ' + Math.random())
         })
@@ -104,7 +105,9 @@ export class Backchannel {
     return this.db.contacts.toArray()
   }
 
-  async saveContact (contact: Contact) {
+  // TODO this is probably not the best API
+  // To create a new contact. Generates an id
+  async createContact (contact: Contact) {
     return this.db.contacts.put(contact.metadata)
   }
 }
