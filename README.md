@@ -18,6 +18,8 @@ on behalf of network participants.
 npm install
 ```
 
+Install the local server tool: `npm i -g http-server`
+
 In separate terminals, run 
 
 ```
