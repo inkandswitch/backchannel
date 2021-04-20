@@ -31,7 +31,10 @@ export class Contact extends events.EventEmitter {
     // TODO: right now each contact only has one document
     // we may need to refactor this particular flow in the future
     let metadata = { 
-      documents: [arrayToHex(connection.key)]
+      documents: [arrayToHex(connection.key)],
+      devices: [],
+      key: null,
+      public_key: null,
     }
     console.log('creating contact', metadata)
     return new Contact(connection, metadata)

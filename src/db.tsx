@@ -29,6 +29,6 @@ export class Database extends Dexie {
 
     // this is just so typescript understands what is going on
     this.contacts = this.table('contacts')
-    this.messages = this.table('messsages')
+    this.messages = this.table('messages')
   }
 }
