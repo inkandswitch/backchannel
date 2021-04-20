@@ -33,9 +33,13 @@ let julia = contacts[0]
 
 let document = julia.documents[0]
 
-let document: Document = await backchannel.joinDocument(document.id)
+await backchannel.joinDocument(document.id)
 
-let messages: Array<Message> = document.messages() 
+backchannel.on('message', ({documentId, messageId}) => {
+  let messages: Array<Message> = document.messages() 
+  
+  // Update the UI
+})
 
 Message
   .id
