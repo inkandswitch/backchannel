@@ -1,10 +1,10 @@
 ```js
-let backchannel = new Backchannel(deviceID, keypair) 
-
 type keypair = { 
   publicKey: Buffer,
   privateKey: Buffer
 }
+
+let backchannel = new Backchannel(deviceID, keypair) 
 
 // establishing first contact 
 
