@@ -4,8 +4,7 @@ export interface IContact {
   id?: number,
   moniker?: string,
   documents: Array<string>, // -> codes i've accepted with them
-  devices: Array<number>,
-  public_key: string
+  public_key?: string
 }
 
 export interface IMessage {
@@ -24,7 +23,7 @@ export class Database extends Dexie {
     super(dbname)
     
     this.version(1).stores({
-      contacts: 'id++,moniker,*documents,devices,public_key',
+      contacts: 'id++,moniker,*documents,public_key',
       messages: 'id++,text,document_id,contact,filename,mime_type'
     })
 
