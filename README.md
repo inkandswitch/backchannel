@@ -18,22 +18,23 @@ on behalf of network participants.
 npm install
 ```
 
+Install the local server tool: `npm i -g http-server`
+
 In separate terminals, run the following commands:
 
-
-For creating the javascript bundle
+For building the javascript bundle...
 
 ```
 npm run watch
 ```
 
-For hosting the static dist folder
+For hosting the static dist folder...
 
 ```
 npm start
 ```
 
-For the websocket relay
+For the websocket relay...
 
 ```
 npm run relay
@@ -49,6 +50,7 @@ IndexedDB.
 
 * Karissa McKelvey, @okdistribute, Lead 
 * Ben Royer, Design
+* Chris Sun, @daiyi, Frontend/UI
 
 # Advisors
 
