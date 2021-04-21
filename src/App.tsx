@@ -7,13 +7,6 @@ let dbName = "backchannel_" + window.location.hash
 console.log(dbName)
 let backchannel = new Backchannel(dbName)
 
-// temp haxx0rs.
-function doTheThing (contact) {
-  console.log('connected')
-  console.log('joining document', contact.metadata.documents[0])
-  backchannel.joinDocument(contact.metadata.documents[0])
-}
-
 // Amount of time to show immediate user feedback
 let USER_FEEDBACK_TIMER = 5000;
 
