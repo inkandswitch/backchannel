@@ -1,12 +1,6 @@
-### Backchannel
 
-### Backchannel(dbName: string)
-
-
-```js
-let backchannel = new Backchannel(dbName: string)
-```
-
+This was a bit of an experiment/brainstorm, we will be iterating on the API and can autogenerate them from 
+jsdoc 
 
 ```js
 type keypair = { 
