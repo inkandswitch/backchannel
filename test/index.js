@@ -20,19 +20,20 @@ test('integration send a message', (t) => {
     // create a document, let's say we already did the wormhole handshake
     // TADA!!!
     let doc = crypto.randomBytes(16).toString('hex')
+    let moniker = 'bob'
 
     // OK, so now I create a petname for bob on alice's device..
     let petbob_id = await alice_device.addContact({
-      documents: [doc], moniker: 'bob'
+      documents: [doc], moniker
     })
 
     // and alice can list the contacts and get bob
     let contacts = await alice_device.listContacts()
     t.equals(contacts.length, 1)
-    t.equals(contacts[0].moniker, 'bob')
+    t.equals(contacts[0].moniker, moniker)
     t.equals(contacts[0].documents.length, 1)
     t.equals(contacts[0].documents[0], doc)
-    t.same(contacts[0].id, 1)
+    t.same(contacts[0].id, petbob_id)
 
     // OK, now let's send bob a message 'hello'
     let outgoing = {
