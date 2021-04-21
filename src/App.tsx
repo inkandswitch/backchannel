@@ -1,11 +1,11 @@
 import React, { useState }  from 'react';
 import { copyToClipboard } from './web'
 import { Backchannel } from './backchannel'
+import { ContactId } from './db'
 
 let dbName = "backchannel_" + window.location.hash
 console.log(dbName)
 let backchannel = new Backchannel(dbName)
-let contact = null
 
 // temp haxx0rs.
 function doTheThing (contact) {
@@ -33,19 +33,15 @@ const CodeView = () => {
     setCode(event.target.value)
   }
 
-
   async function onClickRedeem () {
     console.log('on click redeem')
     try { 
-      contact = await backchannel.accept(code)
+      let contact_id: ContactId = await backchannel.accept(code)
       setErrorMsg("");
-      console.log('got a secure connection to wormhole')
-      setKey(contact.key)
+      console.log('got a contact')
     } catch (err)  {
       onError(err)
     }
-
-    doTheThing(contact)
   }
 
   async function onClickGenerate () {
@@ -65,15 +61,12 @@ const CodeView = () => {
       setKey(code)
       setErrorMsg("");
       await copyToClipboard(code)
-      contact = await backchannel.announce(code)
-      console.log('got a secure connection to wormhole')
-      setKey(contact.key)
+      let contact_id: ContactId = await backchannel.announce(code)
+      console.log('got a contact')
     } catch (err) {
       setGenerated(false);
       onError(err)
     }
-
-    doTheThing(contact)
   }
 
   return (
