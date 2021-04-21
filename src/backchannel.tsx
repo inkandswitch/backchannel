@@ -29,6 +29,7 @@ export class Backchannel extends events.EventEmitter {
     this.client = new Client({
       url: RELAY_URL
     })
+    this._setupListeners()
     // TODO: catch this error upstream and inform the user properly
     this.db.open().catch(err => {
       console.error(`Database open failed : ${err.stack}`)
@@ -65,6 +66,7 @@ export class Backchannel extends events.EventEmitter {
       message.timestamp = Date.now().toString()
     }
     let id = await this.db.messages.add(message)
+    console.log('sending message', message, id)
     socket.send(JSON.stringify({text: message.text}));
   }
 
@@ -86,27 +88,6 @@ export class Backchannel extends events.EventEmitter {
     console.log('joining document')
     this.client
       .join(documentId)
-      .on('peer.connect', ({ socket, documentId }) => {
-        socket.addEventListener('open', async () => {
-          let contact = await this.getContactByDocument(documentId)
-
-          let openContact = {
-            socket, contact
-          }
-          this.emit('contact.open', openContact)
-
-          socket.onmessage = e => {
-            this.emit('message', {
-              documentId, message: JSON.parse(e.data)
-            })
-          }
-
-          socket.onerror = err => {
-            console.error('error', err)
-            console.trace(err)
-          }
-        })
-      })
   }
 
   async getCode (): Promise<Code> {
@@ -130,7 +111,46 @@ export class Backchannel extends events.EventEmitter {
     return this.db.contacts.toArray()
   }
 
+  async destroy () {
+    console.log('destroying')
+    await this.client.disconnect()
+    await this.db.delete()
+  }
+
   // PRIVATE
+  //
+
+  _setupListeners () {
+    this.client
+      .on('peer.disconnect', async ({ documentId }) => {
+        let contact = await this.getContactByDocument(documentId)
+        this.emit('contact.disconnected', {contact, documentId})
+      })
+      .on('peer.connect', ({ socket, documentId }) => {
+
+        socket.onmessage = e => {
+          this.emit('message', {
+            documentId, message: JSON.parse(e.data)
+          })
+        }
+
+        socket.onerror = err => {
+          console.error('error', err)
+          console.trace(err)
+        }
+
+
+        socket.addEventListener('open', async () => {
+          let contact = await this.getContactByDocument(documentId)
+
+          let openContact = {
+            socket, contact, documentId
+          }
+          this.emit('contact.connected', openContact)
+        })
+      })
+
+  }
 
   _createContactFromWormhole (connection: SecureWormhole) : Promise<ContactId> {
     let key = arrayToHex(connection.key)
