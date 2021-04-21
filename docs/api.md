@@ -1,3 +1,13 @@
+### Backchannel
+
+### Backchannel(dbName: string)
+
+
+```js
+let backchannel = new Backchannel(dbName: string)
+```
+
+
 ```js
 type keypair = { 
   publicKey: Buffer,
@@ -16,8 +26,9 @@ let contact = await backchannel.announce(code)
 // question for ben: what are the validation constraints for petnames?
 
 // set the petname
-contact.petname = 'julia'
-contact.save()
+await backchannel.updateContact(contact, {
+  moniker: 'julia'
+})
 
 // next time i want to talk to them..
 
@@ -29,13 +40,13 @@ let julia = contacts[0]
 // julia.petname === 'julia'
 // julia.public_key === 'someuniquebuffer'
 
-// documents are conversation threads
 
-let document = julia.documents[0]
-
-await backchannel.joinDocument(document.id)
+// there is only one document per contact
+let document = await backchannel.connect(julia)
 
 backchannel.on('message', ({documentId, messageId}) => {
+  let document = backchannel.getDocument(documentId)
+  let message = backchannel.getMessage(documentId, messageId)
   let messages: Array<Message> = document.messages() 
   
   // Update the UI
@@ -46,5 +57,6 @@ Message
   .timestamp
   .contact -> Contact(petname, image)
 
-document.add(Message)
+let message = await backchannel.sendMessage(julia, { text })
+
 ```

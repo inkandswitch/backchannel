@@ -1,6 +1,6 @@
 import React, { useState }  from 'react';
 import { copyToClipboard } from './web'
-import { Backchannel, Contact } from './backchannel'
+import { Backchannel } from './backchannel'
 
 let dbName = "backchannel_" + window.location.hash
 console.log(dbName)
