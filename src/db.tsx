@@ -1,18 +1,22 @@
 import Dexie from 'dexie'
 
+export type ContactId = number
+
 export interface IContact {
-  id?: number,
-  moniker?: string,
-  documents: Array<string>, // -> codes i've accepted with them
+  id?: ContactId
+  moniker?: string
+  documents: Array<string> // -> codes i've accepted with them
   public_key?: string
 }
 
+
 export interface IMessage {
-  id?: number,
-  text: string,
-  contact: number, // -> IContact.id 
-  filename: string,
-  mime_type: string
+  id?: number
+  timestamp: string,
+  contact: number // -> Contact.id 
+  text?: string
+  filename?: string
+  mime_type?: string
 }
 
 export class Database extends Dexie {
@@ -24,7 +28,7 @@ export class Database extends Dexie {
     
     this.version(1).stores({
       contacts: 'id++,moniker,*documents,public_key',
-      messages: 'id++,text,document_id,contact,filename,mime_type'
+      messages: 'id++,text,contact,filename,mime_type'
     })
 
     // this is just so typescript understands what is going on
