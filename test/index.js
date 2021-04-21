@@ -11,7 +11,7 @@ test('create a contact', async (t) => {
 
   // create a document, let's say we already did the wormhole handshake
   // TADA!!!
-  let doc = crypto.randomBytes(16)
+  let doc = crypto.randomBytes(16).toString('hex')
 
   // OK, so now I create a petname for bob on alice's device..
   let petbob_id = alice_device.addContact({
