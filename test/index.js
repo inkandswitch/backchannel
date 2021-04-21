@@ -75,7 +75,7 @@ test('integration send a message', (t) => {
     alice_device.on('contact.connected', onConnect)
     alice_device.on('contact.disconnected', onDisconnect)
 
-    // joining the document on both sides fires the 'contact.open' event
+    // joining the document on both sides fires the 'contact.connected' event
     alice_device.joinDocument(doc)
     bob_device.joinDocument(doc)
   })
