@@ -70,7 +70,7 @@ export class Backchannel extends events.EventEmitter {
     socket.send(JSON.stringify({ text: message.text }));
   }
 
-  async getContactByDocument(documentId: string): Promise<IContact[]> {
+  async getContactByDocument(documentId: string): Promise<IContact> {
     let contacts = await this.db.contacts
       .where('documents')
       .equals(documentId)
@@ -82,7 +82,7 @@ export class Backchannel extends events.EventEmitter {
       );
     }
 
-    return contacts;
+    return contacts[0];
   }
 
   // Join a document and start connecting to peers that have it

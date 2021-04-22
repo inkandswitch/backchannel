@@ -44,7 +44,7 @@ test('integration send a message', (t) => {
 
     // sending a message
     async function onConnect({ socket, contact }) {
-      t.ok('got contact.connected');
+      t.ok(true, 'got contact.connected');
       // only if the contact is bob!
       if (contact.id === petbob_id) {
         await alice_device.sendMessage(socket, outgoing);
