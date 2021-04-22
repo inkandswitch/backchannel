@@ -62,7 +62,7 @@ export class Backchannel extends events.EventEmitter {
 
   /**
    * Send a message to a contact. Assumes that you've already
-   * connected with the contact using `contact.open`
+   * connected with the contact from listening to the `contact.connected` event
    * @param {WebSocket} socket: the open socket for the contact
    */
   async sendMessage(socket: WebSocket, message: IMessage) {
