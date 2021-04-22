@@ -46,6 +46,18 @@ Open two browser windows that are not in private browsing mode. They can be
 tabs in the same browser program. Opening a private window doesn't work with
 IndexedDB.
 
+To run automated tests, 
+
+```
+npm run relay
+```
+
+and then
+
+```
+npm test
+```
+
 # Contributors
 
 * Karissa McKelvey, @okdistribute, Lead 
