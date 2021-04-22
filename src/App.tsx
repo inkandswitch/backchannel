@@ -7,6 +7,7 @@ import { Link, Route } from 'wouter';
 
 import { Backchannel, Contact } from './backchannel';
 import { copyToClipboard } from './web';
+import { ContactId } from './db';
 
 let dbName = 'backchannel_' + window.location.hash;
 console.log(dbName);
@@ -38,9 +39,11 @@ const CodeView = ({ view }: { view: CodeViewMode }) => {
   async function onClickRedeem() {
     console.log('on click redeem');
     try {
-      let contact = await backchannel.accept(code);
+      let cid: ContactId = await backchannel.accept(code);
+      let contact = await backchannel.getContactById(cid);
       setErrorMsg('');
       clearMessage(messageTimeoutID);
+
       setContact(contact);
     } catch (err) {
       onError(err);
@@ -87,7 +90,9 @@ const CodeView = ({ view }: { view: CodeViewMode }) => {
         }
 
         // This promise returns once the other party redeems the code
-        let contact = await backchannel.announce(code);
+        let cid: ContactId = await backchannel.announce(code);
+        let contact = await backchannel.getContactById(cid);
+
         clearMessage(messageTimeoutID);
         setContact(contact);
         // contact.key is the strong key

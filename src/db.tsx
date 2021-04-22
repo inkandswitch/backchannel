@@ -1,21 +1,41 @@
-import Dexie from 'dexie'
+import Dexie from 'dexie';
+import blake from 'blake2b';
+import { arrayToHex } from 'enc-utils';
+
+export type ContactId = number;
+export type Key = string;
+export type DiscoveryKey = string;
 
 export interface IContact {
-  id?: number,
-  moniker?: string,
-  key: string
+  id?: ContactId;
+  moniker?: string;
+  discoveryKey?: DiscoveryKey; // -> hash of code
+  key: Key; // -> code I've accepted with them
+}
+
+export interface IMessage {
+  id?: number;
+  timestamp: string;
+  contact: number; // -> Contact.id
+  text?: string;
+  filename?: string;
+  mime_type?: string;
 }
 
 export class Database extends Dexie {
-  contacts: Dexie.Table<IContact, number>
+  contacts: Dexie.Table<IContact, number>;
+  messages: Dexie.Table<IMessage, number>;
 
-  constructor (dbname) {
-    super(dbname)
-    
+  constructor(dbname) {
+    super(dbname);
+
     this.version(1).stores({
-      contacts: 'id++,moniker,key'
-    })
+      contacts: 'id++,moniker,discoveryKey,key',
+      messages: 'id++,text,contact,filename,mime_type',
+    });
 
-    this.contacts = this.table('contacts')
+    // this is just so typescript understands what is going on
+    this.contacts = this.table('contacts');
+    this.messages = this.table('messages');
   }
 }

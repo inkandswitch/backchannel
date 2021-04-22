@@ -20,14 +20,42 @@ npm install
 
 Install the local server tool: `npm i -g http-server`
 
-In separate terminals, run 
+In separate terminals, run the following commands:
+
+For building the javascript bundle...
 
 ```
 npm run watch
 ```
 
+For hosting the static dist folder...
+
 ```
 npm start
+```
+
+For the websocket relay...
+
+```
+npm run relay
+```
+
+## Testing
+
+Open two browser windows that are not in private browsing mode. They can be
+tabs in the same browser program. Opening a private window doesn't work with
+IndexedDB.
+
+To run automated tests, 
+
+```
+npm run relay
+```
+
+and then
+
+```
+npm test
 ```
 
 # Contributors
