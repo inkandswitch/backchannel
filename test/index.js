@@ -41,11 +41,11 @@ test('integration send a message', (t) => {
     t.ok(contacts[0].discoveryKey, 'has discovery key');
     t.same(contacts[0].id, petbob_id);
 
-    let bob = await alice_device.getContactById(petbob_id)
-    t.same(bob.id, petbob_id, 'got bob')
+    let bob = await alice_device.getContactById(petbob_id);
+    t.same(bob.id, petbob_id, 'got bob');
 
-    let alice = await bob_device.getContactById(petalice_id)
-    t.same(alice.id, petbob_id, 'got alice')
+    let alice = await bob_device.getContactById(petalice_id);
+    t.same(alice.id, petbob_id, 'got alice');
 
     // OK, now let's send bob a message 'hello'
     let outgoing = {
@@ -57,7 +57,7 @@ test('integration send a message', (t) => {
     async function onConnect({ socket, contact }) {
       t.ok(true, 'got contact.connected');
       // only if the contact is bob!
-      t.same(contact.id, petbob_id)
+      t.same(contact.id, petbob_id);
       await alice_device.sendMessage(socket, outgoing);
     }
 

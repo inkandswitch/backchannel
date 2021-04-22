@@ -3,7 +3,7 @@ import type { SecureWormhole, MagicWormhole, Code } from './wormhole';
 import { arrayToHex } from 'enc-utils';
 import { Key, Database, ContactId, IContact, IMessage } from './db';
 import { Client } from '@localfirst/relay-client';
-import crypto from 'crypto'
+import crypto from 'crypto';
 import events from 'events';
 
 // TODO: configuring this externally
@@ -45,9 +45,9 @@ export class Backchannel extends events.EventEmitter {
    * @returns {ContactId} id - The local id number for this contact
    */
   async addContact(contact: IContact): Promise<ContactId> {
-    let hash = crypto.createHash('sha256')
-    hash.update(contact.key)
-    contact.discoveryKey = hash.digest('hex')
+    let hash = crypto.createHash('sha256');
+    hash.update(contact.key);
+    contact.discoveryKey = hash.digest('hex');
     return this._db.contacts.add(contact);
   }
 
@@ -76,17 +76,15 @@ export class Backchannel extends events.EventEmitter {
   }
 
   async getContactById(id: ContactId): Promise<IContact> {
-    let contacts = await this._db.contacts.where('id').equals(id).toArray()
+    let contacts = await this._db.contacts.where('id').equals(id).toArray();
     if (!contacts.length) {
-      throw new Error(
-        'No contact with id'
-      );
+      throw new Error('No contact with id');
     }
-    return contacts[0]
+    return contacts[0];
   }
 
   async getContactByDiscoveryKey(discoveryKey: string): Promise<IContact> {
-    console.log('looking up contact', discoveryKey)
+    console.log('looking up contact', discoveryKey);
     let contacts = await this._db.contacts
       .where('discoveryKey')
       .equals(discoveryKey)
@@ -105,18 +103,20 @@ export class Backchannel extends events.EventEmitter {
    * @param {DocumentId} documentId
    */
   connectToContact(contact: IContact) {
-    console.log('joining', contact.discoveryKey)
-    if (!contact || !contact.discoveryKey) throw new Error('contact.discoveryKey required')
+    console.log('joining', contact.discoveryKey);
+    if (!contact || !contact.discoveryKey)
+      throw new Error('contact.discoveryKey required');
     this._client.join(contact.discoveryKey);
   }
 
   /**
-   * Leave a document and disconnect from peers 
+   * Leave a document and disconnect from peers
    * @param {DocumentId} documentId
    */
   disconnectFromContact(contact: IContact) {
-    console.log('dsiconnecting', contact.discoveryKey)
-    if (!contact || !contact.discoveryKey) throw new Error('contact.discoveryKey required')
+    console.log('dsiconnecting', contact.discoveryKey);
+    if (!contact || !contact.discoveryKey)
+      throw new Error('contact.discoveryKey required');
     this._client.leave(contact.discoveryKey);
   }
 
@@ -157,7 +157,7 @@ export class Backchannel extends events.EventEmitter {
         this.emit('contact.disconnected', { contact });
       })
       .on('peer.connect', async ({ socket, documentId }) => {
-        console.log('got documentId', documentId)
+        console.log('got documentId', documentId);
         let contact = await this.getContactByDiscoveryKey(documentId);
         socket.onmessage = (e) => {
           this.emit('message', {
@@ -182,12 +182,13 @@ export class Backchannel extends events.EventEmitter {
       });
   }
 
-  private _createContactFromWormhole(connection: SecureWormhole): Promise<ContactId> {
-
+  private _createContactFromWormhole(
+    connection: SecureWormhole
+  ): Promise<ContactId> {
     let metadata = {
-      key: arrayToHex(connection.key)
+      key: arrayToHex(connection.key),
     };
 
-    return this.addContact(metadata)
+    return this.addContact(metadata);
   }
 }
