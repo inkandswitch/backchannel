@@ -8,7 +8,9 @@
     "test": "airtap test/*.js",
     "build": "browserify src/index.tsx -p tsify > dist/bundle.js",
     "watch": "watchify src/index.tsx -o dist/bundle.js -p tsify",
-    "relay": "PORT=3000 node ./node_modules/@localfirst/relay/dist/start.js"
+    "relay": "PORT=3000 node ./node_modules/@localfirst/relay/dist/start.js",
+    "lint": "prettier -c test src",
+    "format": "prettier -w test src"
   },
   "author": "Karissa McKelvey",
   "license": "MIT",
