@@ -1,0 +1,14 @@
+{
+  "folders": [
+    {
+      "path": ".."
+    }
+  ],
+  "extensions": {
+    "recommendations": ["esbenp.prettier-vscode", "ms-vsliveshare.vsliveshare"]
+  },
+  "settings": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}
