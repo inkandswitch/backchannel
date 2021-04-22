@@ -5,7 +5,7 @@ let { ContactId, Backchannel } = require('../src/backchannel.tsx');
 
 test('integration send a message', (t) => {
   return new Promise(async (resolve, reject) => {
-    t.plan(11);
+    t.plan(12);
 
     // give 10 seconds to join a document and send a message
     setTimeout(() => {
@@ -46,9 +46,8 @@ test('integration send a message', (t) => {
     async function onConnect({ socket, contact }) {
       t.ok(true, 'got contact.connected');
       // only if the contact is bob!
-      if (contact.id === petbob_id) {
-        await alice_device.sendMessage(socket, outgoing);
-      }
+      t.same(contact.id, petbob_id)
+      await alice_device.sendMessage(socket, outgoing);
     }
 
     // what we do when bob's device has received the message
