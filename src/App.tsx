@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { jsx, css } from '@emotion/react';
 import { Link, Route } from 'wouter';
 
-import { Backchannel, Contact } from './backchannel';
+import { Backchannel } from './backchannel';
 import { copyToClipboard } from './web';
 import { ContactId } from './db';
 
