@@ -5,11 +5,11 @@ let { ContactId, Backchannel } = require('../src/backchannel.tsx');
 
 test('integration send a message', (t) => {
   return new Promise(async (resolve, reject) => {
-    t.plan(12);
+    t.plan(13);
 
     // give 10 seconds to join a document and send a message
     setTimeout(() => {
-      reject(new Error('timed out!'));
+      t.fail(new Error('timed out!'));
     }, 10000);
 
     // start a backchannel on bob and alice's devices
@@ -24,7 +24,12 @@ test('integration send a message', (t) => {
 
     // OK, so now I create a petname for bob on alice's device..
     let petbob_id = await alice_device.addContact({
-      documents: [doc],
+      key: doc,
+      moniker,
+    });
+
+    let petalice_id = await bob_device.addContact({
+      key: doc,
       moniker,
     });
 
@@ -32,9 +37,15 @@ test('integration send a message', (t) => {
     let contacts = await alice_device.listContacts();
     t.equals(contacts.length, 1);
     t.equals(contacts[0].moniker, moniker);
-    t.equals(contacts[0].documents.length, 1);
-    t.equals(contacts[0].documents[0], doc);
+    t.equals(contacts[0].key, doc);
+    t.ok(contacts[0].discoveryKey, 'has discovery key');
     t.same(contacts[0].id, petbob_id);
+
+    let bob = await alice_device.getContactById(petbob_id)
+    t.same(bob.id, petbob_id, 'got bob')
+
+    let alice = await bob_device.getContactById(petalice_id)
+    t.same(alice.id, petbob_id, 'got alice')
 
     // OK, now let's send bob a message 'hello'
     let outgoing = {
@@ -63,7 +74,6 @@ test('integration send a message', (t) => {
       // after bob destroys himself, we should get the disconnected event
       t.ok('got contact.disconnected');
       t.same(contact.id, petbob_id, 'got same contact');
-      t.same(documentId, doc, 'got document id');
       alice_device.destroy();
       resolve();
     }
@@ -76,7 +86,7 @@ test('integration send a message', (t) => {
     alice_device.on('contact.disconnected', onDisconnect);
 
     // joining the document on both sides fires the 'contact.connected' event
-    alice_device.joinDocument(doc);
-    bob_device.joinDocument(doc);
+    alice_device.connectToContact(bob);
+    bob_device.connectToContact(alice);
   });
 });

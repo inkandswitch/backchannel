@@ -1,12 +1,16 @@
 import Dexie from 'dexie';
+import blake from 'blake2b';
+import { arrayToHex } from 'enc-utils';
 
 export type ContactId = number;
+export type Key = string;
+export type DiscoveryKey = string;
 
 export interface IContact {
   id?: ContactId;
   moniker?: string;
-  documents: Array<string>; // -> codes i've accepted with them
-  public_key?: string;
+  discoveryKey?: DiscoveryKey; // -> hash of code
+  key: Key; // -> code I've accepted with them
 }
 
 export interface IMessage {
@@ -26,7 +30,7 @@ export class Database extends Dexie {
     super(dbname);
 
     this.version(1).stores({
-      contacts: 'id++,moniker,*documents,public_key',
+      contacts: 'id++,moniker,discoveryKey,key',
       messages: 'id++,text,contact,filename,mime_type',
     });
 

@@ -1,8 +1,9 @@
 import Wormhole from './wormhole';
 import type { SecureWormhole, MagicWormhole, Code } from './wormhole';
 import { arrayToHex } from 'enc-utils';
-import { Database, ContactId, IContact, IMessage } from './db';
+import { Key, Database, ContactId, IContact, IMessage } from './db';
 import { Client } from '@localfirst/relay-client';
+import crypto from 'crypto'
 import events from 'events';
 
 // TODO: configuring this externally
@@ -43,6 +44,9 @@ export class Backchannel extends events.EventEmitter {
    * @returns {ContactId} id - The local id number for this contact
    */
   async addContact(contact: IContact): Promise<ContactId> {
+    let hash = crypto.createHash('sha256')
+    hash.update(contact.key)
+    contact.discoveryKey = hash.digest('hex')
     return this.db.contacts.add(contact);
   }
 
@@ -70,11 +74,21 @@ export class Backchannel extends events.EventEmitter {
     socket.send(JSON.stringify({ text: message.text }));
   }
 
-  async getContactByDocument(documentId: string): Promise<IContact> {
+  async getContactById(id: ContactId): Promise<IContact> {
+    let contacts = await this.db.contacts.where('id').equals(id).toArray()
+    if (!contacts.length) {
+      throw new Error(
+        'No contact with id'
+      );
+    }
+    return contacts[0]
+  }
+
+  async getContactByDiscoveryKey(discoveryKey: string): Promise<IContact> {
+    console.log('looking up contact', discoveryKey)
     let contacts = await this.db.contacts
-      .where('documents')
-      .equals(documentId)
-      .distinct()
+      .where('discoveryKey')
+      .equals(discoveryKey)
       .toArray();
     if (!contacts.length) {
       throw new Error(
@@ -85,10 +99,24 @@ export class Backchannel extends events.EventEmitter {
     return contacts[0];
   }
 
-  // Join a document and start connecting to peers that have it
-  joinDocument(documentId) {
-    console.log('joining document');
-    this.client.join(documentId);
+  /**
+   * Join a document and start connecting to peers that have it
+   * @param {DocumentId} documentId
+   */
+  connectToContact(contact: IContact) {
+    console.log('joining', contact.discoveryKey)
+    if (!contact || !contact.discoveryKey) throw new Error('contact.discoveryKey required')
+    this.client.join(contact.discoveryKey);
+  }
+
+  /**
+   * Leave a document and disconnect from peers 
+   * @param {DocumentId} documentId
+   */
+  disconnectFromContact(contact: IContact) {
+    console.log('dsiconnecting', contact.discoveryKey)
+    if (!contact || !contact.discoveryKey) throw new Error('contact.discoveryKey required')
+    this.client.leave(contact.discoveryKey);
   }
 
   async getCode(): Promise<Code> {
@@ -124,13 +152,15 @@ export class Backchannel extends events.EventEmitter {
   _setupListeners() {
     this.client
       .on('peer.disconnect', async ({ documentId }) => {
-        let contact = await this.getContactByDocument(documentId);
-        this.emit('contact.disconnected', { contact, documentId });
+        let contact = await this.getContactByDiscoveryKey(documentId);
+        this.emit('contact.disconnected', { contact });
       })
-      .on('peer.connect', ({ socket, documentId }) => {
+      .on('peer.connect', async ({ socket, documentId }) => {
+        console.log('got documentId', documentId)
+        let contact = await this.getContactByDiscoveryKey(documentId);
         socket.onmessage = (e) => {
           this.emit('message', {
-            documentId,
+            contact,
             message: JSON.parse(e.data),
           });
         };
@@ -141,8 +171,6 @@ export class Backchannel extends events.EventEmitter {
         };
 
         socket.addEventListener('open', async () => {
-          let contact = await this.getContactByDocument(documentId);
-
           let openContact = {
             socket,
             contact,
@@ -154,11 +182,11 @@ export class Backchannel extends events.EventEmitter {
   }
 
   _createContactFromWormhole(connection: SecureWormhole): Promise<ContactId> {
-    let key = arrayToHex(connection.key);
 
     let metadata = {
-      documents: [key],
+      key: arrayToHex(connection.key)
     };
-    return this.addContact(metadata);
+
+    return this.addContact(metadata)
   }
 }
