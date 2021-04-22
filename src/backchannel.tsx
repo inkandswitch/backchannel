@@ -9,30 +9,31 @@ import events from 'events';
 // TODO: configuring this externally
 let RELAY_URL = 'ws://localhost:3000';
 
-/*
+/**
  * The backchannel class manages the database and wormholes
  */
 export class Backchannel extends events.EventEmitter {
-  wormhole: MagicWormhole;
-  db: Database;
-  client: Client;
+  private _wormhole: MagicWormhole;
+  private _db: Database;
+  private _client: Client;
 
   /**
    * Create a new backchannel client. Each instance represents a user opening
    * the backchannel app on their device.
+   * @constructor
+   * @param {string} dbName - the name of the database saved in IndexedDb
    */
-
   constructor(dbName) {
     super();
-    this.wormhole = Wormhole();
-    this.db = new Database(dbName);
+    this._wormhole = Wormhole();
+    this._db = new Database(dbName);
     console.log('creating client');
-    this.client = new Client({
+    this._client = new Client({
       url: RELAY_URL,
     });
     this._setupListeners();
     // TODO: catch this error upstream and inform the user properly
-    this.db.open().catch((err) => {
+    this._db.open().catch((err) => {
       console.error(`Database open failed : ${err.stack}`);
     });
   }
@@ -47,7 +48,7 @@ export class Backchannel extends events.EventEmitter {
     let hash = crypto.createHash('sha256')
     hash.update(contact.key)
     contact.discoveryKey = hash.digest('hex')
-    return this.db.contacts.add(contact);
+    return this._db.contacts.add(contact);
   }
 
   /**
@@ -56,7 +57,7 @@ export class Backchannel extends events.EventEmitter {
    * @param {IContact} contact - The contact to update to the database
    */
   updateContact(contact: IContact): Promise<ContactId> {
-    return this.db.contacts.put(contact);
+    return this._db.contacts.put(contact);
   }
 
   /**
@@ -69,13 +70,13 @@ export class Backchannel extends events.EventEmitter {
     if (!message.timestamp) {
       message.timestamp = Date.now().toString();
     }
-    let id = await this.db.messages.add(message);
+    let id = await this._db.messages.add(message);
     console.log('sending message', message, id);
     socket.send(JSON.stringify({ text: message.text }));
   }
 
   async getContactById(id: ContactId): Promise<IContact> {
-    let contacts = await this.db.contacts.where('id').equals(id).toArray()
+    let contacts = await this._db.contacts.where('id').equals(id).toArray()
     if (!contacts.length) {
       throw new Error(
         'No contact with id'
@@ -86,7 +87,7 @@ export class Backchannel extends events.EventEmitter {
 
   async getContactByDiscoveryKey(discoveryKey: string): Promise<IContact> {
     console.log('looking up contact', discoveryKey)
-    let contacts = await this.db.contacts
+    let contacts = await this._db.contacts
       .where('discoveryKey')
       .equals(discoveryKey)
       .toArray();
@@ -106,7 +107,7 @@ export class Backchannel extends events.EventEmitter {
   connectToContact(contact: IContact) {
     console.log('joining', contact.discoveryKey)
     if (!contact || !contact.discoveryKey) throw new Error('contact.discoveryKey required')
-    this.client.join(contact.discoveryKey);
+    this._client.join(contact.discoveryKey);
   }
 
   /**
@@ -116,41 +117,41 @@ export class Backchannel extends events.EventEmitter {
   disconnectFromContact(contact: IContact) {
     console.log('dsiconnecting', contact.discoveryKey)
     if (!contact || !contact.discoveryKey) throw new Error('contact.discoveryKey required')
-    this.client.leave(contact.discoveryKey);
+    this._client.leave(contact.discoveryKey);
   }
 
   async getCode(): Promise<Code> {
-    let code = await this.wormhole.getCode();
+    let code = await this._wormhole.getCode();
     return code;
   }
 
   // sender/initiator
   async announce(code: Code): Promise<ContactId> {
-    let connection = await this.wormhole.announce(code);
+    let connection = await this._wormhole.announce(code);
     return this._createContactFromWormhole(connection);
   }
 
   // redeemer/receiver
   async accept(code: Code): Promise<ContactId> {
-    let connection = await this.wormhole.accept(code);
+    let connection = await this._wormhole.accept(code);
     return this._createContactFromWormhole(connection);
   }
 
   async listContacts(): Promise<IContact[]> {
-    return this.db.contacts.toArray();
+    return this._db.contacts.toArray();
   }
 
   async destroy() {
     console.log('destroying');
-    await this.client.disconnect();
-    await this.db.delete();
+    await this._client.disconnect();
+    await this._db.delete();
   }
 
   // PRIVATE
   //
 
-  _setupListeners() {
-    this.client
+  private _setupListeners() {
+    this._client
       .on('peer.disconnect', async ({ documentId }) => {
         let contact = await this.getContactByDiscoveryKey(documentId);
         this.emit('contact.disconnected', { contact });
@@ -181,7 +182,7 @@ export class Backchannel extends events.EventEmitter {
       });
   }
 
-  _createContactFromWormhole(connection: SecureWormhole): Promise<ContactId> {
+  private _createContactFromWormhole(connection: SecureWormhole): Promise<ContactId> {
 
     let metadata = {
       key: arrayToHex(connection.key)

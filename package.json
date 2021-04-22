@@ -2,7 +2,7 @@
   "name": "backchannel",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/index.tsx",
   "scripts": {
     "start": "http-server dist",
     "test": "airtap test/*.js",
@@ -10,7 +10,8 @@
     "watch": "watchify src/index.tsx -o dist/bundle.js -p tsify",
     "relay": "PORT=3000 node ./node_modules/@localfirst/relay/dist/start.js",
     "lint": "prettier -c test src",
-    "format": "prettier -w test src"
+    "format": "prettier -w test src",
+    "doc": "typedoc src/backchannel.tsx --excludeExternals --excludePrivate --excludeInternal --out docs/api"
   },
   "author": "Karissa McKelvey",
   "license": "MIT",
@@ -31,9 +32,11 @@
     "airtap": "^4.0.3",
     "airtap-system": "^0.1.0",
     "browserify": "^17.0.0",
-    "tape": "^5.2.2",
+    "jsdoc": "^3.6.6",
     "prettier": "2.2.1",
+    "tape": "^5.2.2",
     "tsify": "^5.0.2",
+    "typedoc": "^0.20.35",
     "typescript": "^4.2.3",
     "watchify": "^4.0.0"
   }
