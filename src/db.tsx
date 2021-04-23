@@ -15,6 +15,7 @@ export interface IContact {
 
 export interface IMessage {
   id?: number;
+  incoming: boolean; // -> incoming or outgoing message
   timestamp: string;
   contact: number; // -> Contact.id
   text?: string;
@@ -30,8 +31,8 @@ export class Database extends Dexie {
     super(dbname);
 
     this.version(1).stores({
-      contacts: 'id++,moniker,discoveryKey,key',
-      messages: 'id++,text,contact,filename,mime_type',
+      contacts: 'id++,moniker,&discoveryKey,key',
+      messages: 'id++,incoming,text,contact,filename,mime_type',
     });
 
     // this is just so typescript understands what is going on

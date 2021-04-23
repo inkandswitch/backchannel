@@ -18,6 +18,7 @@
   "dependencies": {
     "@emotion/react": "^11.1.5",
     "@localfirst/relay-client": "^3.0.0",
+    "cat-names": "^3.0.0",
     "dexie": "^3.0.3",
     "enc-utils": "^3.0.0",
     "magic-wormhole": "github:okdistribute/magic-wormhole-js#browser",
