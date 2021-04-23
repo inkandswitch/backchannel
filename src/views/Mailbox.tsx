@@ -59,11 +59,6 @@ export default function Mailbox(props: Props) {
 
   function sendMessage() {
     backchannel.sendMessage(contactId, messageText);
-    setMessageText(null);
-  }
-
-  function handleChange(event) {
-    setMessageText(event.target.value);
   }
 
   return (
@@ -87,7 +82,7 @@ export default function Mailbox(props: Props) {
       )}
 
       <div>
-        <input type="text" value={messageText} onChange={handleChange} />
+        <input type="text" value={messageText} />
         <Button disabled={!contact} onClick={sendMessage}>
           Send
         </Button>
