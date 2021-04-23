@@ -160,12 +160,18 @@ export class Backchannel extends events.EventEmitter {
     return this._createContactFromWormhole(connection);
   }
 
-  async listContacts(): Promise<any[]> {
-    let contacts = await this._db.contacts.toArray();
-    return contacts.map((contact: IContact) => {
-      let connected: Boolean = this._sockets.has(contact.id);
-      return { ...contact, connected };
-    });
+  async listContacts(): Promise<IContact[]> {
+    return await this._db.contacts.toArray();
+  }
+
+  /**
+   * Is this contact currently connected to us? i.e., currently online and we
+   * have an open websocket connection with them
+   * @param {ContactId} contactId
+   * @return {boolean} connected
+   */
+  isConnected(contactId: ContactId): boolean {
+    return this._sockets.has(contactId);
   }
 
   /**
@@ -204,7 +210,9 @@ export class Backchannel extends events.EventEmitter {
   private _setupListeners() {
     this._client
       .on('peer.disconnect', async ({ documentId }) => {
+        console.log('peer disconnect');
         let contact = await this.getContactByDiscoveryKey(documentId);
+        this._sockets.delete(contact.id);
         this.emit('contact.disconnected', { contact });
       })
       .on('peer.connect', async ({ socket, documentId }) => {
@@ -226,15 +234,9 @@ export class Backchannel extends events.EventEmitter {
             });
         };
 
-        socket.onend = () => {
-          console.log('end');
-          this._sockets.delete(contact.id);
-        };
-
         socket.onerror = (err) => {
           console.error('error', err);
           console.trace(err);
-          this._sockets.delete(contact.id);
         };
 
         socket.addEventListener('open', async () => {

@@ -16,12 +16,16 @@ export default function Mailbox(props: Props) {
   let [messages, setMessages] = useState([]);
   let [messageText, setMessageText] = useState('');
   let [contact, setContact] = useState(null);
+  let [connected, setConnected] = useState(backchannel.isConnected(contactId));
 
   useEffect(() => {
     function onContact({ contact }) {
-      console.log('got a contact connection', contact);
+      console.log('got a contact', contact);
       if (contact.id === contactId) {
         setContact(contact);
+        let connected = backchannel.isConnected(contactId);
+        console.log('connected?', connected);
+        setConnected(connected);
       }
     }
 
@@ -31,6 +35,7 @@ export default function Mailbox(props: Props) {
       setMessages(messages);
       console.log('subscribing to contact', intendedContact);
       backchannel.on('contact.connected', onContact);
+      backchannel.on('contact.disconnected', onContact);
       backchannel.connectToContact(intendedContact);
     };
 
@@ -82,7 +87,7 @@ export default function Mailbox(props: Props) {
         })}
       </ul>
 
-      {contact ? (
+      {connected ? (
         <div>Connected to {contact.moniker}</div>
       ) : (
         <div>Not Connected</div>
