@@ -58,7 +58,7 @@ test('integration send a message', (t) => {
       t.ok(true, 'got contact.connected');
       // only if the contact is bob!
       t.same(contact.id, petbob_id);
-      await alice_device.sendMessage(socket, outgoing);
+      await alice_device.sendMessage(outgoing.contact, outgoing.text);
     }
 
     // what we do when bob's device has received the message
