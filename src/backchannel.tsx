@@ -69,7 +69,7 @@ export class Backchannel extends events.EventEmitter {
    * connected with the contact from listening to the `contact.connected` event
    * @param {WebSocket} socket: the open socket for the contact
    */
-  async sendMessage(contactId: ContactId, text: string) {
+  async sendMessage(contactId: ContactId, text: string): Promise<IMessage> {
     // TODO: automerge this
     let message = {
       text: text,
@@ -87,6 +87,7 @@ export class Backchannel extends events.EventEmitter {
         timestamp: message.timestamp,
       })
     );
+    return message
   }
 
   async getMessagesByContactId(cid: ContactId): Promise<IMessage[]> {
@@ -159,8 +160,12 @@ export class Backchannel extends events.EventEmitter {
     return this._createContactFromWormhole(connection);
   }
 
-  async listContacts(): Promise<IContact[]> {
-    return this._db.contacts.toArray();
+  async listContacts(): Promise<any[]> {
+    let contacts = await this._db.contacts.toArray();
+    return contacts.map((contact: IContact) => {
+      let connected: Boolean = this._sockets.has(contact.id)
+      return {...contact, connected}
+    })
   }
 
   /**

@@ -57,8 +57,10 @@ export default function Mailbox(props: Props) {
     };
   }, [messages]);
 
-  function sendMessage() {
-    backchannel.sendMessage(contactId, messageText);
+  async function sendMessage(e) {
+    e.preventDefault()
+    let message = await backchannel.sendMessage(contactId, messageText);
+    setMessages(messages.concat(message))
     setMessageText('');
   }
 
@@ -86,12 +88,12 @@ export default function Mailbox(props: Props) {
         <div>Not Connected</div>
       )}
 
-      <div>
+      <form onSubmit={sendMessage}>
         <input type="text" value={messageText} onChange={handleChange} />
-        <Button disabled={!contact} onClick={sendMessage}>
+        <Button type="submit" disabled={!contact}> 
           Send
         </Button>
-      </div>
+      </form>
     </div>
   );
 }
