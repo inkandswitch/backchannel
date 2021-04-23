@@ -58,9 +58,9 @@ export default function Mailbox(props: Props) {
   }, [messages]);
 
   async function sendMessage(e) {
-    e.preventDefault()
+    e.preventDefault();
     let message = await backchannel.sendMessage(contactId, messageText);
-    setMessages(messages.concat(message))
+    setMessages(messages.concat(message));
     setMessageText('');
   }
 
@@ -90,7 +90,7 @@ export default function Mailbox(props: Props) {
 
       <form onSubmit={sendMessage}>
         <input type="text" value={messageText} onChange={handleChange} />
-        <Button type="submit" disabled={!contact}> 
+        <Button type="submit" disabled={!contact}>
           Send
         </Button>
       </form>

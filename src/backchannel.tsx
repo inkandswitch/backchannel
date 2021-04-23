@@ -87,7 +87,7 @@ export class Backchannel extends events.EventEmitter {
         timestamp: message.timestamp,
       })
     );
-    return message
+    return message;
   }
 
   async getMessagesByContactId(cid: ContactId): Promise<IMessage[]> {
@@ -163,9 +163,9 @@ export class Backchannel extends events.EventEmitter {
   async listContacts(): Promise<any[]> {
     let contacts = await this._db.contacts.toArray();
     return contacts.map((contact: IContact) => {
-      let connected: Boolean = this._sockets.has(contact.id)
-      return {...contact, connected}
-    })
+      let connected: Boolean = this._sockets.has(contact.id);
+      return { ...contact, connected };
+    });
   }
 
   /**
