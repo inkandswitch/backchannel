@@ -14,7 +14,7 @@ type Props = {
 export default function Mailbox(props: Props) {
   let { contactId } = props;
   let [messages, setMessages] = useState([]);
-  let [messageText, setMessageText] = useState(null);
+  let [messageText, setMessageText] = useState('');
   let [contact, setContact] = useState(null);
 
   useEffect(() => {
@@ -59,6 +59,11 @@ export default function Mailbox(props: Props) {
 
   function sendMessage() {
     backchannel.sendMessage(contactId, messageText);
+    setMessageText('');
+  }
+
+  function handleChange(event) {
+    setMessageText(event.target.value);
   }
 
   return (
@@ -82,7 +87,7 @@ export default function Mailbox(props: Props) {
       )}
 
       <div>
-        <input type="text" value={messageText} />
+        <input type="text" value={messageText} onChange={handleChange} />
         <Button disabled={!contact} onClick={sendMessage}>
           Send
         </Button>
