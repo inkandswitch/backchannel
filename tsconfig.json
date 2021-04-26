@@ -6,7 +6,7 @@
     "esModuleInterop": true,
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
     "allowJs": true,
     "forceConsistentCasingInFileNames": true,
     "module": "esnext",
