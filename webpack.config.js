@@ -1,5 +1,6 @@
 let path = require('path')
 let DIST = path.join(__dirname, 'dist')
+let webpack = require('webpack')
 
 module.exports = {
   mode: 'development',
@@ -9,6 +10,11 @@ module.exports = {
     compress: true,
     port: 9000,
   },
+  plugins: [
+    new webpack.ProvidePlugin({
+      Buffer: ['buffer', 'Buffer'],
+    })
+  ],
   output: {
     path: DIST,
     filename: 'bundle.js',
