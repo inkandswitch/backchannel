@@ -7,8 +7,9 @@ import { Link, Route, useLocation } from 'wouter';
 
 import { copyToClipboard } from './web';
 import { ContactId } from './db';
-import Button from './components/Button';
-import Mailbox from './views/Mailbox';
+import { TopBar, A, Button } from './components';
+import Mailbox from './components/Mailbox';
+import ContactList from './components/ContactList';
 import Backchannel from './backchannel';
 
 let backchannel = Backchannel();
@@ -158,65 +159,6 @@ const CodeView = ({ view }: { view: CodeViewMode }) => {
     </div>
   );
 };
-
-const A = ({ children, href, ...props }) => (
-  <Link href={href} {...props}>
-    <a
-      css={css`
-        display: inline-block;
-        margin: 0 1em;
-        background: white;
-        color: black;
-        text-decoration: none;
-        padding: 2px 8px;
-        border-radius: 5px;
-      `}
-    >
-      {children}
-    </a>
-  </Link>
-);
-
-const TopBar = (props) => (
-  <div
-    {...props}
-    css={css`
-      background: gray;
-      text-align: center;
-      padding: 16px 0;
-    `}
-  />
-);
-
-function ContactList(props) {
-  let [contacts, setContacts] = useState([]);
-
-  useEffect(() => {
-    backchannel
-      .listContacts()
-      .then((contacts) => {
-        console.log('got contacts', contacts);
-        setContacts(contacts);
-      })
-      .catch((err) => {
-        console.error(err);
-      });
-  }, []);
-
-  return (
-    <div>
-      <ul>
-        {contacts.map((contact) => {
-          return (
-            <li key={contact.id}>
-              <A href={`mailbox/${contact.id}`}>{contact.moniker}</A>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
 
 export default function App() {
   function clearDb() {

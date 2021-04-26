@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { jsx, css } from '@emotion/react';
 import { ContactId, IMessage, IContact } from '../db';
-import Button from '../components/Button';
+import { Button } from './';
 import Backchannel from '../backchannel';
 
 let backchannel = Backchannel();
