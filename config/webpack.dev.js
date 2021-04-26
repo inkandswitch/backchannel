@@ -1,11 +1,11 @@
 let path = require('path')
-let DIST = path.join(__dirname, 'dist')
+let DIST = path.join(__dirname, '..', 'dist')
 let webpack = require('webpack')
 
 module.exports = {
   mode: 'development',
   devtool: 'eval-source-map',
-  entry: './src/index.tsx',
+  entry: path.join(__dirname, '..', 'src', 'index.tsx'),
   devServer: {
     contentBase: DIST,
     compress: true,
