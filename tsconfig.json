@@ -1,11 +1,26 @@
 {
   "compilerOptions": {
+    "isolatedModules": true,
     "jsx": "react",
     "noImplicitAny": false,
     "esModuleInterop": true,
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
-    "target": "es6"
-  }
+    "allowJs": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "esnext",
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "target": "es5",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ]
+  },
+  "include": [
+    "src"
+  ]
 }
 

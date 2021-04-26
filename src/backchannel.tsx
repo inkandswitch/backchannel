@@ -143,7 +143,7 @@ export class Backchannel extends events.EventEmitter {
 
   async destroy() {
     console.log('destroying');
-    await this._client.disconnect();
+    await this._client.disconnectServer();
     await this._db.delete();
   }
 
