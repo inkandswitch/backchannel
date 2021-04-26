@@ -1,6 +1,5 @@
 let path = require('path')
 let DIST = path.join(__dirname, '..', 'dist')
-let webpack = require('webpack')
 
 module.exports = {
   mode: 'development',
@@ -11,11 +10,6 @@ module.exports = {
     compress: true,
     port: 9000,
   },
-  plugins: [
-    new webpack.ProvidePlugin({
-      Buffer: ['buffer', 'Buffer'],
-    })
-  ],
   output: {
     path: DIST,
     filename: 'bundle.js',
@@ -24,7 +18,8 @@ module.exports = {
     extensions: ['.tsx', '.ts', '.js', '.json'],
     fallback: {
       'crypto': require.resolve('crypto-browserify'),
-      'stream': require.resolve('stream-browserify')
+      'stream': require.resolve('stream-browserify'),
+      'buffer': require.resolve('buffer/')
     }
   },
   module: {
