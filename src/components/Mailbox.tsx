@@ -42,7 +42,7 @@ export default function Mailbox(props: Props) {
     subscribeToConnections();
 
     return function () {
-      backchannel.off('contact.connected', onContact);
+      backchannel.removeListener('contact.connected', onContact);
     };
   }, []);
 
@@ -58,7 +58,7 @@ export default function Mailbox(props: Props) {
     backchannel.on('message', onMessage);
 
     return function cleanup() {
-      backchannel.off('message', onMessage);
+      backchannel.removeListener('message', onMessage);
     };
   }, [messages]);
 

@@ -234,12 +234,7 @@ export class Backchannel extends events.EventEmitter {
             });
         };
 
-        socket.onerror = (err) => {
-          console.error('error', err);
-          console.trace(err);
-        };
-
-        socket.addEventListener('open', async () => {
+        let onopen = async () => {
           this._sockets.set(contact.id, socket);
           let openContact = {
             socket,
@@ -247,7 +242,18 @@ export class Backchannel extends events.EventEmitter {
             documentId,
           };
           this.emit('contact.connected', openContact);
-        });
+        };
+
+        socket.onerror = (err) => {
+          console.error('error', err);
+          console.trace(err);
+        };
+
+        socket.onclose = () => {
+          socket.removeEventListener('open', onopen);
+        };
+
+        socket.addEventListener('open', onopen);
       });
   }
 
