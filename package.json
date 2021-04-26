@@ -4,10 +4,10 @@
   "description": "",
   "main": "src/index.tsx",
   "scripts": {
-    "start": "webpack serve",
+    "start": "webpack serve -c config/webpack.dev.js",
     "test": "airtap test/*.js",
-    "build": "webpack",
-    "watch": "webpack --watch",
+    "build": "webpack -c config/webpack.dev.js",
+    "watch": "webpack -c config/webpack.dev.js --watch",
     "relay": "PORT=3000 node ./node_modules/@localfirst/relay/dist/start.js",
     "lint": "prettier -c test src",
     "format": "prettier -w test src",
