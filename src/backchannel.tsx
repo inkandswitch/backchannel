@@ -218,6 +218,7 @@ export class Backchannel extends events.EventEmitter {
       .on('peer.connect', async ({ socket, documentId }) => {
         console.log('got documentId', documentId);
         let contact = await this.getContactByDiscoveryKey(documentId);
+        console.log('got contact', contact);
         socket.onmessage = (e) => {
           // TODO Message.decode(data)
           let msg = JSON.parse(e.data);
@@ -234,26 +235,18 @@ export class Backchannel extends events.EventEmitter {
             });
         };
 
-        let onopen = async () => {
-          this._sockets.set(contact.id, socket);
-          let openContact = {
-            socket,
-            contact,
-            documentId,
-          };
-          this.emit('contact.connected', openContact);
-        };
-
         socket.onerror = (err) => {
           console.error('error', err);
           console.trace(err);
         };
 
-        socket.onclose = () => {
-          socket.removeEventListener('open', onopen);
+        this._sockets.set(contact.id, socket);
+        let openContact = {
+          socket,
+          contact,
+          documentId,
         };
-
-        socket.addEventListener('open', onopen);
+        this.emit('contact.connected', openContact);
       });
   }
 
