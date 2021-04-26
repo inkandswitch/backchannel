@@ -18,27 +18,18 @@ on behalf of network participants.
 npm install
 ```
 
-Install the local server tool: `npm i -g http-server`
-
-In separate terminals, run the following commands:
-
-For building the javascript bundle...
+The websocket relay must be run in the background in a separate terminal.
 
 ```
-npm run watch
+npm run relay
 ```
 
-For hosting the static dist folder...
+Then, you can build the javascript bundle which includes hotreloading.
 
 ```
 npm start
 ```
 
-For the websocket relay...
-
-```
-npm run relay
-```
 
 ## Testing
 
