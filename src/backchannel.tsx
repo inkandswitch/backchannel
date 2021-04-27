@@ -6,9 +6,8 @@ import { Client } from '@localfirst/relay-client';
 import crypto from 'crypto';
 import events from 'events';
 import catnames from 'cat-names';
+import config from '../config/config.json';
 
-// TODO: configuring this externally
-let RELAY_URL = 'ws://localhost:3000';
 let instance = null;
 
 /**
@@ -26,13 +25,13 @@ export class Backchannel extends events.EventEmitter {
    * @constructor
    * @param {string} dbName - the name of the database saved in IndexedDb
    */
-  constructor(dbName) {
+  constructor(dbName: string, relay: string) {
     super();
     this._wormhole = Wormhole();
     this._db = new Database(dbName);
     console.log('creating client');
     this._client = new Client({
-      url: RELAY_URL,
+      url: relay,
     });
     this._setupListeners();
     // TODO: catch this error upstream and inform the user properly
@@ -130,6 +129,11 @@ export class Backchannel extends events.EventEmitter {
     if (!contact || !contact.discoveryKey)
       throw new Error('contact.discoveryKey required');
     this._client.join(contact.discoveryKey);
+  }
+
+  async connectToContactId(cid: ContactId) {
+    let contact = await this.getContactById(cid);
+    this.connectToContact(contact);
   }
 
   /**
@@ -264,6 +268,6 @@ export class Backchannel extends events.EventEmitter {
 export default function () {
   if (instance) return instance;
   let dbName = 'backchannel_' + window.location.hash;
-  instance = new Backchannel(dbName);
+  instance = new Backchannel(dbName, config.RELAY_URL);
   return instance;
 }
