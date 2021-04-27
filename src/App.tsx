@@ -6,7 +6,7 @@ import { jsx, css } from '@emotion/react';
 import { Link, Route, useLocation } from 'wouter';
 
 import { copyToClipboard } from './web';
-import { ContactId } from './db';
+import { Code, ContactId } from './db';
 import { TopBar, A, Button } from './components';
 import Mailbox from './components/Mailbox';
 import ContactList from './components/ContactList';
@@ -20,7 +20,7 @@ let USER_FEEDBACK_TIMER = 5000;
 type CodeViewMode = 'add' | 'generate';
 
 const CodeView = ({ view }: { view: CodeViewMode }) => {
-  let [code, setCode] = useState('');
+  let [code, setCode] = useState<Code>('');
   let [message, _setMessage] = useState('');
   let [messageTimeoutID, setMessageTimeoutID] = useState(null);
   let [errorMsg, setErrorMsg] = useState('');
@@ -78,7 +78,7 @@ const CodeView = ({ view }: { view: CodeViewMode }) => {
     setErrorMsg('');
 
     try {
-      const code = await backchannel.getCode();
+      const code: Code = await backchannel.getCode();
 
       if (code) {
         setCode(code);

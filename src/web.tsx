@@ -1,4 +1,4 @@
-import type { Code } from './wormhole';
+import type { Code } from './db';
 
 /**
  * Utilities for common tasks specific to the browser

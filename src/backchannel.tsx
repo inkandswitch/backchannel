@@ -1,7 +1,7 @@
 import Wormhole from './wormhole';
-import type { SecureWormhole, MagicWormhole, Code } from './wormhole';
+import type { SecureWormhole, MagicWormhole } from './wormhole';
 import { arrayToHex } from 'enc-utils';
-import { Key, Database, ContactId, IContact, IMessage } from './db';
+import { Code, Key, Database, ContactId, IContact, IMessage } from './db';
 import { Client } from '@localfirst/relay-client';
 import crypto from 'crypto';
 import events from 'events';

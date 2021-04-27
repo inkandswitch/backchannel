@@ -3,6 +3,7 @@ import blake from 'blake2b';
 import { arrayToHex } from 'enc-utils';
 
 export type ContactId = number;
+export type Code = string;
 export type Key = string;
 export type DiscoveryKey = string;
 
