@@ -1,13 +1,14 @@
 import Wormhole from './wormhole';
-import type { SecureWormhole, MagicWormhole, Code } from './wormhole';
+import type { SecureWormhole, MagicWormhole } from './wormhole';
 import { arrayToHex } from 'enc-utils';
-import { Key, Database, ContactId, IContact, IMessage } from './db';
+import { Code, Key, Database, ContactId, IContact, IMessage } from './db';
 import { Client } from '@localfirst/relay-client';
 import crypto from 'crypto';
 import events from 'events';
+import catnames from 'cat-names';
+import config from '../config/config.json';
 
-// TODO: configuring this externally
-let RELAY_URL = 'ws://localhost:3000';
+let instance = null;
 
 /**
  * The backchannel class manages the database and wormholes
@@ -16,6 +17,7 @@ export class Backchannel extends events.EventEmitter {
   private _wormhole: MagicWormhole;
   private _db: Database;
   private _client: Client;
+  private _sockets = new Map<number, WebSocket>();
 
   /**
    * Create a new backchannel client. Each instance represents a user opening
@@ -23,13 +25,13 @@ export class Backchannel extends events.EventEmitter {
    * @constructor
    * @param {string} dbName - the name of the database saved in IndexedDb
    */
-  constructor(dbName) {
+  constructor(dbName: string, relay: string) {
     super();
     this._wormhole = Wormhole();
     this._db = new Database(dbName);
     console.log('creating client');
     this._client = new Client({
-      url: RELAY_URL,
+      url: relay,
     });
     this._setupListeners();
     // TODO: catch this error upstream and inform the user properly
@@ -48,6 +50,7 @@ export class Backchannel extends events.EventEmitter {
     let hash = crypto.createHash('sha256');
     hash.update(contact.key);
     contact.discoveryKey = hash.digest('hex');
+    contact.moniker = contact.moniker || catnames.random();
     return this._db.contacts.add(contact);
   }
 
@@ -65,14 +68,29 @@ export class Backchannel extends events.EventEmitter {
    * connected with the contact from listening to the `contact.connected` event
    * @param {WebSocket} socket: the open socket for the contact
    */
-  async sendMessage(socket: WebSocket, message: IMessage) {
+  async sendMessage(contactId: ContactId, text: string): Promise<IMessage> {
     // TODO: automerge this
-    if (!message.timestamp) {
-      message.timestamp = Date.now().toString();
-    }
-    let id = await this._db.messages.add(message);
-    console.log('sending message', message, id);
-    socket.send(JSON.stringify({ text: message.text }));
+    let message = {
+      text: text,
+      contact: contactId,
+      timestamp: Date.now().toString(),
+      incoming: false,
+    };
+    let socket: WebSocket = this._getSocketByContactId(contactId);
+    let mid = await this._db.messages.add(message);
+    console.log('sending message', message, mid);
+    // TODO: Message.encode and Message.decode functions
+    socket.send(
+      JSON.stringify({
+        text: message.text,
+        timestamp: message.timestamp,
+      })
+    );
+    return message;
+  }
+
+  async getMessagesByContactId(cid: ContactId): Promise<IMessage[]> {
+    return this._db.messages.where('contact').equals(cid).toArray();
   }
 
   async getContactById(id: ContactId): Promise<IContact> {
@@ -83,6 +101,10 @@ export class Backchannel extends events.EventEmitter {
     return contacts[0];
   }
 
+  /**
+   * Get contact by discovery key
+   * @param {string} discoveryKey - the discovery key for this contact
+   */
   async getContactByDiscoveryKey(discoveryKey: string): Promise<IContact> {
     console.log('looking up contact', discoveryKey);
     let contacts = await this._db.contacts
@@ -107,6 +129,11 @@ export class Backchannel extends events.EventEmitter {
     if (!contact || !contact.discoveryKey)
       throw new Error('contact.discoveryKey required');
     this._client.join(contact.discoveryKey);
+  }
+
+  async connectToContactId(cid: ContactId) {
+    let contact = await this.getContactById(cid);
+    this.connectToContact(contact);
   }
 
   /**
@@ -138,9 +165,24 @@ export class Backchannel extends events.EventEmitter {
   }
 
   async listContacts(): Promise<IContact[]> {
-    return this._db.contacts.toArray();
+    return await this._db.contacts.toArray();
   }
 
+  /**
+   * Is this contact currently connected to us? i.e., currently online and we
+   * have an open websocket connection with them
+   * @param {ContactId} contactId
+   * @return {boolean} connected
+   */
+  isConnected(contactId: ContactId): boolean {
+    return this._sockets.has(contactId);
+  }
+
+  /**
+   * Destroy this instance and delete the data
+   * Disconnects from all websocket clients
+   * Danger! Unrecoverable!
+   */
   async destroy() {
     console.log('destroying');
     await this._client.disconnectServer();
@@ -148,22 +190,53 @@ export class Backchannel extends events.EventEmitter {
   }
 
   // PRIVATE
-  //
+  private _getSocketByContactId(cid: ContactId): WebSocket {
+    return this._sockets.get(cid);
+  }
+
+  private async _addIncomingMessage(
+    contact: IContact,
+    text: string,
+    timestamp: string
+  ): Promise<IMessage> {
+    let message: IMessage = {
+      text,
+      contact: contact.id,
+      incoming: true,
+      timestamp,
+    };
+    message.incoming = true;
+    let id = await this._db.messages.put(message);
+    message.id = id;
+    return message;
+  }
 
   private _setupListeners() {
     this._client
       .on('peer.disconnect', async ({ documentId }) => {
+        console.log('peer disconnect');
         let contact = await this.getContactByDiscoveryKey(documentId);
+        this._sockets.delete(contact.id);
         this.emit('contact.disconnected', { contact });
       })
       .on('peer.connect', async ({ socket, documentId }) => {
         console.log('got documentId', documentId);
         let contact = await this.getContactByDiscoveryKey(documentId);
+        console.log('got contact', contact);
         socket.onmessage = (e) => {
-          this.emit('message', {
-            contact,
-            message: JSON.parse(e.data),
-          });
+          // TODO Message.decode(data)
+          let msg = JSON.parse(e.data);
+          this._addIncomingMessage(contact, msg.text, msg.timestamp)
+            .then((message) => {
+              this.emit('message', {
+                contact,
+                message,
+              });
+            })
+            .catch((err) => {
+              console.error('error', err);
+              console.trace(err);
+            });
         };
 
         socket.onerror = (err) => {
@@ -171,14 +244,13 @@ export class Backchannel extends events.EventEmitter {
           console.trace(err);
         };
 
-        socket.addEventListener('open', async () => {
-          let openContact = {
-            socket,
-            contact,
-            documentId,
-          };
-          this.emit('contact.connected', openContact);
-        });
+        this._sockets.set(contact.id, socket);
+        let openContact = {
+          socket,
+          contact,
+          documentId,
+        };
+        this.emit('contact.connected', openContact);
       });
   }
 
@@ -191,4 +263,11 @@ export class Backchannel extends events.EventEmitter {
 
     return this.addContact(metadata);
   }
+}
+
+export default function () {
+  if (instance) return instance;
+  let dbName = 'backchannel_' + window.location.hash;
+  instance = new Backchannel(dbName, config.RELAY_URL);
+  return instance;
 }

@@ -3,49 +3,74 @@ let crypto = require('crypto');
 
 let { ContactId, Backchannel } = require('../src/backchannel.tsx');
 
+let devices = {
+  alice: null,
+  bob: null,
+};
+
+function beforeEach() {
+  // start a backchannel on bob and alice's devices
+  let dbname = crypto.randomBytes(16);
+  let RELAY_URL = 'ws://localhost:3000';
+  devices.alice = new Backchannel(dbname + '_a', RELAY_URL);
+  devices.bob = new Backchannel(dbname + '_b', RELAY_URL);
+  console.log('before');
+}
+
+test('add and retrieve a contact', async (t) => {
+  beforeEach();
+  // create a document, let's say we already did the wormhole handshake
+  // TADA!!!
+  let doc = crypto.randomBytes(16).toString('hex');
+  let moniker = 'bob';
+
+  // OK, so now I create a petname for bob on alice's device..
+  let petbob_id = await devices.alice.addContact({
+    key: doc,
+    moniker,
+  });
+
+  // OK, so now I create a petname for bob on alice's device..
+  let petalice_id = await devices.bob.addContact({
+    key: doc,
+    moniker: 'alice',
+  });
+
+  // and alice can list the contacts and get bob
+  let contacts = await devices.alice.listContacts();
+  t.equals(contacts.length, 1);
+  t.equals(contacts[0].moniker, moniker);
+  t.equals(contacts[0].key, doc);
+  t.ok(contacts[0].discoveryKey, 'has discovery key');
+  t.same(contacts[0].id, petbob_id);
+
+  let bob = await devices.alice.getContactById(petbob_id);
+  t.same(bob.id, petbob_id, 'got bob');
+
+  let alice = await devices.bob.getContactById(petalice_id);
+  t.same(alice.id, petbob_id, 'got alice');
+
+  await devices.bob.destroy();
+  await devices.alice.destroy();
+  t.end();
+});
+
 test('integration send a message', (t) => {
   return new Promise(async (resolve, reject) => {
-    t.plan(13);
+    beforeEach();
 
-    // give 10 seconds to join a document and send a message
-    setTimeout(() => {
-      t.fail(new Error('timed out!'));
-    }, 10000);
-
-    // start a backchannel on bob and alice's devices
-    let dbname = crypto.randomBytes(16);
-    let alice_device = new Backchannel(dbname + '_a');
-    let bob_device = new Backchannel(dbname + '_b');
-
-    // create a document, let's say we already did the wormhole handshake
-    // TADA!!!
-    let doc = crypto.randomBytes(16).toString('hex');
+    let key = crypto.randomBytes(16).toString('hex');
     let moniker = 'bob';
 
-    // OK, so now I create a petname for bob on alice's device..
-    let petbob_id = await alice_device.addContact({
-      key: doc,
+    let petbob_id = await devices.alice.addContact({
+      key,
       moniker,
     });
 
-    let petalice_id = await bob_device.addContact({
-      key: doc,
-      moniker,
+    let petalice_id = await devices.bob.addContact({
+      key,
+      moniker: 'alice',
     });
-
-    // and alice can list the contacts and get bob
-    let contacts = await alice_device.listContacts();
-    t.equals(contacts.length, 1);
-    t.equals(contacts[0].moniker, moniker);
-    t.equals(contacts[0].key, doc);
-    t.ok(contacts[0].discoveryKey, 'has discovery key');
-    t.same(contacts[0].id, petbob_id);
-
-    let bob = await alice_device.getContactById(petbob_id);
-    t.same(bob.id, petbob_id, 'got bob');
-
-    let alice = await bob_device.getContactById(petalice_id);
-    t.same(alice.id, petbob_id, 'got alice');
 
     // OK, now let's send bob a message 'hello'
     let outgoing = {
@@ -58,7 +83,7 @@ test('integration send a message', (t) => {
       t.ok(true, 'got contact.connected');
       // only if the contact is bob!
       t.same(contact.id, petbob_id);
-      await alice_device.sendMessage(socket, outgoing);
+      await devices.alice.sendMessage(outgoing.contact, outgoing.text);
     }
 
     // what we do when bob's device has received the message
@@ -66,27 +91,29 @@ test('integration send a message', (t) => {
       t.ok('got message event');
       t.equals(message.text, outgoing.text, 'got message');
 
+      console.log('on message');
       // ok bob received the message now will self-destruct
-      await bob_device.destroy();
+      await devices.bob.destroy();
     }
 
-    function onDisconnect({ contact, documentId }) {
+    async function onDisconnect({ contact, documentId }) {
+      console.log('wtf');
       // after bob destroys himself, we should get the disconnected event
       t.ok('got contact.disconnected');
       t.same(contact.id, petbob_id, 'got same contact');
-      alice_device.destroy();
+      await devices.alice.destroy();
       resolve();
     }
 
     // bob's device has a message!
-    bob_device.on('message', onMessage);
+    devices.bob.on('message', onMessage);
 
     // sending the message once we an open contact
-    alice_device.on('contact.connected', onConnect);
-    alice_device.on('contact.disconnected', onDisconnect);
+    devices.alice.on('contact.connected', onConnect);
+    devices.alice.on('contact.disconnected', onDisconnect);
 
     // joining the document on both sides fires the 'contact.connected' event
-    alice_device.connectToContact(bob);
-    bob_device.connectToContact(alice);
+    devices.alice.connectToContactId(petbob_id);
+    devices.bob.connectToContactId(petalice_id);
   });
 });
