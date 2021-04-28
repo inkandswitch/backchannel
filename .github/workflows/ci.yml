@@ -35,7 +35,7 @@ jobs:
       run: npm install
 
     - name: Run relay
-      run: npm run relay
+      run: npm run relay &
 
     - name: Run the tests and generate coverage report
       run: npm test -- --coverage
