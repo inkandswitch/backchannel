@@ -54,13 +54,28 @@ and then
 npm test
 ```
 
-# Contributors
+## Deployment
+
+To deploy the minified production build, run
+
+```npm run build```
+
+To build the api documentation, run
+
+```npm run build:docs```
+
+To build both the production build and the docs for deployment on a static
+server, run
+
+```npm run deploy```
+
+## Contributors
 
 * Karissa McKelvey, @okdistribute, Lead 
 * Ben Royer, Design
 * Chris Sun, @daiyi, Frontend/UI
 
-# Advisors
+## Advisors
 
 * [Cade Diehm](https://shiba.computer/)
 * Peter van Hardenberg, @pvh
