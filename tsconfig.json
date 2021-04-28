@@ -11,7 +11,7 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
-    "strict": false,
+    "strict": true,
     "target": "es5",
     "lib": [
       "dom",
@@ -19,7 +19,8 @@
       "esnext"
     ],
     "module": "esnext",
-    "noEmit": true
+    "noEmit": true,
+    "jsxImportSource": "@emotion/react"
   },
   "include": [
     "src"

@@ -268,6 +268,7 @@ export class Backchannel extends events.EventEmitter {
 export default function () {
   if (instance) return instance;
   let dbName = 'backchannel_' + window.location.hash;
+  console.log('connecting to relay', config.RELAY_URL);
   instance = new Backchannel(dbName, config.RELAY_URL);
   return instance;
 }
