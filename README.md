@@ -37,6 +37,11 @@ Open two browser windows that are not in private browsing mode. They can be
 tabs in the same browser program. Opening a private window doesn't work with
 IndexedDB.
 
+Because we're using IndexedDB, to do local testing with the same browser on the
+same machine, you should open one of the tabs or windows at
+```localhost:3000``` and the other at ```127.0.0.1:3000```. This will ensure
+that they both have their own isolated database.
+
 To run automated tests, 
 
 ```
