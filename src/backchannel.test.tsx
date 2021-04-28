@@ -99,10 +99,8 @@ test('presence', (done) => {
     // only if the contact is bob!
     expect(contact.id).toBe(petbob_id);
     // ok bob will now disconnect
-    jest.runOnlyPendingTimers();
     await devices.bob.destroy();
     devices.bob = null;
-    jest.runOnlyPendingTimers();
   }
 
   async function onDisconnect({ contact, documentId }) {
@@ -113,7 +111,6 @@ test('presence', (done) => {
 
   // sending the message once we an open contact
   devices.alice.on('contact.connected', onConnect);
-  jest.runOnlyPendingTimers();
   devices.alice.on('contact.disconnected', onDisconnect);
   jest.runOnlyPendingTimers();
 
