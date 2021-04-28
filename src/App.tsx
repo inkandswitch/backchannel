@@ -1,8 +1,5 @@
-// this comment tells babel to convert jsx to calls to a function called jsx instead of React.createElement
-// it makes emotion work
-/** @jsx jsx */
 import React, { useState, useEffect } from 'react';
-import { jsx, css } from '@emotion/react';
+import { jsx, css } from '@emotion/react/macro';
 import { Link, Route, useLocation } from 'wouter';
 
 import { copyToClipboard } from './web';

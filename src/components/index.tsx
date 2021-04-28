@@ -1,6 +1,5 @@
-/** @jsx jsx */
 import React, { useState, useEffect } from 'react';
-import { jsx, css } from '@emotion/react';
+import { jsx, css } from '@emotion/react/macro';
 import { Link, Route, useLocation } from 'wouter';
 
 export function TopBar(props) {
