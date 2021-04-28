@@ -70,23 +70,16 @@ export class Backchannel extends events.EventEmitter {
    */
   async sendMessage(contactId: ContactId, text: string): Promise<IMessage> {
     // TODO: automerge this
-    let message = {
+    let msg = {
       text: text,
       contact: contactId,
       timestamp: Date.now().toString(),
       incoming: false,
     };
     let socket: WebSocket = this._getSocketByContactId(contactId);
-    let mid = await this._db.messages.add(message);
-    console.log('sending message', message, mid);
-    // TODO: Message.encode and Message.decode functions
-    socket.send(
-      JSON.stringify({
-        text: message.text,
-        timestamp: message.timestamp,
-      })
-    );
-    return message;
+    let mid = await this._db.messages.add(msg);
+    socket.send(IMessage.encode(msg));
+    return msg;
   }
 
   async getMessagesByContactId(cid: ContactId): Promise<IMessage[]> {

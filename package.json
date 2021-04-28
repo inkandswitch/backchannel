@@ -25,6 +25,7 @@
     "dexie": "^3.0.3",
     "enc-utils": "^3.0.0",
     "magic-wormhole": "github:okdistribute/magic-wormhole-js#browser",
+    "msgpack-lite": "^0.1.26",
     "react": "^17.0.2",
     "react-chat-elements": "^10.14.0",
     "react-dom": "^17.0.2",
