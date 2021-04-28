@@ -5,7 +5,7 @@
   "main": "src/index.tsx",
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "CI=false react-scripts build",
     "test": "react-scripts test",
     "deploy": "npm run build && npm run build:docs",
     "relay": "PORT=3001 node ./node_modules/@localfirst/relay/dist/start.js",
