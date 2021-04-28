@@ -29,12 +29,15 @@ export class Backchannel extends events.EventEmitter {
     super();
     this._wormhole = Wormhole();
     this._db = new Database(dbName);
-    console.log('creating client');
     this._client = new Client({
       url: relay,
     });
     this._setupListeners();
     // TODO: catch this error upstream and inform the user properly
+    //
+    this._client.once('server.connect', () => {
+      this.emit('open');
+    });
     this._db.open().catch((err) => {
       console.error(`Database open failed : ${err.stack}`);
     });
@@ -78,7 +81,6 @@ export class Backchannel extends events.EventEmitter {
     };
     let socket: WebSocket = this._getSocketByContactId(contactId);
     let mid = await this._db.messages.add(message);
-    console.log('sending message', message, mid);
     // TODO: Message.encode and Message.decode functions
     socket.send(
       JSON.stringify({
@@ -106,7 +108,6 @@ export class Backchannel extends events.EventEmitter {
    * @param {string} discoveryKey - the discovery key for this contact
    */
   async getContactByDiscoveryKey(discoveryKey: string): Promise<IContact> {
-    console.log('looking up contact', discoveryKey);
     let contacts = await this._db.contacts
       .where('discoveryKey')
       .equals(discoveryKey)
@@ -125,7 +126,6 @@ export class Backchannel extends events.EventEmitter {
    * @param {DocumentId} documentId
    */
   connectToContact(contact: IContact) {
-    console.log('joining', contact.discoveryKey);
     if (!contact || !contact.discoveryKey)
       throw new Error('contact.discoveryKey required');
     this._client.join(contact.discoveryKey);
@@ -141,7 +141,6 @@ export class Backchannel extends events.EventEmitter {
    * @param {DocumentId} documentId
    */
   disconnectFromContact(contact: IContact) {
-    console.log('dsiconnecting', contact.discoveryKey);
     if (!contact || !contact.discoveryKey)
       throw new Error('contact.discoveryKey required');
     this._client.leave(contact.discoveryKey);
@@ -184,7 +183,6 @@ export class Backchannel extends events.EventEmitter {
    * Danger! Unrecoverable!
    */
   async destroy() {
-    console.log('destroying');
     await this._client.disconnectServer();
     await this._db.delete();
   }
@@ -214,15 +212,12 @@ export class Backchannel extends events.EventEmitter {
   private _setupListeners() {
     this._client
       .on('peer.disconnect', async ({ documentId }) => {
-        console.log('peer disconnect');
         let contact = await this.getContactByDiscoveryKey(documentId);
         this._sockets.delete(contact.id);
         this.emit('contact.disconnected', { contact });
       })
       .on('peer.connect', async ({ socket, documentId }) => {
-        console.log('got documentId', documentId);
         let contact = await this.getContactByDiscoveryKey(documentId);
-        console.log('got contact', contact);
         socket.onmessage = (e) => {
           // TODO Message.decode(data)
           let msg = JSON.parse(e.data);
