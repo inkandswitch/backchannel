@@ -28,14 +28,18 @@ beforeEach(async () => {
     key: doc,
     moniker: 'alice',
   });
+  jest.useFakeTimers();
 });
 
 afterEach(async () => {
+  jest.useRealTimers();
   petalice_id = null;
   petbob_id = null;
   doc = null;
-  await devices.alice.destroy();
-  await devices.bob.destroy();
+  let promise = Promise.resolve();
+  if (devices.alice) await devices.alice.destroy();
+  if (devices.bob) await devices.bob.destroy();
+  return promise;
 });
 
 test('add and retrieve a contact', async () => {
@@ -55,61 +59,66 @@ test('add and retrieve a contact', async () => {
   expect(alice.id).toBe(petalice_id);
 });
 
-test('integration send a message', (t) => {
-  return new Promise<void>((resolve, reject) => {
-    // OK, now let's send bob a message 'hello'
-    let outgoing = {
-      contact: petbob_id,
-      text: 'hello',
-    };
+test('integration send a message', (done) => {
+  // OK, now let's send bob a message 'hello'
+  let outgoing = {
+    contact: petbob_id,
+    text: 'hello',
+  };
 
-    // sending a message
-    async function onConnect({ socket, contact }) {
-      // only if the contact is bob!
-      expect(contact.id).toBe(petbob_id);
-      await devices.alice.sendMessage(outgoing.contact, outgoing.text);
-    }
+  // sending a message
+  async function onConnect({ socket, contact }) {
+    // only if the contact is bob!
+    expect(contact.id).toBe(petbob_id);
+    await devices.alice.sendMessage(outgoing.contact, outgoing.text);
+  }
 
-    // what we do when bob's device has received the message
-    async function onMessage({ message, documentId }) {
-      expect(message.text).toBe(outgoing.text);
-      resolve();
-    }
+  // what we do when bob's device has received the message
+  async function onMessage({ message, documentId }) {
+    expect(message.text).toBe(outgoing.text);
+    done();
+  }
 
-    // bob's device has a message!
-    devices.bob.on('message', onMessage);
+  // bob's device has a message!
+  devices.bob.on('message', onMessage);
+  jest.runOnlyPendingTimers();
 
-    // sending the message once we an open contact
-    devices.alice.on('contact.connected', onConnect);
+  // sending the message once we an open contact
+  devices.alice.on('contact.connected', onConnect);
+  jest.runOnlyPendingTimers();
 
-    // joining the document on both sides fires the 'contact.connected' event
-    devices.alice.connectToContactId(petbob_id);
-    devices.bob.connectToContactId(petalice_id);
-  });
+  // joining the document on both sides fires the 'contact.connected' event
+  devices.alice.connectToContactId(petbob_id);
+  devices.bob.connectToContactId(petalice_id);
+  jest.runOnlyPendingTimers();
 });
 
-test('presence', () => {
-  return new Promise<void>((resolve, reject) => {
-    // sending a message
-    async function onConnect({ socket, contact }) {
-      // only if the contact is bob!
-      expect(contact.id).toBe(petbob_id);
-      // ok bob will now disconnect
-      await devices.bob._client.disconnectPeer(null);
-    }
+test('presence', (done) => {
+  // sending a message
+  async function onConnect({ socket, contact }) {
+    // only if the contact is bob!
+    expect(contact.id).toBe(petbob_id);
+    // ok bob will now disconnect
+    jest.runOnlyPendingTimers();
+    await devices.bob.destroy();
+    devices.bob = null;
+    jest.runOnlyPendingTimers();
+  }
 
-    async function onDisconnect({ contact, documentId }) {
-      // after bob destroys himself, we should get the disconnected event
-      expect(contact.id).toBe(petbob_id);
-      resolve();
-    }
+  async function onDisconnect({ contact, documentId }) {
+    // after bob destroys himself, we should get the disconnected event
+    expect(contact.id).toBe(petbob_id);
+    done();
+  }
 
-    // sending the message once we an open contact
-    devices.alice.on('contact.connected', onConnect);
-    devices.alice.on('contact.disconnected', onDisconnect);
+  // sending the message once we an open contact
+  devices.alice.on('contact.connected', onConnect);
+  jest.runOnlyPendingTimers();
+  devices.alice.on('contact.disconnected', onDisconnect);
+  jest.runOnlyPendingTimers();
 
-    // joining the document on both sides fires the 'contact.connected' event
-    devices.alice.connectToContactId(petbob_id);
-    devices.bob.connectToContactId(petalice_id);
-  });
+  // joining the document on both sides fires the 'contact.connected' event
+  devices.alice.connectToContactId(petbob_id);
+  devices.bob.connectToContactId(petalice_id);
+  jest.runOnlyPendingTimers();
 });
