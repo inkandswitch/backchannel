@@ -1,7 +1,7 @@
 import React from 'react';
 import { render } from 'react-dom';
 import App from './App';
-import { Backchannel } from './backchannel';
+import reportWebVitals from './reportWebVitals';
 
 declare global {
   interface Window {
@@ -9,9 +9,11 @@ declare global {
   }
 }
 
-function onError(err: Error) {
-  console.error('Connection error');
-  console.error(err);
-}
+render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+  document.getElementById('root')
+);
 
-render(<App />, document.getElementById('root'));
+reportWebVitals();

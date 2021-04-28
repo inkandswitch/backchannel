@@ -10,8 +10,7 @@ on behalf of network participants.
 
 ## Getting started
 
-* [Database](docs/database.md)
-* [Protocol](docs/protocol.md)
+* [Read the API docs](https://6088af8c57be4400073fe25d--gallant-lewin-1c93b0.netlify.app/docs/api/)
 * [Contributing & Code of Conduct](docs/contributing.md)
 
 ```
@@ -37,6 +36,11 @@ Open two browser windows that are not in private browsing mode. They can be
 tabs in the same browser program. Opening a private window doesn't work with
 IndexedDB.
 
+Because we're using IndexedDB, to do local testing with the same browser on the
+same machine, you should open one of the tabs or windows at
+```localhost:3000``` and the other at ```127.0.0.1:3000```. This will ensure
+that they both have their own isolated database.
+
 To run automated tests, 
 
 ```
@@ -49,13 +53,28 @@ and then
 npm test
 ```
 
-# Contributors
+## Deployment
+
+To deploy the minified production build, run
+
+```npm run build```
+
+To build the api documentation, run
+
+```npm run build:docs```
+
+To build both the production build and the docs for deployment on a static
+server, run
+
+```npm run deploy```
+
+## Contributors
 
 * Karissa McKelvey, @okdistribute, Lead 
 * Ben Royer, Design
 * Chris Sun, @daiyi, Frontend/UI
 
-# Advisors
+## Advisors
 
 * [Cade Diehm](https://shiba.computer/)
 * Peter van Hardenberg, @pvh

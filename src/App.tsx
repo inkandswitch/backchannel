@@ -1,8 +1,6 @@
-// this comment tells babel to convert jsx to calls to a function called jsx instead of React.createElement
-// it makes emotion work
-/** @jsx jsx */
-import React, { useState, useEffect } from 'react';
-import { jsx, css } from '@emotion/react';
+/** @jsxImportSource @emotion/react */
+import React, { useState } from 'react';
+import { css } from '@emotion/react/macro';
 import { Link, Route, useLocation } from 'wouter';
 
 import { copyToClipboard } from './web';
@@ -24,8 +22,8 @@ const CodeView = ({ view }: { view: CodeViewMode }) => {
   let [message, _setMessage] = useState('');
   let [messageTimeoutID, setMessageTimeoutID] = useState(null);
   let [errorMsg, setErrorMsg] = useState('');
-  let [contact, setContact] = useState(null);
-  let [location, setLocation] = useLocation();
+  //eslint-disable-next-line
+  let [_, setLocation] = useLocation();
 
   let onError = (err: Error) => {
     console.error('got error from backend', err);
@@ -132,16 +130,15 @@ const CodeView = ({ view }: { view: CodeViewMode }) => {
             )}
           </React.Fragment>
         )}
-        <Link href="/">
-          <a
-            css={css`
-              color: white;
-              padding-left: 8px;
-              font-size: 0.8em;
-            `}
-          >
-            Cancel
-          </a>
+        <Link
+          href="/"
+          css={css`
+            color: white;
+            padding-left: 8px;
+            font-size: 0.8em;
+          `}
+        >
+          Cancel
         </Link>
       </TopBar>
       <div>{errorMsg}</div>

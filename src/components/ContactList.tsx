@@ -1,7 +1,5 @@
-/** @jsx jsx */
+/** @jsxImportSource @emotion/react */
 import React, { useState, useEffect } from 'react';
-import { jsx, css } from '@emotion/react';
-import { Link, Route, useLocation } from 'wouter';
 import { A } from './';
 import Backchannel from '../backchannel';
 

@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "isolatedModules": true,
-    "jsx": "react",
+    "jsx": "react-jsx",
     "noImplicitAny": false,
     "esModuleInterop": true,
     "moduleResolution": "node",
@@ -11,16 +11,18 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
-    "esModuleInterop": true,
+    "strict": false,
     "target": "es5",
     "lib": [
       "dom",
       "dom.iterable",
       "esnext"
-    ]
+    ],
+    "module": "esnext",
+    "noEmit": true,
+    "jsxImportSource": "@emotion/react"
   },
   "include": [
     "src"
   ]
 }
-

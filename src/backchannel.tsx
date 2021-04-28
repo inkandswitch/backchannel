@@ -1,12 +1,12 @@
 import Wormhole from './wormhole';
 import type { SecureWormhole, MagicWormhole } from './wormhole';
 import { arrayToHex } from 'enc-utils';
-import { Code, Key, Database, ContactId, IContact, IMessage } from './db';
+import { Code, Database, ContactId, IContact, IMessage } from './db';
 import { Client } from '@localfirst/relay-client';
 import crypto from 'crypto';
 import events from 'events';
 import catnames from 'cat-names';
-import config from '../config/config.json';
+import config from './config.json';
 
 let instance = null;
 
@@ -265,9 +265,15 @@ export class Backchannel extends events.EventEmitter {
   }
 }
 
-export default function () {
+export default function initialize() {
   if (instance) return instance;
   let dbName = 'backchannel_' + window.location.hash;
+  console.log('connecting to relay', config.RELAY_URL);
   instance = new Backchannel(dbName, config.RELAY_URL);
+  instance.on('error', function onError(err: Error) {
+    console.error('Connection error');
+    console.error(err);
+  });
+
   return instance;
 }

@@ -1,6 +1,6 @@
-/** @jsx jsx */
+/** @jsxImportSource @emotion/react */
 import React, { useState, useEffect } from 'react';
-import { jsx, css } from '@emotion/react';
+import { css } from '@emotion/react/macro';
 import { ContactId, IMessage, IContact } from '../db';
 import { Button } from './';
 import Backchannel from '../backchannel';
@@ -44,7 +44,7 @@ export default function Mailbox(props: Props) {
     return function () {
       backchannel.removeListener('contact.connected', onContact);
     };
-  }, []);
+  }, [contactId]);
 
   useEffect(() => {
     let onMessage = (event) => {
@@ -60,7 +60,7 @@ export default function Mailbox(props: Props) {
     return function cleanup() {
       backchannel.removeListener('message', onMessage);
     };
-  }, [messages]);
+  }, [contactId, messages]);
 
   async function sendMessage(e) {
     e.preventDefault();
