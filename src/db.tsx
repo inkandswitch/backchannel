@@ -1,6 +1,4 @@
 import Dexie from 'dexie';
-import blake from 'blake2b';
-import { arrayToHex } from 'enc-utils';
 
 export type ContactId = number;
 export type Code = string;

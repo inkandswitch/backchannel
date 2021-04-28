@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { jsx, css } from '@emotion/react/macro';
-import { Link, Route, useLocation } from 'wouter';
+import React from 'react';
+import { css } from '@emotion/react/macro';
+import { Link } from 'wouter';
 
 export function TopBar(props) {
   return (
@@ -17,20 +17,20 @@ export function TopBar(props) {
 
 export function A({ children, href, ...props }) {
   return (
-    <Link href={href} {...props}>
-      <a
-        css={css`
-          display: inline-block;
-          margin: 0 1em;
-          background: white;
-          color: black;
-          text-decoration: none;
-          padding: 2px 8px;
-          border-radius: 5px;
-        `}
-      >
-        {children}
-      </a>
+    <Link
+      href={href}
+      {...props}
+      css={css`
+        display: inline-block;
+        margin: 0 1em;
+        background: white;
+        color: black;
+        text-decoration: none;
+        padding: 2px 8px;
+        border-radius: 5px;
+      `}
+    >
+      {children}
     </Link>
   );
 }
