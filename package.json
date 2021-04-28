@@ -7,7 +7,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "relay": "PORT=3000 node ./node_modules/@localfirst/relay/dist/start.js",
+    "relay": "PORT=3001 node ./node_modules/@localfirst/relay/dist/start.js",
     "lint": "prettier -c test src",
     "format": "prettier -w test src",
     "doc": "typedoc src/ --excludeExternals --excludePrivate --excludeInternal --out docs/api"
