@@ -10,8 +10,7 @@ on behalf of network participants.
 
 ## Getting started
 
-* [Database](docs/database.md)
-* [Protocol](docs/protocol.md)
+* [Read the API docs](https://6088af8c57be4400073fe25d--gallant-lewin-1c93b0.netlify.app/docs/api/)
 * [Contributing & Code of Conduct](docs/contributing.md)
 
 ```
