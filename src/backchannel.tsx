@@ -34,6 +34,10 @@ export class Backchannel extends events.EventEmitter {
     });
     this._setupListeners();
     // TODO: catch this error upstream and inform the user properly
+    //
+    this._client.once('server.connect', () => {
+      this.emit('open');
+    });
     this._db.open().catch((err) => {
       console.error(`Database open failed : ${err.stack}`);
     });

@@ -9,7 +9,7 @@ let devices = {
   bob: null,
 };
 
-beforeEach(async () => {
+beforeEach((done) => {
   // start a backchannel on bob and alice's devices
   let dbname = crypto.randomBytes(16);
   let RELAY_URL = 'ws://localhost:3001';
@@ -18,17 +18,26 @@ beforeEach(async () => {
 
   doc = crypto.randomBytes(16).toString('hex');
   // OK, so now I create a petname for bob on alice's device..
-  petbob_id = await devices.alice.addContact({
-    key: doc,
-    moniker: 'bob',
-  });
+  //
+  async function create() {
+    petbob_id = await devices.alice.addContact({
+      key: doc,
+      moniker: 'bob',
+    });
 
-  // OK, so now I create a petname for bob on alice's device..
-  petalice_id = await devices.bob.addContact({
-    key: doc,
-    moniker: 'alice',
+    // OK, so now I create a petname for bob on alice's device..
+    petalice_id = await devices.bob.addContact({
+      key: doc,
+      moniker: 'alice',
+    });
+  }
+
+  devices.alice.once('open', () => {
+    devices.bob.once('open', () => {
+      create().then(done);
+      jest.useFakeTimers();
+    });
   });
-  jest.useFakeTimers();
 });
 
 afterEach(async () => {
