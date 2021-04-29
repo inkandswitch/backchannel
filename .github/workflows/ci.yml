@@ -38,7 +38,4 @@ jobs:
       run: npm run relay &
 
     - name: Run the tests and generate coverage report
-      run: npm test -- --coverage
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v1
+      run: npm test 
