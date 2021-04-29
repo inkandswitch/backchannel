@@ -4,11 +4,11 @@ import { css } from '@emotion/react/macro';
 import { Link, Route, useLocation } from 'wouter';
 
 import { copyToClipboard } from './web';
-import { Code, ContactId } from './db';
+import { Code, ContactId } from './backend/types';
 import { TopBar, A, Button } from './components';
 import Mailbox from './components/Mailbox';
 import ContactList from './components/ContactList';
-import Backchannel from './backchannel';
+import Backchannel from './backend';
 
 let backchannel = Backchannel();
 

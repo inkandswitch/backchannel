@@ -1,26 +1,5 @@
 import Dexie from 'dexie';
-
-export type ContactId = number;
-export type Code = string;
-export type Key = string;
-export type DiscoveryKey = string;
-
-export interface IContact {
-  id?: ContactId;
-  moniker?: string;
-  discoveryKey?: DiscoveryKey; // -> hash of code
-  key: Key; // -> code I've accepted with them
-}
-
-export interface IMessage {
-  id?: number;
-  incoming: boolean; // -> incoming or outgoing message
-  timestamp: string;
-  contact: number; // -> Contact.id
-  text?: string;
-  filename?: string;
-  mime_type?: string;
-}
+import { IContact, IMessage } from './types';
 
 export class Database extends Dexie {
   contacts: Dexie.Table<IContact, number>;

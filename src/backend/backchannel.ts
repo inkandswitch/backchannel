@@ -1,14 +1,13 @@
-import Wormhole from './wormhole';
-import type { SecureWormhole, MagicWormhole } from './wormhole';
 import { arrayToHex } from 'enc-utils';
-import { Code, Database, ContactId, IContact, IMessage } from './db';
 import { Client } from '@localfirst/relay-client';
 import crypto from 'crypto';
 import events from 'events';
 import catnames from 'cat-names';
-import config from './config.json';
 
-let instance = null;
+import { Database } from './db';
+import { Code, ContactId, IContact, IMessage } from './types';
+import Wormhole from './wormhole';
+import type { SecureWormhole, MagicWormhole } from './wormhole';
 
 /**
  * The backchannel class manages the database and wormholes
@@ -25,10 +24,10 @@ export class Backchannel extends events.EventEmitter {
    * @constructor
    * @param {string} dbName - the name of the database saved in IndexedDb
    */
-  constructor(dbName: string, relay: string) {
+  constructor(db: Database, relay: string) {
     super();
     this._wormhole = Wormhole();
-    this._db = new Database(dbName);
+    this._db = db;
     this._client = new Client({
       url: relay,
     });
@@ -72,23 +71,23 @@ export class Backchannel extends events.EventEmitter {
    * @param {WebSocket} socket: the open socket for the contact
    */
   async sendMessage(contactId: ContactId, text: string): Promise<IMessage> {
-    // TODO: automerge this
-    let message = {
+    let msg: IMessage = {
       text: text,
       contact: contactId,
       timestamp: Date.now().toString(),
       incoming: false,
     };
     let socket: WebSocket = this._getSocketByContactId(contactId);
-    let mid = await this._db.messages.add(message);
-    // TODO: Message.encode and Message.decode functions
-    socket.send(
-      JSON.stringify({
-        text: message.text,
-        timestamp: message.timestamp,
-      })
-    );
-    return message;
+    let mid = await this._db.messages.add(msg);
+    let contact = await this.getContactById(contactId);
+    msg.id = mid;
+    let sendable: string = IMessage.encode(msg, contact.key);
+    try {
+      socket.send(sendable);
+    } catch (err) {
+      throw new Error('Unable to send message to ' + contact.moniker);
+    }
+    return msg;
   }
 
   async getMessagesByContactId(cid: ContactId): Promise<IMessage[]> {
@@ -192,18 +191,12 @@ export class Backchannel extends events.EventEmitter {
     return this._sockets.get(cid);
   }
 
-  private async _addIncomingMessage(
+  private async _receiveMessage(
     contact: IContact,
-    text: string,
-    timestamp: string
+    msg: string
   ): Promise<IMessage> {
-    let message: IMessage = {
-      text,
-      contact: contact.id,
-      incoming: true,
-      timestamp,
-    };
-    message.incoming = true;
+    let message: IMessage = IMessage.decode(msg, contact.key);
+    message.contact = contact.id;
     let id = await this._db.messages.put(message);
     message.id = id;
     return message;
@@ -219,9 +212,7 @@ export class Backchannel extends events.EventEmitter {
       .on('peer.connect', async ({ socket, documentId }) => {
         let contact = await this.getContactByDiscoveryKey(documentId);
         socket.onmessage = (e) => {
-          // TODO Message.decode(data)
-          let msg = JSON.parse(e.data);
-          this._addIncomingMessage(contact, msg.text, msg.timestamp)
+          this._receiveMessage(contact, e.data)
             .then((message) => {
               this.emit('message', {
                 contact,
@@ -258,17 +249,4 @@ export class Backchannel extends events.EventEmitter {
 
     return this.addContact(metadata);
   }
-}
-
-export default function initialize() {
-  if (instance) return instance;
-  let dbName = 'backchannel_' + window.location.hash;
-  console.log('connecting to relay', config.RELAY_URL);
-  instance = new Backchannel(dbName, config.RELAY_URL);
-  instance.on('error', function onError(err: Error) {
-    console.error('Connection error');
-    console.error(err);
-  });
-
-  return instance;
 }

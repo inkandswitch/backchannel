@@ -1,10 +1,8 @@
-import type { Code } from './db';
-
 /**
  * Utilities for common tasks specific to the browser
  */
 
-export async function copyToClipboard(code: Code): Promise<boolean> {
+export async function copyToClipboard(code: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(code);
     console.log('Code copied to clipboard');

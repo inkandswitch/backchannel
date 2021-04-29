@@ -1,4 +1,5 @@
 import { Backchannel } from './backchannel';
+import { Database } from './db';
 import crypto from 'crypto';
 
 let doc,
@@ -13,12 +14,14 @@ beforeEach((done) => {
   // start a backchannel on bob and alice's devices
   let dbname = crypto.randomBytes(16);
   let RELAY_URL = 'ws://localhost:3001';
-  devices.alice = new Backchannel(dbname + '_a', RELAY_URL);
-  devices.bob = new Backchannel(dbname + '_b', RELAY_URL);
+  let db_a = new Database(dbname + '_a');
+  devices.alice = new Backchannel(db_a, RELAY_URL);
+  let db_b = new Database(dbname + '_b');
+  devices.bob = new Backchannel(db_b, RELAY_URL);
 
-  doc = crypto.randomBytes(16).toString('hex');
+  doc = crypto.randomBytes(32).toString('hex');
   // OK, so now I create a petname for bob on alice's device..
-  //
+
   async function create() {
     petbob_id = await devices.alice.addContact({
       key: doc,
