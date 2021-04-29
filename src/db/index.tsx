@@ -1,5 +1,5 @@
 import Dexie from 'dexie';
-import sodium from 'sodium-javascript';
+import { symmetric, EncryptedProtocolMessage } from './crypto';
 
 export type ContactId = number;
 export type Code = string;
@@ -10,13 +10,8 @@ export interface IContact {
   id?: ContactId;
   moniker?: string;
   discoveryKey?: DiscoveryKey; // -> hash of code
-  key: Key; // -> code I've accepted with them
+  key: Key; // -> shared secret key I've accepted with them
 }
-
-export type EncryptedProtocolMessage = {
-  cipher: string;
-  nonce: string;
-};
 
 export class IMessage {
   id?: number;
@@ -28,39 +23,17 @@ export class IMessage {
   mime_type?: string;
 
   static encode(msg: IMessage, key: Key): string {
-    const nonce = Buffer.alloc(sodium.crypto_secretbox_NONCEBYTES);
-    sodium.randombytes_buf(nonce);
-    let message = Buffer.from(msg.text, 'utf-8');
-    const cipher = Buffer.alloc(
-      message.byteLength + sodium.crypto_secretbox_MACBYTES
-    );
     let buf_key = Buffer.from(key, 'hex');
-    sodium.crypto_secretbox_easy(cipher, message, nonce, buf_key);
-    let encoded: EncryptedProtocolMessage = {
-      cipher: cipher.toString('hex'),
-      nonce: nonce.toString('hex'),
-    };
+    let encoded = symmetric.encrypt(buf_key, msg.text);
     return JSON.stringify(encoded);
   }
 
   static decode(json: string, key: Key): IMessage {
+    let buf_key = Buffer.from(key, 'hex');
     let decoded: EncryptedProtocolMessage = JSON.parse(json);
-    let nonce = Buffer.from(decoded.nonce, 'hex');
-    let cipher = Buffer.from(decoded.cipher, 'hex');
-    const plainText = Buffer.alloc(
-      cipher.byteLength - sodium.crypto_secretbox_MACBYTES
-    );
-    console.log(nonce.byteLength, sodium.crypto_secretbox_NONCEBYTES);
-
-    sodium.crypto_secretbox_open_easy(
-      plainText,
-      cipher,
-      nonce,
-      Buffer.from(key, 'hex')
-    );
-
+    let plainText = symmetric.decrypt(buf_key, decoded);
     return {
-      text: plainText.toString('utf-8'),
+      text: plainText,
       timestamp: Date.now().toString(), // FIXME
       incoming: true,
     };
