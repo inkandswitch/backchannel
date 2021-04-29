@@ -1,7 +1,7 @@
 import Wormhole from './wormhole';
 import type { SecureWormhole, MagicWormhole } from './wormhole';
 import { arrayToHex } from 'enc-utils';
-import { Code, Database, ContactId, IContact, IMessage } from './db';
+import { EncryptedProtocolMessage, Code, Database, ContactId, IContact, IMessage } from './db';
 import { Client } from '@localfirst/relay-client';
 import crypto from 'crypto';
 import events from 'events';
@@ -29,12 +29,15 @@ export class Backchannel extends events.EventEmitter {
     super();
     this._wormhole = Wormhole();
     this._db = new Database(dbName);
-    console.log('creating client');
     this._client = new Client({
       url: relay,
     });
     this._setupListeners();
     // TODO: catch this error upstream and inform the user properly
+    //
+    this._client.once('server.connect', () => {
+      this.emit('open');
+    });
     this._db.open().catch((err) => {
       console.error(`Database open failed : ${err.stack}`);
     });
@@ -70,7 +73,7 @@ export class Backchannel extends events.EventEmitter {
    */
   async sendMessage(contactId: ContactId, text: string): Promise<IMessage> {
     // TODO: automerge this
-    let msg = {
+    let msg: IMessage = {
       text: text,
       contact: contactId,
       timestamp: Date.now().toString(),
@@ -78,7 +81,10 @@ export class Backchannel extends events.EventEmitter {
     };
     let socket: WebSocket = this._getSocketByContactId(contactId);
     let mid = await this._db.messages.add(msg);
-    socket.send(IMessage.encode(msg));
+    let contact = await this.getContactById(contactId);
+    msg.id = mid
+    let sendable: string = IMessage.encode(msg, contact.key);
+    socket.send(sendable);
     return msg;
   }
 
@@ -99,7 +105,6 @@ export class Backchannel extends events.EventEmitter {
    * @param {string} discoveryKey - the discovery key for this contact
    */
   async getContactByDiscoveryKey(discoveryKey: string): Promise<IContact> {
-    console.log('looking up contact', discoveryKey);
     let contacts = await this._db.contacts
       .where('discoveryKey')
       .equals(discoveryKey)
@@ -118,7 +123,6 @@ export class Backchannel extends events.EventEmitter {
    * @param {DocumentId} documentId
    */
   connectToContact(contact: IContact) {
-    console.log('joining', contact.discoveryKey);
     if (!contact || !contact.discoveryKey)
       throw new Error('contact.discoveryKey required');
     this._client.join(contact.discoveryKey);
@@ -134,7 +138,6 @@ export class Backchannel extends events.EventEmitter {
    * @param {DocumentId} documentId
    */
   disconnectFromContact(contact: IContact) {
-    console.log('dsiconnecting', contact.discoveryKey);
     if (!contact || !contact.discoveryKey)
       throw new Error('contact.discoveryKey required');
     this._client.leave(contact.discoveryKey);
@@ -177,7 +180,6 @@ export class Backchannel extends events.EventEmitter {
    * Danger! Unrecoverable!
    */
   async destroy() {
-    console.log('destroying');
     await this._client.disconnectServer();
     await this._db.delete();
   }
@@ -187,18 +189,14 @@ export class Backchannel extends events.EventEmitter {
     return this._sockets.get(cid);
   }
 
-  private async _addIncomingMessage(
+  private async _receiveMessage(
     contact: IContact,
-    text: string,
-    timestamp: string
+    buffer: Buffer
   ): Promise<IMessage> {
-    let message: IMessage = {
-      text,
-      contact: contact.id,
-      incoming: true,
-      timestamp,
-    };
-    message.incoming = true;
+
+    console.log(buffer);
+    let message: IMessage = IMessage.decode(buffer, contact.key);
+    message.contact = contact.id;
     let id = await this._db.messages.put(message);
     message.id = id;
     return message;
@@ -207,19 +205,14 @@ export class Backchannel extends events.EventEmitter {
   private _setupListeners() {
     this._client
       .on('peer.disconnect', async ({ documentId }) => {
-        console.log('peer disconnect');
         let contact = await this.getContactByDiscoveryKey(documentId);
         this._sockets.delete(contact.id);
         this.emit('contact.disconnected', { contact });
       })
       .on('peer.connect', async ({ socket, documentId }) => {
-        console.log('got documentId', documentId);
         let contact = await this.getContactByDiscoveryKey(documentId);
-        console.log('got contact', contact);
         socket.onmessage = (e) => {
-          // TODO Message.decode(data)
-          let msg = JSON.parse(e.data);
-          this._addIncomingMessage(contact, msg.text, msg.timestamp)
+          this._receiveMessage(contact, e.data)
             .then((message) => {
               this.emit('message', {
                 contact,
