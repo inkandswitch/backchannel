@@ -1,4 +1,4 @@
-import { Backchannel } from './backchannel';
+import Backchannel from './';
 import crypto from 'crypto';
 
 let doc,
@@ -13,8 +13,8 @@ beforeEach((done) => {
   // start a backchannel on bob and alice's devices
   let dbname = crypto.randomBytes(16);
   let RELAY_URL = 'ws://localhost:3001';
-  devices.alice = new Backchannel(dbname + '_a', RELAY_URL);
-  devices.bob = new Backchannel(dbname + '_b', RELAY_URL);
+  devices.alice = Backchannel(dbname + '_a', RELAY_URL);
+  devices.bob = Backchannel(dbname + '_b', RELAY_URL);
 
   doc = crypto.randomBytes(32).toString('hex');
   // OK, so now I create a petname for bob on alice's device..

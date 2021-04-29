@@ -1,9 +1,9 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState, useEffect } from 'react';
 import { css } from '@emotion/react/macro';
-import { ContactId, IMessage, IContact } from '../db';
+import { ContactId, IMessage, IContact } from '../backend/types';
 import { Button } from './';
-import Backchannel from '../backchannel';
+import Backchannel from '../backend';
 
 let backchannel = Backchannel();
 

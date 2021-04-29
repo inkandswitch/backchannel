@@ -1,4 +1,4 @@
-import type { Code } from './db';
+import type { Code } from './backend/types';
 
 /**
  * Utilities for common tasks specific to the browser
