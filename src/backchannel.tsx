@@ -1,7 +1,14 @@
 import Wormhole from './wormhole';
 import type { SecureWormhole, MagicWormhole } from './wormhole';
 import { arrayToHex } from 'enc-utils';
-import { EncryptedProtocolMessage, Code, Database, ContactId, IContact, IMessage } from './db';
+import {
+  EncryptedProtocolMessage,
+  Code,
+  Database,
+  ContactId,
+  IContact,
+  IMessage,
+} from './db';
 import { Client } from '@localfirst/relay-client';
 import crypto from 'crypto';
 import events from 'events';
@@ -82,7 +89,7 @@ export class Backchannel extends events.EventEmitter {
     let socket: WebSocket = this._getSocketByContactId(contactId);
     let mid = await this._db.messages.add(msg);
     let contact = await this.getContactById(contactId);
-    msg.id = mid
+    msg.id = mid;
     let sendable: string = IMessage.encode(msg, contact.key);
     socket.send(sendable);
     return msg;
@@ -193,7 +200,6 @@ export class Backchannel extends events.EventEmitter {
     contact: IContact,
     buffer: Buffer
   ): Promise<IMessage> {
-
     console.log(buffer);
     let message: IMessage = IMessage.decode(buffer, contact.key);
     message.contact = contact.id;

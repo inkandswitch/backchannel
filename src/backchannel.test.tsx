@@ -16,7 +16,7 @@ beforeEach((done) => {
   devices.alice = new Backchannel(dbname + '_a', RELAY_URL);
   devices.bob = new Backchannel(dbname + '_b', RELAY_URL);
 
-  doc = crypto.randomBytes(16).toString('hex');
+  doc = crypto.randomBytes(32).toString('hex');
   // OK, so now I create a petname for bob on alice's device..
   //
   async function create() {
