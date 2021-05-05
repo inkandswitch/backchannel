@@ -173,8 +173,7 @@ export class Backchannel extends events.EventEmitter {
   }
 
   syncDevice(key) {
-    let discoveryKey = crypto.computeDiscoveryKey(key);
-    this._multidevice.set(discoveryKey, key);
+    let discoveryKey = this._multidevice.add(key);
     this._client.join(discoveryKey);
   }
 
