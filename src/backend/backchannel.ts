@@ -3,9 +3,17 @@ import { Client } from '@localfirst/relay-client';
 import events from 'events';
 import catnames from 'cat-names';
 
+import Multidevice from './multidevice';
 import * as crypto from './crypto';
 import { Database } from './db';
-import { Key, Code, ContactId, IContact, IMessage } from './types';
+import {
+  Key,
+  Code,
+  ContactId,
+  IContact,
+  IMessage,
+  DiscoveryKey,
+} from './types';
 import Wormhole from './wormhole';
 import type { SecureWormhole, MagicWormhole } from './wormhole';
 
@@ -16,6 +24,7 @@ export class Backchannel extends events.EventEmitter {
   private _wormhole: MagicWormhole;
   private _db: Database;
   private _client: Client;
+  private _multidevice: Multidevice;
   private _sockets = new Map<number, WebSocket>();
 
   /**
@@ -29,6 +38,7 @@ export class Backchannel extends events.EventEmitter {
     this._wormhole = Wormhole();
     this._db = db;
     this._client = this._createClient(relay);
+    this._multidevice = new Multidevice(db);
 
     // TODO: catch this error upstream and inform the user properly
     this._db.open().catch((err) => {
@@ -164,6 +174,7 @@ export class Backchannel extends events.EventEmitter {
 
   syncDevice(key) {
     let discoveryKey = crypto.computeDiscoveryKey(key);
+    this._multidevice.set(discoveryKey, key);
     this._client.join(discoveryKey);
   }
 
@@ -203,13 +214,20 @@ export class Backchannel extends events.EventEmitter {
     return message;
   }
 
-  private async _onPeerDisconnect({ documentId }) {
+  private async _onPeerDisconnect(documentId: DiscoveryKey) {
     let contact = await this.getContactByDiscoveryKey(documentId);
     this._sockets.delete(contact.id);
     this.emit('contact.disconnected', { contact });
   }
 
-  private async _onPeerConnect({ socket, documentId }) {
+  private async _syncDevice(socket: WebSocket, key: Key) {
+    this._multidevice.sync(socket, key);
+  }
+
+  private async _onPeerConnect(socket: WebSocket, documentId: DiscoveryKey) {
+    if (this._multidevice.has(documentId)) {
+      return this._syncDevice(socket, this._multidevice.getDevice(documentId));
+    }
     let contact = await this.getContactByDiscoveryKey(documentId);
     socket.onmessage = (e) => {
       this._receiveMessage(contact, e.data)
@@ -255,8 +273,12 @@ export class Backchannel extends events.EventEmitter {
     });
 
     client
-      .on('peer.disconnect', this._onPeerDisconnect.bind(this))
-      .on('peer.connect', this._onPeerConnect.bind(this));
+      .on('peer.disconnect', ({ documentId }) =>
+        this._onPeerDisconnect(documentId)
+      )
+      .on('peer.connect', ({ socket, documentId }) =>
+        this._onPeerConnect(socket, documentId)
+      );
 
     return client;
   }
