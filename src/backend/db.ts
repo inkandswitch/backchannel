@@ -1,73 +1,70 @@
-import Dexie from 'dexie';
 import { ContactId, IContact, IMessage } from './types';
+import Automerge from 'automerge';
 
-class IndexedDatabase extends Dexie {
-  contacts: Dexie.Table<IContact, number>;
-  messages: Dexie.Table<IMessage, number>;
-
-  constructor(dbname) {
-    super(dbname);
-
-    this.version(1).stores({
-      contacts: 'id++,moniker,&discoveryKey,key',
-      messages: 'id++,incoming,text,contact,filename,mime_type',
-    });
-
-    // this is just so typescript understands what is going on
-    this.contacts = this.table('contacts');
-    this.messages = this.table('messages');
-  }
+interface AutomergeDatabase {
+  contacts: Automerge.Table<IContact>;
+  messages: Automerge.Table<IMessage>;
 }
 
 export class Database {
-  _db: IndexedDatabase;
+  _db: Automerge;
 
   constructor(dbname) {
-    this._db = new IndexedDatabase(dbname);
-    // TODO: catch this error upstream and inform the user properly
-    this._db.open().catch((err) => {
-      console.error(`Database open failed : ${err.stack}`);
+    this._db = Automerge.change(Automerge.init(), (doc: AutomergeDatabase) => {
+      doc.contacts = new Automerge.Table();
+      doc.messages = new Automerge.Table();
     });
   }
 
-  addContact(contact: IContact) {
-    return this._db.contacts.add(contact);
+  addContact(contact: IContact): ContactId {
+    let id;
+    this._db = Automerge.change(this._db, (doc: AutomergeDatabase) => {
+      id = doc.contacts.add(contact);
+    });
+    return id;
   }
 
   /**
-   * Update an existing contact in the database.
-   * The contact object should have an `id`
+   * Update an existing contact in the database. The contact object should have
+   * an `id`. The only valid property you can change is the moniker.
    * @param {IContact} contact - The contact to update to the database
    */
-  updateContact(contact: IContact): Promise<ContactId> {
-    return this._db.contacts.put(contact);
+  async editMoniker(id: ContactId, moniker: string): Promise<IContact> {
+    this._db = Automerge.change(this._db, (doc: AutomergeDatabase) => {
+      let contact = doc.contacts.byId(id);
+      contact.moniker = moniker;
+    });
+    return this._db.contacts.byId(id);
   }
 
   addMessage(msg: IMessage) {
-    return this._db.messages.add(msg);
+    let id;
+    this._db = Automerge.change(this._db, (doc: AutomergeDatabase) => {
+      id = doc.messages.add(msg);
+    });
+    return id;
   }
 
-  async getMessagesByContactId(cid: ContactId): Promise<IMessage[]> {
-    return this._db.messages.where('contact').equals(cid).toArray();
+  getMessagesByContactId(cid: ContactId): IMessage[] {
+    return this._db.messages.filter((m) => cid === m.contact);
   }
 
-  async getContactById(id: ContactId): Promise<IContact> {
-    let contacts = await this._db.contacts.where('id').equals(id).toArray();
-    if (!contacts.length) {
-      throw new Error('No contact with id');
+  getContactById(id: ContactId): IContact {
+    let contact = this._db.contacts.byId(id);
+    if (!contact) {
+      throw new Error('No contact with id ' + id);
     }
-    return contacts[0];
+    return contact;
   }
 
   /**
    * Get contact by discovery key
    * @param {string} discoveryKey - the discovery key for this contact
    */
-  async getContactByDiscoveryKey(discoveryKey: string): Promise<IContact> {
-    let contacts = await this._db.contacts
-      .where('discoveryKey')
-      .equals(discoveryKey)
-      .toArray();
+  getContactByDiscoveryKey(discoveryKey: string): IContact {
+    let contacts = this._db.contacts.filter(
+      (c) => c.discoveryKey === discoveryKey
+    );
     if (!contacts.length) {
       throw new Error(
         'No contact with that document? that shouldnt be possible. Maybe you cleared your cache...'
@@ -77,11 +74,11 @@ export class Database {
     return contacts[0];
   }
 
-  async listContacts(): Promise<IContact[]> {
-    return await this._db.contacts.toArray();
+  listContacts(): IContact[] {
+    return this._db.contacts.rows;
   }
 
   destroy() {
-    return this._db.delete();
+    this._db = null;
   }
 }

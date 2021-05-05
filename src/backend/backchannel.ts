@@ -60,15 +60,6 @@ export class Backchannel extends events.EventEmitter {
   }
 
   /**
-   * Update an existing contact in the database.
-   * The contact object should have an `id`
-   * @param {IContact} contact - The contact to update to the database
-   */
-  updateContact(contact: IContact): Promise<ContactId> {
-    return this.db.updateContact(contact);
-  }
-
-  /**
    * Send a message to a contact. Assumes that you've already
    * connected with the contact from listening to the `contact.connected` event
    * @param {WebSocket} socket: the open socket for the contact

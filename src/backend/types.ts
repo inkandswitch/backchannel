@@ -1,6 +1,7 @@
 import { symmetric, EncryptedProtocolMessage } from './crypto';
 
-export type ContactId = number;
+export type MessageId = string;
+export type ContactId = string;
 export type Code = string;
 export type Key = string;
 export type DiscoveryKey = string;
@@ -13,10 +14,10 @@ export interface IContact {
 }
 
 export class IMessage {
-  id?: number;
+  id?: MessageId;
   incoming: boolean; // -> incoming or outgoing message
   timestamp: string;
-  contact?: number; // -> Contact.id
+  contact?: ContactId;
   text?: string;
   filename?: string;
   mime_type?: string;
@@ -33,7 +34,7 @@ export class IMessage {
     let plainText = symmetric.decrypt(buf_key, decoded);
     return {
       text: plainText,
-      timestamp: Date.now().toString(), // FIXME
+      timestamp: Date.now().toString(),
       incoming: true,
     };
   }
