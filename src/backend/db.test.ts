@@ -2,15 +2,18 @@ import { Database } from './db';
 import crypto from 'crypto';
 
 let db;
+let dbname;
 
-beforeEach(() => {
-  let dbname = crypto.randomBytes(16);
+beforeEach((done) => {
+  dbname = crypto.randomBytes(16);
   db = new Database(dbname);
+  db.on('open', () => {
+    done();
+  });
 });
 
 afterEach(() => {
   db.destroy();
-  db = null;
 });
 
 test('getContactById', async () => {
@@ -118,4 +121,29 @@ test('editMoniker', () => {
   let karen = db.getContactById(bob_id);
   expect(bob.moniker).toBe('bob');
   expect(karen.moniker).toBe('karen');
+});
+
+test('save/load', (done) => {
+  let bob_id = db.addContact({
+    moniker: 'bob',
+    key: crypto.randomBytes(32).toString('hex'),
+  });
+
+  let bob = db.getContactById(bob_id);
+  expect(bob.moniker).toBe('bob');
+
+  db.editMoniker(bob.id, 'karen');
+  let karen = db.getContactById(bob_id);
+  expect(bob.moniker).toBe('bob');
+  expect(karen.moniker).toBe('karen');
+
+  db.save();
+  db = null;
+
+  db = new Database(dbname);
+  db.on('open', async () => {
+    let maybe_karen = db.getContactById(bob_id);
+    expect(maybe_karen).toStrictEqual(karen);
+    done();
+  });
 });
