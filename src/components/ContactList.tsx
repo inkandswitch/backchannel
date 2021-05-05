@@ -9,7 +9,7 @@ export default function ContactList(props) {
   let [contacts, setContacts] = useState([]);
 
   useEffect(() => {
-    backchannel
+    backchannel.db
       .listContacts()
       .then((contacts) => {
         console.log('got contacts', contacts);

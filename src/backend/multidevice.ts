@@ -1,6 +1,7 @@
 import { Key, DiscoveryKey } from './types';
 import { Database } from './db';
 import * as crypto from './crypto';
+import Automerge from 'automerge';
 
 export default class Multidevice {
   private _devices = new Map<DiscoveryKey, Key>();
@@ -10,7 +11,14 @@ export default class Multidevice {
     this._db = db;
   }
 
-  sync(socket: WebSocket, key: Key) {}
+  sync(socket: WebSocket, discoveryKey: DiscoveryKey) {
+    return new Promise<void>((resolve, reject) => {
+      let key: Key = this.getDevice(discoveryKey);
+
+      console.log('syncing');
+      resolve();
+    });
+  }
 
   add(key: Key): DiscoveryKey {
     let discoveryKey = crypto.computeDiscoveryKey(key);

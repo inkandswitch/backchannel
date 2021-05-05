@@ -21,11 +21,12 @@ import type { SecureWormhole, MagicWormhole } from './wormhole';
  * The backchannel class manages the database and wormholes
  */
 export class Backchannel extends events.EventEmitter {
+  public db: Database;
   private _wormhole: MagicWormhole;
-  private _db: Database;
   private _client: Client;
   private _multidevice: Multidevice;
   private _sockets = new Map<number, WebSocket>();
+  private _open = true || false;
 
   /**
    * Create a new backchannel client. Each instance represents a user opening
@@ -36,18 +37,14 @@ export class Backchannel extends events.EventEmitter {
   constructor(db: Database, relay: string) {
     super();
     this._wormhole = Wormhole();
-    this._db = db;
+    this.db = db;
     this._client = this._createClient(relay);
     this._multidevice = new Multidevice(db);
-
-    // TODO: catch this error upstream and inform the user properly
-    this._db.open().catch((err) => {
-      console.error(`Database open failed : ${err.stack}`);
-    });
+    this._open = false;
   }
 
   opened() {
-    return this._db.isOpen() && this._client.open;
+    return this._open;
   }
 
   /**
@@ -59,7 +56,7 @@ export class Backchannel extends events.EventEmitter {
   async addContact(contact: IContact): Promise<ContactId> {
     contact.discoveryKey = crypto.computeDiscoveryKey(contact.key);
     contact.moniker = contact.moniker || catnames.random();
-    return this._db.contacts.add(contact);
+    return this.db.addContact(contact);
   }
 
   /**
@@ -68,7 +65,7 @@ export class Backchannel extends events.EventEmitter {
    * @param {IContact} contact - The contact to update to the database
    */
   updateContact(contact: IContact): Promise<ContactId> {
-    return this._db.contacts.put(contact);
+    return this.db.updateContact(contact);
   }
 
   /**
@@ -84,8 +81,8 @@ export class Backchannel extends events.EventEmitter {
       incoming: false,
     };
     let socket: WebSocket = this._getSocketByContactId(contactId);
-    let mid = await this._db.messages.add(msg);
-    let contact = await this.getContactById(contactId);
+    let mid = await this.db.addMessage(msg);
+    let contact = await this.db.getContactById(contactId);
     msg.id = mid;
     let sendable: string = IMessage.encode(msg, contact.key);
     try {
@@ -94,36 +91,6 @@ export class Backchannel extends events.EventEmitter {
       throw new Error('Unable to send message to ' + contact.moniker);
     }
     return msg;
-  }
-
-  async getMessagesByContactId(cid: ContactId): Promise<IMessage[]> {
-    return this._db.messages.where('contact').equals(cid).toArray();
-  }
-
-  async getContactById(id: ContactId): Promise<IContact> {
-    let contacts = await this._db.contacts.where('id').equals(id).toArray();
-    if (!contacts.length) {
-      throw new Error('No contact with id');
-    }
-    return contacts[0];
-  }
-
-  /**
-   * Get contact by discovery key
-   * @param {string} discoveryKey - the discovery key for this contact
-   */
-  async getContactByDiscoveryKey(discoveryKey: string): Promise<IContact> {
-    let contacts = await this._db.contacts
-      .where('discoveryKey')
-      .equals(discoveryKey)
-      .toArray();
-    if (!contacts.length) {
-      throw new Error(
-        'No contact with that document? that shouldnt be possible. Maybe you cleared your cache...'
-      );
-    }
-
-    return contacts[0];
   }
 
   /**
@@ -137,7 +104,7 @@ export class Backchannel extends events.EventEmitter {
   }
 
   async connectToContactId(cid: ContactId) {
-    let contact = await this.getContactById(cid);
+    let contact = await this.db.getContactById(cid);
     this.connectToContact(contact);
   }
 
@@ -168,12 +135,9 @@ export class Backchannel extends events.EventEmitter {
     return this._createContactFromWormhole(connection);
   }
 
-  async listContacts(): Promise<IContact[]> {
-    return await this._db.contacts.toArray();
-  }
-
-  syncDevice(key) {
+  syncDevice({ key, description }) {
     let discoveryKey = this._multidevice.add(key);
+    console.log('joining', discoveryKey);
     this._client.join(discoveryKey);
   }
 
@@ -193,8 +157,9 @@ export class Backchannel extends events.EventEmitter {
    * Danger! Unrecoverable!
    */
   async destroy() {
+    this._open = false;
     await this._client.disconnectServer();
-    await this._db.delete();
+    await this.db.destroy();
   }
 
   // PRIVATE
@@ -208,26 +173,30 @@ export class Backchannel extends events.EventEmitter {
   ): Promise<IMessage> {
     let message: IMessage = IMessage.decode(msg, contact.key);
     message.contact = contact.id;
-    let id = await this._db.messages.put(message);
+    let id = await this.db.addMessage(message);
     message.id = id;
     return message;
   }
 
   private async _onPeerDisconnect(documentId: DiscoveryKey) {
-    let contact = await this.getContactByDiscoveryKey(documentId);
+    let contact = await this.db.getContactByDiscoveryKey(documentId);
     this._sockets.delete(contact.id);
     this.emit('contact.disconnected', { contact });
   }
 
-  private async _syncDevice(socket: WebSocket, key: Key) {
-    this._multidevice.sync(socket, key);
-  }
-
   private async _onPeerConnect(socket: WebSocket, documentId: DiscoveryKey) {
     if (this._multidevice.has(documentId)) {
-      return this._syncDevice(socket, this._multidevice.getDevice(documentId));
+      this._multidevice
+        .sync(socket, documentId)
+        .then(() => {
+          this.emit('sync.finish');
+        })
+        .catch((err) => {
+          this.emit('sync.error', err);
+        });
+      return;
     }
-    let contact = await this.getContactByDiscoveryKey(documentId);
+    let contact = await this.db.getContactByDiscoveryKey(documentId);
     socket.onmessage = (e) => {
       this._receiveMessage(contact, e.data)
         .then((message) => {
@@ -262,12 +231,12 @@ export class Backchannel extends events.EventEmitter {
     });
 
     client.once('server.connect', () => {
-      this._client.open = true;
+      this._open = true;
       this.emit('server.connect');
     });
 
     client.once('server.disconnect', () => {
-      this._client.open = false;
+      this._open = false;
       this.emit('server.disconnect');
     });
 

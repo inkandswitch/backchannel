@@ -61,16 +61,16 @@ test('add and retrieve a contact', async () => {
   // create a document, let's say we already did the wormhole handshake
   // TADA!!!
   // and alice can list the contacts and get bob
-  let contacts = await devices.alice.listContacts();
+  let contacts = await devices.alice.db.listContacts();
   expect(contacts.length).toBe(1);
   expect(contacts[0].moniker).toBe('bob');
   expect(contacts[0].key).toBe(doc);
   expect(contacts[0].id).toBe(petbob_id);
 
-  let bob = await devices.alice.getContactById(petbob_id);
+  let bob = await devices.alice.db.getContactById(petbob_id);
   expect(bob.id).toBe(petbob_id);
 
-  let alice = await devices.bob.getContactById(petalice_id);
+  let alice = await devices.bob.db.getContactById(petalice_id);
   expect(alice.id).toBe(petalice_id);
 });
 
@@ -151,23 +151,33 @@ test('adds and syncs contacts with another device', (done) => {
   async function onSync() {
     called++;
     if (called < 2) return;
-    let bob = await devices.alice.getContactById(petbob_id);
+    let bob = await devices.alice.db.getContactById(petbob_id);
     expect(bob.id).toBe(petbob_id);
-    let synced_bob = await alice_phone.getContactByDiscoveryKey(
+    let synced_bob = await alice_phone.db.getContactByDiscoveryKey(
       bob.discoveryKey
     );
     expect(synced_bob.key).toBe(devices.bob.key);
     expect(synced_bob.key).toBe(bob.key);
+    done();
   }
 
   devices.alice.on('sync.finish', onSync);
   alice_phone.on('sync.finish', onSync);
+  jest.runOnlyPendingTimers();
 
   devices.alice.syncDevice({
     key,
+    description: 'mac laptop',
   });
 
-  alice_phone.syncDevice({
-    key,
+  alice_phone.on('server.connect', () => {
+    console.log('phone sync');
+    alice_phone.syncDevice({
+      key,
+      description: 'my phone',
+    });
+    jest.runOnlyPendingTimers();
   });
+
+  jest.runOnlyPendingTimers();
 });

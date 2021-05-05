@@ -30,8 +30,8 @@ export default function Mailbox(props: Props) {
     }
 
     let subscribeToConnections = async () => {
-      let intendedContact = await backchannel.getContactById(contactId);
-      let messages = await backchannel.getMessagesByContactId(contactId);
+      let intendedContact = await backchannel.db.getContactById(contactId);
+      let messages = await backchannel.db.getMessagesByContactId(contactId);
       setMessages(messages);
       console.log('subscribing to contact', intendedContact);
       backchannel.on('contact.connected', onContact);
