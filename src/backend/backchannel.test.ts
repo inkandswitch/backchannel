@@ -35,8 +35,8 @@ beforeEach((done) => {
     });
   }
 
-  devices.alice.once('open', () => {
-    devices.bob.once('open', () => {
+  devices.alice.once('server.connect', () => {
+    devices.bob.once('server.connect', () => {
       create().then(done);
       jest.useFakeTimers();
     });
@@ -99,6 +99,9 @@ test('integration send a message', (done) => {
   devices.alice.on('contact.connected', onConnect);
   jest.runOnlyPendingTimers();
 
+  expect(devices.alice.opened()).toBe(true);
+  expect(devices.bob.opened()).toBe(true);
+
   // joining the document on both sides fires the 'contact.connected' event
   devices.alice.connectToContactId(petbob_id);
   devices.bob.connectToContactId(petalice_id);
@@ -107,11 +110,14 @@ test('integration send a message', (done) => {
 
 test('presence', (done) => {
   // sending a message
+  expect(devices.alice.opened()).toBe(true);
+  expect(devices.bob.opened()).toBe(true);
   async function onConnect({ socket, contact }) {
     // only if the contact is bob!
     expect(contact.id).toBe(petbob_id);
     // ok bob will now disconnect
     await devices.bob.destroy();
+    expect(devices.bob.opened()).toBe(false);
     devices.bob = null;
   }
 

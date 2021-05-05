@@ -28,18 +28,16 @@ export class Backchannel extends events.EventEmitter {
     super();
     this._wormhole = Wormhole();
     this._db = db;
-    this._client = new Client({
-      url: relay,
-    });
-    this._setupListeners();
+    this._client = this._createClient(relay);
+
     // TODO: catch this error upstream and inform the user properly
-    //
-    this._client.once('server.connect', () => {
-      this.emit('open');
-    });
     this._db.open().catch((err) => {
       console.error(`Database open failed : ${err.stack}`);
     });
+  }
+
+  opened() {
+    return this._db.isOpen() && this._client.open;
   }
 
   /**
@@ -202,42 +200,60 @@ export class Backchannel extends events.EventEmitter {
     return message;
   }
 
-  private _setupListeners() {
-    this._client
-      .on('peer.disconnect', async ({ documentId }) => {
-        let contact = await this.getContactByDiscoveryKey(documentId);
-        this._sockets.delete(contact.id);
-        this.emit('contact.disconnected', { contact });
-      })
-      .on('peer.connect', async ({ socket, documentId }) => {
-        let contact = await this.getContactByDiscoveryKey(documentId);
-        socket.onmessage = (e) => {
-          this._receiveMessage(contact, e.data)
-            .then((message) => {
-              this.emit('message', {
-                contact,
-                message,
-              });
-            })
-            .catch((err) => {
-              console.error('error', err);
-              console.trace(err);
-            });
-        };
+  private async _onPeerDisconnect({ documentId }) {
+    let contact = await this.getContactByDiscoveryKey(documentId);
+    this._sockets.delete(contact.id);
+    this.emit('contact.disconnected', { contact });
+  }
 
-        socket.onerror = (err) => {
+  private async _onPeerConnect({ socket, documentId }) {
+    let contact = await this.getContactByDiscoveryKey(documentId);
+    socket.onmessage = (e) => {
+      this._receiveMessage(contact, e.data)
+        .then((message) => {
+          this.emit('message', {
+            contact,
+            message,
+          });
+        })
+        .catch((err) => {
           console.error('error', err);
           console.trace(err);
-        };
+        });
+    };
 
-        this._sockets.set(contact.id, socket);
-        let openContact = {
-          socket,
-          contact,
-          documentId,
-        };
-        this.emit('contact.connected', openContact);
-      });
+    socket.onerror = (err) => {
+      console.error('error', err);
+      console.trace(err);
+    };
+
+    this._sockets.set(contact.id, socket);
+    let openContact = {
+      socket,
+      contact,
+      documentId,
+    };
+    this.emit('contact.connected', openContact);
+  }
+
+  private _createClient(relay: string): Client {
+    let client = new Client({
+      url: relay,
+    });
+
+    client.once('server.connect', () => {
+      this.emit('server.connect');
+    });
+
+    client.once('server.disconnect', () => {
+      this.emit('server.disconnect');
+    });
+
+    client
+      .on('peer.disconnect', this._onPeerDisconnect.bind(this))
+      .on('peer.connect', this._onPeerConnect.bind(this));
+
+    return client;
   }
 
   private _createContactFromWormhole(
