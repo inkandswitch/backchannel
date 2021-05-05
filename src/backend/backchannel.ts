@@ -242,10 +242,12 @@ export class Backchannel extends events.EventEmitter {
     });
 
     client.once('server.connect', () => {
+      this._client.open = true;
       this.emit('server.connect');
     });
 
     client.once('server.disconnect', () => {
+      this._client.open = false;
       this.emit('server.disconnect');
     });
 
