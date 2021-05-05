@@ -1,11 +1,11 @@
 import { arrayToHex } from 'enc-utils';
 import { Client } from '@localfirst/relay-client';
-import crypto from 'crypto';
 import events from 'events';
 import catnames from 'cat-names';
 
+import * as crypto from './crypto';
 import { Database } from './db';
-import { Code, ContactId, IContact, IMessage } from './types';
+import { Key, Code, ContactId, IContact, IMessage } from './types';
 import Wormhole from './wormhole';
 import type { SecureWormhole, MagicWormhole } from './wormhole';
 
@@ -47,9 +47,7 @@ export class Backchannel extends events.EventEmitter {
    * @returns {ContactId} id - The local id number for this contact
    */
   async addContact(contact: IContact): Promise<ContactId> {
-    let hash = crypto.createHash('sha256');
-    hash.update(contact.key);
-    contact.discoveryKey = hash.digest('hex');
+    contact.discoveryKey = crypto.computeDiscoveryKey(contact.key);
     contact.moniker = contact.moniker || catnames.random();
     return this._db.contacts.add(contact);
   }
@@ -162,6 +160,11 @@ export class Backchannel extends events.EventEmitter {
 
   async listContacts(): Promise<IContact[]> {
     return await this._db.contacts.toArray();
+  }
+
+  syncDevice(key) {
+    let discoveryKey = crypto.computeDiscoveryKey(key);
+    this._client.join(discoveryKey);
   }
 
   /**

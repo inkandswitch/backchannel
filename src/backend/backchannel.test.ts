@@ -10,14 +10,17 @@ let devices = {
   bob: null,
 };
 
-beforeEach((done) => {
-  // start a backchannel on bob and alice's devices
+function createDevice(name) {
   let dbname = crypto.randomBytes(16);
   let RELAY_URL = 'ws://localhost:3001';
-  let db_a = new Database(dbname + '_a');
-  devices.alice = new Backchannel(db_a, RELAY_URL);
-  let db_b = new Database(dbname + '_b');
-  devices.bob = new Backchannel(db_b, RELAY_URL);
+  let db_a = new Database(dbname + name);
+  return new Backchannel(db_a, RELAY_URL);
+}
+
+beforeEach((done) => {
+  // start a backchannel on bob and alice's devices
+  devices.alice = createDevice('a');
+  devices.bob = createDevice('b');
 
   doc = crypto.randomBytes(32).toString('hex');
   // OK, so now I create a petname for bob on alice's device..
@@ -136,4 +139,35 @@ test('presence', (done) => {
   devices.alice.connectToContactId(petbob_id);
   devices.bob.connectToContactId(petalice_id);
   jest.runOnlyPendingTimers();
+});
+
+test('adds and syncs contacts with another device', (done) => {
+  let alice_phone = createDevice('p');
+
+  let key = crypto.randomBytes(32).toString('hex');
+
+  let called = 0;
+
+  async function onSync() {
+    called++;
+    if (called < 2) return;
+    let bob = await devices.alice.getContactById(petbob_id);
+    expect(bob.id).toBe(petbob_id);
+    let synced_bob = await alice_phone.getContactByDiscoveryKey(
+      bob.discoveryKey
+    );
+    expect(synced_bob.key).toBe(devices.bob.key);
+    expect(synced_bob.key).toBe(bob.key);
+  }
+
+  devices.alice.on('sync.finish', onSync);
+  alice_phone.on('sync.finish', onSync);
+
+  devices.alice.syncDevice({
+    key,
+  });
+
+  alice_phone.syncDevice({
+    key,
+  });
 });
