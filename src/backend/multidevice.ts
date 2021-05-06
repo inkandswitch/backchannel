@@ -1,7 +1,8 @@
 import { Key, DiscoveryKey } from './types';
+import chacha from 'chacha-stream';
 import { Database } from './db';
 import * as crypto from './crypto';
-import Automerge from 'automerge';
+import pump from 'pump';
 
 export default class Multidevice {
   private _devices = new Map<DiscoveryKey, Key>();
@@ -14,9 +15,16 @@ export default class Multidevice {
   sync(socket: WebSocket, discoveryKey: DiscoveryKey) {
     return new Promise<void>((resolve, reject) => {
       let key: Key = this.getDevice(discoveryKey);
+      let stream = this._db.createSyncStream();
+      var encoder = chacha.encoder(key);
+      var decoder = chacha.decoder(key);
 
       console.log('syncing');
-      resolve();
+      pump(stream, encoder, socket, decoder, stream, (err) => {
+        if (err) return reject(err);
+        console.log('complete!');
+        resolve();
+      });
     });
   }
 

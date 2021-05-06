@@ -2,6 +2,7 @@ import { ContactId, IContact, IMessage } from './types';
 import Dexie from 'dexie';
 import Automerge from 'automerge';
 import { EventEmitter } from 'events';
+import { SyncStream } from './sync-stream';
 
 type ActorId = string;
 
@@ -10,7 +11,7 @@ interface Actor {
   automerge_doc: Automerge.BinaryDocument;
 }
 
-interface AutomergeDatabase {
+export interface AutomergeDatabase {
   contacts: Automerge.Table<IContact>;
   messages: Automerge.Table<IMessage>;
 }
@@ -145,5 +146,9 @@ export class Database extends EventEmitter {
     }
     this._doc = null;
     this.opened = false;
+  }
+
+  createSyncStream() {
+    return new SyncStream(this._doc);
   }
 }
