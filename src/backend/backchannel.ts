@@ -25,7 +25,7 @@ export class Backchannel extends events.EventEmitter {
   private _wormhole: MagicWormhole;
   private _client: Client;
   private _multidevice: Multidevice;
-  private _sockets = new Map<number, WebSocket>();
+  private _sockets = new Map<ContactId, WebSocket>();
   private _open = true || false;
 
   /**
@@ -54,7 +54,9 @@ export class Backchannel extends events.EventEmitter {
    * @returns {ContactId} id - The local id number for this contact
    */
   async addContact(contact: IContact): Promise<ContactId> {
-    contact.discoveryKey = crypto.computeDiscoveryKey(contact.key);
+    contact.discoveryKey = crypto.computeDiscoveryKey(
+      Buffer.from(contact.key, 'hex')
+    );
     contact.moniker = contact.moniker || catnames.random();
     return this.db.addContact(contact);
   }

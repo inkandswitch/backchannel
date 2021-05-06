@@ -1,4 +1,4 @@
-import { ContactId, IContact, IMessage } from './types';
+import { Key, ContactId, IContact, IMessage } from './types';
 import Dexie from 'dexie';
 import Automerge from 'automerge';
 import { EventEmitter } from 'events';

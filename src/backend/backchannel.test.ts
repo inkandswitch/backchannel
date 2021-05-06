@@ -115,6 +115,7 @@ test('presence', (done) => {
   // sending a message
   expect(devices.alice.opened()).toBe(true);
   expect(devices.bob.opened()).toBe(true);
+  jest.runOnlyPendingTimers();
   async function onConnect({ socket, contact }) {
     // only if the contact is bob!
     expect(contact.id).toBe(petbob_id);

@@ -34,7 +34,7 @@ export const symmetric = {
   },
 };
 
-export function computeDiscoveryKey(key: Key): DiscoveryKey {
+export function computeDiscoveryKey(key: Buffer): DiscoveryKey {
   let hash = crypto.createHash('sha256');
   hash.update(key);
   return hash.digest('hex');

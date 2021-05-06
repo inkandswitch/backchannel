@@ -5,7 +5,7 @@ import * as crypto from './crypto';
 import pump from 'pump';
 
 export default class Multidevice {
-  private _devices = new Map<DiscoveryKey, Key>();
+  private _devices = new Map<DiscoveryKey, Buffer>();
   private _db: Database;
 
   constructor(db) {
@@ -14,7 +14,7 @@ export default class Multidevice {
 
   sync(socket: WebSocket, discoveryKey: DiscoveryKey) {
     return new Promise<void>((resolve, reject) => {
-      let key: Key = this.getDevice(discoveryKey);
+      let key: Buffer = this.getDevice(discoveryKey);
       let stream = this._db.createSyncStream();
       var encoder = chacha.encoder(key);
       var decoder = chacha.decoder(key);
@@ -28,7 +28,7 @@ export default class Multidevice {
     });
   }
 
-  add(key: Key): DiscoveryKey {
+  add(key: Buffer): DiscoveryKey {
     let discoveryKey = crypto.computeDiscoveryKey(key);
     this._devices.set(discoveryKey, key);
     return discoveryKey;
@@ -38,7 +38,7 @@ export default class Multidevice {
     return this._devices.has(discoveryKey);
   }
 
-  getDevice(discoveryKey): Key {
+  getDevice(discoveryKey): Buffer {
     return this._devices.get(discoveryKey);
   }
 }

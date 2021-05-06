@@ -10,7 +10,6 @@ export class SyncStream extends Duplex {
   private incoming: Uint8Array;
 
   constructor(doc: Automerge.Doc<AutomergeDatabase>, options?) {
-    options.encoding = 'uint8array';
     super(options);
     this.syncState = Automerge.Backend.initSyncState();
     this.doc = doc;
@@ -55,14 +54,16 @@ export class SyncStream extends Duplex {
       this.syncState
     );
     this.syncState = syncState;
+    console.log('generated sync message', syncMsg);
     return syncMsg;
   }
 
-  _receive(msg: Automerge.BinarySyncMessage): Automerge.BinarySyncMessage {
+  _receive(syncMsg: Automerge.BinarySyncMessage): Automerge.BinarySyncMessage {
+    console.log('got sync message', syncMsg);
     let [newDoc, syncState, patch] = Automerge.receiveSyncMessage(
       this.doc,
       this.syncState,
-      msg
+      syncMsg
     );
     this.doc = newDoc;
     this.syncState = syncState;
