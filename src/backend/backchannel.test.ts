@@ -142,21 +142,21 @@ test('presence', (done) => {
   jest.runOnlyPendingTimers();
 });
 
-test('adds and syncs contacts with another device', (done) => {
+test.only('adds and syncs contacts with another device', (done) => {
   let alice_phone = createDevice('p');
 
-  let key = crypto.randomBytes(32).toString('hex');
+  let key = crypto.randomBytes(32);
 
   let called = 0;
 
   async function onSync() {
     called++;
+    console.log('called', called);
     if (called < 2) return;
-    let bob = await devices.alice.db.getContactById(petbob_id);
+    console.log('bob');
+    let bob = devices.alice.db.getContactById(petbob_id);
     expect(bob.id).toBe(petbob_id);
-    let synced_bob = await alice_phone.db.getContactByDiscoveryKey(
-      bob.discoveryKey
-    );
+    let synced_bob = alice_phone.db.getContactByDiscoveryKey(bob.discoveryKey);
     expect(synced_bob.key).toBe(devices.bob.key);
     expect(synced_bob.key).toBe(bob.key);
     done();
@@ -166,19 +166,12 @@ test('adds and syncs contacts with another device', (done) => {
   alice_phone.on('sync.finish', onSync);
   jest.runOnlyPendingTimers();
 
-  devices.alice.syncDevice({
-    key,
-    description: 'mac laptop',
-  });
+  devices.alice.syncDevice(key, 'mac laptop');
 
   alice_phone.on('server.connect', () => {
     console.log('phone sync');
-    alice_phone.syncDevice({
-      key,
-      description: 'my phone',
-    });
+    alice_phone.syncDevice(key, 'my phone');
     jest.runOnlyPendingTimers();
   });
-
   jest.runOnlyPendingTimers();
 });

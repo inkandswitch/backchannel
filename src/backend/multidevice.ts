@@ -1,31 +1,74 @@
-import { Key, DiscoveryKey } from './types';
+import { DiscoveryKey } from './types';
 import chacha from 'chacha-stream';
 import { Database } from './db';
 import * as crypto from './crypto';
-import pump from 'pump';
+import { pipeline } from 'stream';
+import Automerge from 'automerge';
+
+enum MUTLIDEVICE_EVENT {
+  SYNC = 1,
+  DONE = 2,
+}
 
 export default class Multidevice {
   private _devices = new Map<DiscoveryKey, Buffer>();
   private _db: Database;
+  private syncState: Automerge.SyncState;
 
   constructor(db) {
     this._db = db;
+    this.syncState = Automerge.initSyncState();
   }
 
-  sync(socket: WebSocket, discoveryKey: DiscoveryKey) {
+  async sync(
+    socket: WebSocket,
+    discoveryKey: DiscoveryKey,
+    options?
+  ): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      let key: Buffer = this.getDevice(discoveryKey);
-      let stream = this._db.createSyncStream();
-      var encoder = chacha.encoder(key);
-      var decoder = chacha.decoder(key);
+      this._sendSyncMsg(socket);
+      let done = false;
+      socket.onmessage = (e) => {
+        let decoded = JSON.parse(e.data);
 
-      console.log('syncing');
-      pump(stream, encoder, socket, decoder, stream, (err) => {
-        if (err) return reject(err);
-        console.log('complete!');
-        resolve();
-      });
+        switch (decoded.event) {
+          case MUTLIDEVICE_EVENT.DONE:
+            if (done) return resolve();
+
+            if (!this._sendSyncMsg(socket)) {
+              done = true;
+              resolve();
+            }
+            return;
+          case MUTLIDEVICE_EVENT.SYNC:
+            let msg = Uint8Array.from(decoded.msg);
+            let state = this._db.receive(this.syncState, msg);
+            this.syncState = state;
+            this._sendSyncMsg(socket);
+            return;
+        }
+      };
     });
+  }
+
+  _sendSyncMsg(socket: WebSocket) {
+    let [syncState, msg] = this._db.generate(this.syncState);
+    this.syncState = syncState;
+    if (msg == null) {
+      let j = JSON.stringify({
+        event: MUTLIDEVICE_EVENT.DONE,
+      });
+      console.log('got msg null, closing', j);
+      socket.send(j);
+      return false;
+    }
+    let sendable: string = JSON.stringify({
+      event: MUTLIDEVICE_EVENT.SYNC,
+      msg: Array.from(msg),
+    });
+    console.log('sending', sendable);
+    socket.send(sendable);
+    return true;
   }
 
   add(key: Buffer): DiscoveryKey {

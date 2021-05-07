@@ -2,7 +2,8 @@ import { Key, ContactId, IContact, IMessage } from './types';
 import Dexie from 'dexie';
 import Automerge from 'automerge';
 import { EventEmitter } from 'events';
-import { SyncStream } from './sync-stream';
+import { Duplex } from 'stream';
+import varint from 'varint';
 
 type ActorId = string;
 
@@ -148,7 +149,18 @@ export class Database extends EventEmitter {
     this.opened = false;
   }
 
-  createSyncStream() {
-    return new SyncStream(this._doc);
+  generate(syncState) {
+    return Automerge.generateSyncMessage(this._doc, syncState);
+  }
+
+  receive(syncState, syncMsg) {
+    let [newDoc, s2, patch] = Automerge.receiveSyncMessage(
+      this._doc,
+      syncState,
+      syncMsg
+    );
+    this._doc = newDoc;
+    this.save();
+    return s2;
   }
 }

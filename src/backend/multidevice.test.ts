@@ -2,6 +2,7 @@ import Multidevice from './multidevice';
 import { Database } from './db';
 import crypto from 'crypto';
 import through from 'through2';
+import { WebSocket, Server } from 'mock-socket';
 
 let a, b;
 let dbname;
@@ -32,8 +33,13 @@ test('basic', async () => {
 
   expect(disco_b).toBe(disco_a);
 
-  let socket = through();
+  const fakeURL = 'ws://localhost:3000';
+  const mockServer = new Server(fakeURL);
+  mockServer.on('connection', (socket) => {
+    console.log('got connection');
+    m_a.sync(socket, disco_a, { name: 'a' });
+  });
 
-  await m_a.sync(socket, disco_a);
-  await m_b.sync(socket, disco_b);
+  let socket = new WebSocket(fakeURL);
+  await m_b.sync(socket, disco_b, { name: 'b' });
 });
