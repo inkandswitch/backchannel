@@ -2,7 +2,7 @@ import { DiscoveryKey } from './types';
 import { Database } from './db';
 import * as crypto from './crypto';
 import Automerge from 'automerge';
-import msgpack from 'msgpack-lite';
+import debug from 'debug';
 
 enum MUTLIDEVICE_EVENT {
   DONE = '0',
@@ -12,10 +12,11 @@ export default class Multidevice {
   private _devices = new Map<DiscoveryKey, Buffer>();
   private _db: Database;
   private syncState: Automerge.SyncState;
+  private log: debug;
 
   constructor(db) {
     this._db = db;
-    this.syncState = Automerge.Backend.initSyncState();
+    this.log = debug('bc:multidevice');
   }
 
   async sync(
@@ -23,9 +24,11 @@ export default class Multidevice {
     discoveryKey: DiscoveryKey,
     options?
   ): Promise<string> {
+    this.syncState = Automerge.Backend.initSyncState();
     return new Promise<string>((resolve, reject) => {
       let done = false;
       this._sendSyncMsg(socket);
+
       socket.onerror = (err) => {
         console.error(err);
         reject(err);
@@ -38,16 +41,16 @@ export default class Multidevice {
 
         switch (msg) {
           case MUTLIDEVICE_EVENT.DONE:
+            this.log('got done', done);
+            let conflicts = Automerge.getConflicts(this._db._doc, 'contacts');
+            this.log('got conflicts', conflicts);
             if (done) return this._db.save().then(resolve).catch(reject);
-            if (this._sendSyncMsg(socket)) {
-              done = true;
-            }
+            done = this._sendSyncMsg(socket);
             break;
           default:
+            this.log('got sync message');
             this.syncState = this._db.receive(this.syncState, decoded);
-            if (this._sendSyncMsg(socket)) {
-              done = true;
-            }
+            done = this._sendSyncMsg(socket);
             break;
         }
       };
@@ -61,9 +64,11 @@ export default class Multidevice {
     );
     this.syncState = syncState;
     if (msg === null) {
+      this.log('sending done');
       socket.send(MUTLIDEVICE_EVENT.DONE);
       return true;
     } else {
+      this.log('sending', msg);
       socket.send(msg);
       return false;
     }

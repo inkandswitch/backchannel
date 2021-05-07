@@ -150,7 +150,8 @@ test('adds and syncs contacts with another device', (done) => {
 
   let called = 0;
 
-  async function onSync() {
+  async function onSync(err) {
+    if (err) console.error(err);
     jest.runOnlyPendingTimers();
     called++;
     if (called < 2) return;

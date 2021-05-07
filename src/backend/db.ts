@@ -2,8 +2,7 @@ import { Key, ContactId, IContact, IMessage } from './types';
 import Dexie from 'dexie';
 import Automerge from 'automerge';
 import { EventEmitter } from 'events';
-import { Duplex } from 'stream';
-import varint from 'varint';
+import debug from 'debug';
 
 type ActorId = string;
 
@@ -33,6 +32,7 @@ export class Database extends EventEmitter {
   _doc: Automerge.Doc<AutomergeDatabase>;
   _idb: IndexedDatabase;
   opened: boolean;
+  log: debug;
 
   constructor(dbname) {
     super();
@@ -41,6 +41,7 @@ export class Database extends EventEmitter {
       this.opened = true;
       this.emit('open');
     });
+    this.log = debug('bc:db');
   }
 
   async save() {
@@ -57,16 +58,18 @@ export class Database extends EventEmitter {
     if (actor) {
       // LOAD EXISTING DOCUMENT
       this._doc = Automerge.load(actor.automerge_doc, actor.id);
-      console.log('loading existing doc', actor.id);
+      this.log('loading existing doc', actor.id);
     } else {
       // NEW DOCUMENT!
       this._doc = Automerge.init();
       let actor_id = Automerge.getActorId(this._doc);
-      console.log('new doc', actor_id);
+      this.log('new doc', actor_id);
+
       this._idb.actors.add({
         id: actor_id,
         automerge_doc: Automerge.save(this._doc),
       });
+
       this._doc = Automerge.change(this._doc, (doc: AutomergeDatabase) => {
         doc.contacts = new Automerge.Table();
         doc.messages = new Automerge.Table();

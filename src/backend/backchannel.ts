@@ -2,6 +2,7 @@ import { arrayToHex } from 'enc-utils';
 import { Client } from '@localfirst/relay-client';
 import events from 'events';
 import catnames from 'cat-names';
+import debug from 'debug';
 
 import Multidevice from './multidevice';
 import * as crypto from './crypto';
@@ -27,6 +28,7 @@ export class Backchannel extends events.EventEmitter {
   private _multidevice: Multidevice;
   private _sockets = new Map<ContactId, WebSocket>();
   private _open = true || false;
+  private log = debug;
 
   /**
    * Create a new backchannel client. Each instance represents a user opening
@@ -41,6 +43,7 @@ export class Backchannel extends events.EventEmitter {
     this._client = this._createClient(relay);
     this._multidevice = new Multidevice(db);
     this._open = false;
+    this.log = debug('bc:backchannel');
   }
 
   opened() {
@@ -130,7 +133,7 @@ export class Backchannel extends events.EventEmitter {
 
   syncDevice(key: Buffer, description: string) {
     let discoveryKey = this._multidevice.add(key);
-    console.log('joining', discoveryKey);
+    this.log('joining', discoveryKey);
     this._client.join(discoveryKey);
   }
 
@@ -183,13 +186,13 @@ export class Backchannel extends events.EventEmitter {
   private async _onPeerConnect(socket: WebSocket, documentId: DiscoveryKey) {
     if (this._multidevice.has(documentId)) {
       try {
-        console.log('multidevice start', documentId);
+        this.log('multidevice start', documentId);
         await this._multidevice.sync(socket, documentId);
         this.emit('sync.finish');
         this._client.leave(documentId);
         socket.close();
       } catch (err) {
-        this.emit('sync.error', err);
+        this.emit('sync.finish', err);
       }
       return;
     }
