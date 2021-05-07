@@ -24,18 +24,17 @@ export default class Multidevice {
     options?
   ): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      let done = this._sendSyncMsg(socket);
+      let done = false;
+      this._sendSyncMsg(socket);
       socket.onerror = (err) => {
         console.error(err);
         reject(err);
-      };
-      socket.onclose = () => {
-        resolve();
       };
       socket.onmessage = (e) => {
         let msg = e.data;
         console.log('got', msg);
         let decoded = new Uint8Array(msg.split(',').map((s) => parseInt(s)));
+        console.log('decoded', decoded);
 
         switch (msg) {
           case MUTLIDEVICE_EVENT.DONE:
@@ -60,6 +59,7 @@ export default class Multidevice {
     );
     this.syncState = syncState;
     if (msg === null) {
+      console.log('done');
       socket.send(MUTLIDEVICE_EVENT.DONE);
       return true;
     } else {
