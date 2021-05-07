@@ -122,9 +122,8 @@ test('presence', (done) => {
     // only if the contact is bob!
     expect(contact.id).toBe(petbob_id);
     // ok bob will now disconnect
-    await devices.bob.destroy();
-    expect(devices.bob.opened()).toBe(false);
-    devices.bob = null;
+    jest.runOnlyPendingTimers();
+    socket.close();
   }
 
   async function onDisconnect({ contact, documentId }) {
@@ -144,7 +143,7 @@ test('presence', (done) => {
   jest.runOnlyPendingTimers();
 });
 
-test.only('adds and syncs contacts with another device', (done) => {
+test('adds and syncs contacts with another device', (done) => {
   devices.alice_phone = createDevice('p');
 
   let key = crypto.randomBytes(32);
@@ -158,11 +157,10 @@ test.only('adds and syncs contacts with another device', (done) => {
 
     let bob = devices.alice.db.getContactById(petbob_id);
     expect(bob.id).toBe(petbob_id);
-    let synced_bob = devices.alice_phone.db.getContactByDiscoveryKey(
-      bob.discoveryKey
-    );
+    let synced_bob = devices.alice_phone.db.getContactById(bob.id);
 
     expect(synced_bob.key).toBe(bob.key);
+    done();
   }
 
   devices.alice.once('sync.finish', onSync);

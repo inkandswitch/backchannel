@@ -22,30 +22,32 @@ export default class Multidevice {
     socket: WebSocket,
     discoveryKey: DiscoveryKey,
     options?
-  ): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
+  ): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
       let done = false;
       this._sendSyncMsg(socket);
       socket.onerror = (err) => {
         console.error(err);
         reject(err);
       };
+
+      socket.binaryType = 'arraybuffer';
       socket.onmessage = (e) => {
         let msg = e.data;
-        console.log('got', msg);
-        let decoded = new Uint8Array(msg.split(',').map((s) => parseInt(s)));
-        console.log('decoded', decoded);
+        let decoded = new Uint8Array(msg);
 
         switch (msg) {
           case MUTLIDEVICE_EVENT.DONE:
-            console.log('done', done);
-            if (done) return resolve();
-            done = this._sendSyncMsg(socket);
+            if (done) return this._db.save().then(resolve).catch(reject);
+            if (this._sendSyncMsg(socket)) {
+              done = true;
+            }
             break;
           default:
             this.syncState = this._db.receive(this.syncState, decoded);
-            done = this._sendSyncMsg(socket);
-            this._db.save();
+            if (this._sendSyncMsg(socket)) {
+              done = true;
+            }
             break;
         }
       };
@@ -59,12 +61,10 @@ export default class Multidevice {
     );
     this.syncState = syncState;
     if (msg === null) {
-      console.log('done');
       socket.send(MUTLIDEVICE_EVENT.DONE);
       return true;
     } else {
-      console.log('sending', msg);
-      socket.send(msg.toString());
+      socket.send(msg);
       return false;
     }
   }

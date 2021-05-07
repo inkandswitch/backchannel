@@ -172,9 +172,12 @@ export class Backchannel extends events.EventEmitter {
   }
 
   private async _onPeerDisconnect(documentId: DiscoveryKey) {
-    let contact = await this.db.getContactByDiscoveryKey(documentId);
-    this._sockets.delete(contact.id);
-    this.emit('contact.disconnected', { contact });
+    if (this._multidevice.has(documentId)) {
+    } else {
+      let contact = await this.db.getContactByDiscoveryKey(documentId);
+      this._sockets.delete(contact.id);
+      this.emit('contact.disconnected', { contact });
+    }
   }
 
   private async _onPeerConnect(socket: WebSocket, documentId: DiscoveryKey) {
@@ -183,6 +186,8 @@ export class Backchannel extends events.EventEmitter {
         console.log('multidevice start', documentId);
         await this._multidevice.sync(socket, documentId);
         this.emit('sync.finish');
+        this._client.leave(documentId);
+        socket.close();
       } catch (err) {
         this.emit('sync.error', err);
       }
