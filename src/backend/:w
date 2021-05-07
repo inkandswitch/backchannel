@@ -75,7 +75,7 @@ export class Backchannel extends events.EventEmitter {
     };
     let socket: WebSocket = this._getSocketByContactId(contactId);
     let mid = await this.db.addMessage(msg);
-    let contact = this.db.getContactById(contactId);
+    let contact = await this.db.getContactById(contactId);
     msg.id = mid;
     let sendable: string = IMessage.encode(msg, contact.key);
     try {
@@ -128,9 +128,8 @@ export class Backchannel extends events.EventEmitter {
     return this._createContactFromWormhole(connection);
   }
 
-  syncDevice(key: Buffer, description: string) {
+  syncDevice({ key, description }) {
     let discoveryKey = this._multidevice.add(key);
-    console.log('joining', discoveryKey);
     this._client.join(discoveryKey);
   }
 
@@ -179,10 +178,11 @@ export class Backchannel extends events.EventEmitter {
 
   private async _onPeerConnect(socket: WebSocket, documentId: DiscoveryKey) {
     if (this._multidevice.has(documentId)) {
-      try {
-        console.log('multidevice start', documentId);
-        await this._multidevice.sync(socket, documentId);
-        this.emit('sync.finish');
+      try { 
+        console.log('multidevice start', documentId)
+        await this._multidevice.sync(socket, documentId, () => {
+          this.emit('sync.finish');
+        })
       } catch (err) {
         this.emit('sync.error', err);
       }

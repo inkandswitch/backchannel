@@ -1,13 +1,11 @@
 import { DiscoveryKey } from './types';
-import chacha from 'chacha-stream';
 import { Database } from './db';
 import * as crypto from './crypto';
-import { pipeline } from 'stream';
 import Automerge from 'automerge';
+import msgpack from 'msgpack-lite';
 
 enum MUTLIDEVICE_EVENT {
-  SYNC = 1,
-  DONE = 2,
+  DONE = '0',
 }
 
 export default class Multidevice {
@@ -17,7 +15,7 @@ export default class Multidevice {
 
   constructor(db) {
     this._db = db;
-    this.syncState = Automerge.initSyncState();
+    this.syncState = Automerge.Backend.initSyncState();
   }
 
   async sync(
@@ -26,49 +24,49 @@ export default class Multidevice {
     options?
   ): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      this._sendSyncMsg(socket);
-      let done = false;
+      let done = this._sendSyncMsg(socket);
+      socket.onerror = (err) => {
+        console.error(err);
+        reject(err);
+      };
+      socket.onclose = () => {
+        resolve();
+      };
       socket.onmessage = (e) => {
-        let decoded = JSON.parse(e.data);
+        let msg = e.data;
+        console.log('got', msg);
+        let decoded = new Uint8Array(msg.split(',').map((s) => parseInt(s)));
 
-        switch (decoded.event) {
+        switch (msg) {
           case MUTLIDEVICE_EVENT.DONE:
+            console.log('done', done);
             if (done) return resolve();
-
-            if (!this._sendSyncMsg(socket)) {
-              done = true;
-              resolve();
-            }
-            return;
-          case MUTLIDEVICE_EVENT.SYNC:
-            let msg = Uint8Array.from(decoded.msg);
-            let state = this._db.receive(this.syncState, msg);
-            this.syncState = state;
-            this._sendSyncMsg(socket);
-            return;
+            done = this._sendSyncMsg(socket);
+            break;
+          default:
+            this.syncState = this._db.receive(this.syncState, decoded);
+            done = this._sendSyncMsg(socket);
+            this._db.save();
+            break;
         }
       };
     });
   }
 
   _sendSyncMsg(socket: WebSocket) {
-    let [syncState, msg] = this._db.generate(this.syncState);
+    let [syncState, msg] = Automerge.generateSyncMessage(
+      this._db._doc,
+      this.syncState
+    );
     this.syncState = syncState;
-    if (msg == null) {
-      let j = JSON.stringify({
-        event: MUTLIDEVICE_EVENT.DONE,
-      });
-      console.log('got msg null, closing', j);
-      socket.send(j);
+    if (msg === null) {
+      socket.send(MUTLIDEVICE_EVENT.DONE);
+      return true;
+    } else {
+      console.log('sending', msg);
+      socket.send(msg.toString());
       return false;
     }
-    let sendable: string = JSON.stringify({
-      event: MUTLIDEVICE_EVENT.SYNC,
-      msg: Array.from(msg),
-    });
-    console.log('sending', sendable);
-    socket.send(sendable);
-    return true;
   }
 
   add(key: Buffer): DiscoveryKey {

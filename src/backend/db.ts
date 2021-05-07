@@ -57,10 +57,12 @@ export class Database extends EventEmitter {
     if (actor) {
       // LOAD EXISTING DOCUMENT
       this._doc = Automerge.load(actor.automerge_doc, actor.id);
+      console.log('loading existing doc', actor.id);
     } else {
       // NEW DOCUMENT!
       this._doc = Automerge.init();
       let actor_id = Automerge.getActorId(this._doc);
+      console.log('new doc', actor_id);
       this._idb.actors.add({
         id: actor_id,
         automerge_doc: Automerge.save(this._doc),
@@ -149,18 +151,13 @@ export class Database extends EventEmitter {
     this.opened = false;
   }
 
-  generate(syncState) {
-    return Automerge.generateSyncMessage(this._doc, syncState);
-  }
-
   receive(syncState, syncMsg) {
-    let [newDoc, s2, patch] = Automerge.receiveSyncMessage(
+    let [newDoc, s2] = Automerge.receiveSyncMessage(
       this._doc,
       syncState,
       syncMsg
     );
     this._doc = newDoc;
-    this.save();
     return s2;
   }
 }
