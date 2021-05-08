@@ -4,7 +4,6 @@ import events from 'events';
 import catnames from 'cat-names';
 import debug from 'debug';
 
-import Multidevice from './multidevice';
 import * as crypto from './crypto';
 import { Database } from './db';
 import {
@@ -25,7 +24,6 @@ export class Backchannel extends events.EventEmitter {
   public db: Database;
   private _wormhole: MagicWormhole;
   private _client: Client;
-  private _multidevice: Multidevice;
   private _sockets = new Map<ContactId, WebSocket>();
   private _open = true || false;
   private log = debug;
@@ -40,10 +38,25 @@ export class Backchannel extends events.EventEmitter {
     super();
     this._wormhole = Wormhole();
     this.db = db;
+    this.db.on('patch', (patch) => {
+      this.emit('patch', patch);
+      this.log('patch', patch);
+    });
     this._client = this._createClient(relay);
-    this._multidevice = new Multidevice(db);
-    this._open = false;
+    let pending = 2;
+    this._client.once('server.connect', () => {
+      if (!--pending) this._emitOpen();
+    });
+    this.db.once('open', () => {
+      if (!--pending) this._emitOpen();
+    });
+
     this.log = debug('bc:backchannel');
+  }
+
+  _emitOpen() {
+    this._open = true;
+    this.emit('open');
   }
 
   opened() {
@@ -64,29 +77,25 @@ export class Backchannel extends events.EventEmitter {
     return this.db.addContact(contact);
   }
 
+  async addDevice(contact: IContact): Promise<ContactId> {
+    contact.mine = 1;
+    return this.addContact(contact);
+  }
+
   /**
    * Send a message to a contact. Assumes that you've already
    * connected with the contact from listening to the `contact.connected` event
    * @param {WebSocket} socket: the open socket for the contact
    */
-  async sendMessage(contactId: ContactId, text: string): Promise<IMessage> {
+  sendMessage(contactId: ContactId, text: string): IMessage {
     let msg: IMessage = {
       text: text,
       contact: contactId,
       timestamp: Date.now().toString(),
       incoming: false,
     };
-    let socket: WebSocket = this._getSocketByContactId(contactId);
-    let mid = await this.db.addMessage(msg);
-    let contact = this.db.getContactById(contactId);
-    msg.id = mid;
-    let sendable: string = IMessage.encode(msg, contact.key);
-    try {
-      socket.send(sendable);
-    } catch (err) {
-      throw new Error('Unable to send message to ' + contact.moniker);
-    }
-    return msg;
+    this.log('sending message', msg);
+    return this.db.addMessage(msg);
   }
 
   /**
@@ -120,21 +129,17 @@ export class Backchannel extends events.EventEmitter {
   }
 
   // sender/initiator
-  async announce(code: Code): Promise<ContactId> {
+  async announce(code: Code, mine?: boolean): Promise<ContactId> {
     let connection = await this._wormhole.announce(code);
-    return this._createContactFromWormhole(connection);
+    return this._createContactFromWormhole(connection, mine);
   }
 
   // redeemer/receiver
-  async accept(code: Code): Promise<ContactId> {
+  // TODO: rename these functions and dont use flags
+  // so it is more clear what's happening...
+  async accept(code: Code, mine?: boolean): Promise<ContactId> {
     let connection = await this._wormhole.accept(code);
-    return this._createContactFromWormhole(connection);
-  }
-
-  syncDevice(key: Buffer, description: string) {
-    let discoveryKey = this._multidevice.add(key);
-    this.log('joining', discoveryKey);
-    this._client.join(discoveryKey);
+    return this._createContactFromWormhole(connection, mine);
   }
 
   /**
@@ -163,53 +168,22 @@ export class Backchannel extends events.EventEmitter {
     return this._sockets.get(cid);
   }
 
-  private async _receiveMessage(
-    contact: IContact,
-    msg: string
-  ): Promise<IMessage> {
-    let message: IMessage = IMessage.decode(msg, contact.key);
-    message.contact = contact.id;
-    let id = await this.db.addMessage(message);
-    message.id = id;
-    return message;
-  }
-
-  private async _onPeerDisconnect(documentId: DiscoveryKey) {
-    if (this._multidevice.has(documentId)) {
-    } else {
-      let contact = await this.db.getContactByDiscoveryKey(documentId);
-      this._sockets.delete(contact.id);
-      this.emit('contact.disconnected', { contact });
-    }
+  private async _onPeerDisconnect(discoveryKey: DiscoveryKey) {
+    let contact = await this.db.getContactByDiscoveryKey(discoveryKey);
+    this._sockets.delete(contact.id);
+    this.emit('contact.disconnected', { contact });
+    this.db.disconnected(contact);
   }
 
   private async _onPeerConnect(socket: WebSocket, documentId: DiscoveryKey) {
-    if (this._multidevice.has(documentId)) {
-      try {
-        this.log('multidevice start', documentId);
-        await this._multidevice.sync(socket, documentId);
-        this.emit('sync.finish');
-        this._client.leave(documentId);
-        socket.close();
-      } catch (err) {
-        this.emit('sync.finish', err);
-      }
-      return;
-    }
     let contact = await this.db.getContactByDiscoveryKey(documentId);
-    socket.onmessage = (e) => {
-      this._receiveMessage(contact, e.data)
-        .then((message) => {
-          this.emit('message', {
-            contact,
-            message,
-          });
-        })
-        .catch((err) => {
-          console.error('error', err);
-          console.trace(err);
-        });
-    };
+
+    try {
+      this.db.connected(contact, socket);
+    } catch (err) {
+      this.log('contact.error', err);
+      this.emit('contact.error', err);
+    }
 
     socket.onerror = (err) => {
       console.error('error', err);
@@ -222,6 +196,7 @@ export class Backchannel extends events.EventEmitter {
       contact,
       documentId,
     };
+    this.log('got contact', openContact.contact, documentId);
     this.emit('contact.connected', openContact);
   }
 
@@ -230,13 +205,7 @@ export class Backchannel extends events.EventEmitter {
       url: relay,
     });
 
-    client.once('server.connect', () => {
-      this._open = true;
-      this.emit('server.connect');
-    });
-
     client.once('server.disconnect', () => {
-      this._open = false;
       this.emit('server.disconnect');
     });
 
@@ -252,10 +221,12 @@ export class Backchannel extends events.EventEmitter {
   }
 
   private _createContactFromWormhole(
-    connection: SecureWormhole
+    connection: SecureWormhole,
+    mine
   ): Promise<ContactId> {
     let metadata = {
       key: arrayToHex(connection.key),
+      mine,
     };
 
     return this.addContact(metadata);

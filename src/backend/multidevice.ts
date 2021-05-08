@@ -1,6 +1,3 @@
-import { DiscoveryKey } from './types';
-import { Database } from './db';
-import * as crypto from './crypto';
 import Automerge from 'automerge';
 import debug from 'debug';
 
@@ -8,29 +5,33 @@ enum MUTLIDEVICE_EVENT {
   DONE = '0',
 }
 
-export default class Multidevice {
-  private _devices = new Map<DiscoveryKey, Buffer>();
-  private _db: Database;
+export default class AutomergeWebsocketSync<T> {
+  private _doc: Automerge.Doc<T>;
   private syncState: Automerge.SyncState;
   private log: debug;
+  private socket: WebSocket;
 
-  constructor(db) {
-    this._db = db;
+  constructor(doc: Automerge.Doc<T>, socket: WebSocket) {
+    this._doc = doc;
     this.log = debug('bc:multidevice');
+    this.socket = socket;
   }
 
-  async sync(
-    socket: WebSocket,
-    discoveryKey: DiscoveryKey,
-    options?
-  ): Promise<string> {
+  async sync(key: Buffer, options?): Promise<Automerge.Patch[]> {
+    let socket = this.socket;
+    let patches = [];
     this.syncState = Automerge.Backend.initSyncState();
-    return new Promise<string>((resolve, reject) => {
+    return new Promise<Automerge.Patch[]>((resolve, reject) => {
       let done = false;
       this._sendSyncMsg(socket);
 
+      socket.onclose = () => {
+        this.socket = null;
+        this.log('socket closed');
+      };
+
       socket.onerror = (err) => {
-        console.error(err);
+        this.log('socket error', err);
         reject(err);
       };
 
@@ -41,15 +42,13 @@ export default class Multidevice {
 
         switch (msg) {
           case MUTLIDEVICE_EVENT.DONE:
-            this.log('got done', done);
-            let conflicts = Automerge.getConflicts(this._db._doc, 'contacts');
-            this.log('got conflicts', conflicts);
-            if (done) return this._db.save().then(resolve).catch(reject);
+            if (done) return resolve(patches);
             done = this._sendSyncMsg(socket);
             break;
           default:
             this.log('got sync message');
-            this.syncState = this._db.receive(this.syncState, decoded);
+            let patch = this._receive(this.syncState, decoded);
+            patches.push(patch);
             done = this._sendSyncMsg(socket);
             break;
         }
@@ -59,7 +58,7 @@ export default class Multidevice {
 
   _sendSyncMsg(socket: WebSocket) {
     let [syncState, msg] = Automerge.generateSyncMessage(
-      this._db._doc,
+      this._doc,
       this.syncState
     );
     this.syncState = syncState;
@@ -74,17 +73,14 @@ export default class Multidevice {
     }
   }
 
-  add(key: Buffer): DiscoveryKey {
-    let discoveryKey = crypto.computeDiscoveryKey(key);
-    this._devices.set(discoveryKey, key);
-    return discoveryKey;
-  }
-
-  has(discoveryKey: DiscoveryKey): boolean {
-    return this._devices.has(discoveryKey);
-  }
-
-  getDevice(discoveryKey): Buffer {
-    return this._devices.get(discoveryKey);
+  _receive(syncState, syncMsg): Automerge.Patch {
+    let [newDoc, s2, patch] = Automerge.receiveSyncMessage(
+      this._doc,
+      syncState,
+      syncMsg
+    );
+    this._doc = newDoc;
+    this.syncState = s2;
+    return patch;
   }
 }

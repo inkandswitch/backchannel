@@ -11,6 +11,7 @@ export interface IContact {
   moniker?: string;
   discoveryKey?: DiscoveryKey; // -> hash of code
   key: Key; // -> shared secret key I've accepted with them
+  mine: number; // > is this my device?
 }
 
 export class IMessage {

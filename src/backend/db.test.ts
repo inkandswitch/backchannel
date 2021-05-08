@@ -101,10 +101,10 @@ test('getMessagesByContactId', () => {
       timestamp: new Date().toString(),
     },
   ];
+
   msgs.map((msg) => db.addMessage(msg));
 
   let messages = db.getMessagesByContactId(alice_id);
-
   expect(messages.length).toBe(msgs.length);
 });
 

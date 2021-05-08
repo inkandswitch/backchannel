@@ -39,8 +39,8 @@ beforeEach((done) => {
     });
   }
 
-  devices.alice.once('server.connect', () => {
-    devices.bob.once('server.connect', () => {
+  devices.alice.once('open', () => {
+    devices.bob.once('open', () => {
       create().then(done);
       jest.useFakeTimers();
     });
@@ -76,7 +76,7 @@ test('add and retrieve a contact', async () => {
   expect(alice.id).toBe(petalice_id);
 });
 
-test('integration send a message', (done) => {
+test.only('integration send a message', (done) => {
   // OK, now let's send bob a message 'hello'
   let outgoing = {
     contact: petbob_id,
@@ -87,17 +87,21 @@ test('integration send a message', (done) => {
   async function onConnect({ socket, contact }) {
     // only if the contact is bob!
     expect(contact.id).toBe(petbob_id);
-    await devices.alice.sendMessage(outgoing.contact, outgoing.text);
+    devices.alice.sendMessage(outgoing.contact, outgoing.text);
+    jest.runOnlyPendingTimers();
   }
 
   // what we do when bob's device has received the message
-  async function onMessage({ message, documentId }) {
-    expect(message.text).toBe(outgoing.text);
+  async function onSync({ contact }) {
+    jest.runOnlyPendingTimers();
+    let messages = devices.bob.db.getMessagesByContactId(contact.id);
+    expect(messages.length).toBe(1);
+    expect(messages[0].text).toBe(outgoing.text);
     done();
   }
 
   // bob's device has a message!
-  devices.bob.on('message', onMessage);
+  devices.bob.on('patch', onSync);
   jest.runOnlyPendingTimers();
 
   // sending the message once we an open contact
@@ -150,8 +154,7 @@ test('adds and syncs contacts with another device', (done) => {
 
   let called = 0;
 
-  async function onSync(err) {
-    if (err) console.error(err);
+  async function onSync({ contact }) {
     jest.runOnlyPendingTimers();
     called++;
     if (called < 2) return;
@@ -164,17 +167,27 @@ test('adds and syncs contacts with another device', (done) => {
     done();
   }
 
-  devices.alice.once('sync.finish', onSync);
+  devices.alice.once('contact.synced', onSync);
   jest.runOnlyPendingTimers();
-  devices.alice_phone.once('sync.finish', onSync);
-  jest.runOnlyPendingTimers();
-
-  devices.alice.syncDevice(key, 'mac laptop');
+  devices.alice_phone.once('contact.synced', onSync);
   jest.runOnlyPendingTimers();
 
-  devices.alice_phone.on('server.connect', () => {
-    devices.alice_phone.syncDevice(key, 'my phone');
-    jest.runOnlyPendingTimers();
-  });
-  jest.runOnlyPendingTimers();
+  devices.alice
+    .addDevice({
+      key,
+      moniker: 'my android',
+    })
+    .then((android_id) => {
+      devices.alice_phone.on('server.connect', async () => {
+        let windows_id = await devices.alice_phone.addDevice({
+          key,
+          moniker: 'my windows laptop',
+        });
+
+        devices.alice.connectToContactId(android_id);
+        devices.alice_phone.connectToContactId(windows_id);
+        jest.runOnlyPendingTimers();
+      });
+      jest.runOnlyPendingTimers();
+    });
 });
