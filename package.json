@@ -11,7 +11,7 @@
     "relay": "DEBUG=* PORT=3001 node ./node_modules/@localfirst/relay/dist/start.js",
     "lint": "prettier -c src",
     "format": "prettier -w src",
-    "build:docs": "typedoc src/ --excludeExternals --excludePrivate --excludeInternal --out build/docs/api"
+    "build:docs": "typedoc src/ --excludeExternals --excludePrivate --excludeInternal --out build/docs/api --readme docs/readme.md"
   },
   "author": "Karissa McKelvey",
   "license": "MIT",
