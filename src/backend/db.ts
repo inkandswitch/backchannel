@@ -42,12 +42,12 @@ class IndexedDatabase extends Dexie {
   }
 }
 
-const SYSTEM_ID = 'BACKCHANNEL_SYSTEM';
+const SYSTEM_ID = 'BACKCHANNEL_backchannel';
 
 export class Database extends EventEmitter {
   _idb: IndexedDatabase;
-  _system: AutomergeWebsocketSync<System>;
-  _documents: Map<DocumentId, AutomergeWebsocketSync<Backchannel>>;
+  _backchannel: AutomergeWebsocketSync<System>;
+  _messages: Map<DocumentId, AutomergeWebsocketSync<Backchannel>>;
 
   opened: boolean;
   log: debug;
@@ -61,10 +61,7 @@ export class Database extends EventEmitter {
       this.emit('open');
     });
     this.log = debug('bc:db');
-    this._documents = new Map<
-      DocumentId,
-      AutomergeWebsocketSync<Backchannel>
-    >();
+    this._messages = new Map<DocumentId, AutomergeWebsocketSync<Backchannel>>();
   }
 
   /**
@@ -76,7 +73,7 @@ export class Database extends EventEmitter {
   isConnected(contactId: ContactId): boolean {
     let contact = this.getContactById(contactId);
     let docId = contact.discoveryKey;
-    let doc = this._documents.get(docId);
+    let doc = this._messages.get(docId);
     return doc && !!doc.socket;
   }
 
@@ -85,15 +82,15 @@ export class Database extends EventEmitter {
     let syncer, documentId;
     if (contact.device) {
       documentId = SYSTEM_ID;
-      syncer = this._system;
+      syncer = this._backchannel;
       this.log('is a device');
     } else {
       documentId = contact.discoveryKey;
-      syncer = this._documents[documentId];
+      syncer = this._messages[documentId];
       this.log('is a contact');
     }
     this.log('adding peer');
-    syncer.addPeer(socket);
+    syncer.addPeer(contact.id, socket);
     syncer.on('patch', (patch) => {
       this.emit('patch');
     });
@@ -106,7 +103,7 @@ export class Database extends EventEmitter {
 
   disconnected(documentId) {
     this.log('disconnected', documentId);
-    this._documents[documentId].socket = null;
+    this._messages[documentId].socket = null;
   }
 
   error(err) {
@@ -115,16 +112,16 @@ export class Database extends EventEmitter {
   }
 
   getContacts(): IContact[] {
-    return this._system.doc.contacts;
+    return this._backchannel.doc.contacts;
   }
 
   getDocument(contact: IContact) {
-    return this._documents[contact.discoveryKey];
+    return this._messages[contact.discoveryKey];
   }
 
   change(docId: DocumentId, changeFn: Automerge.ChangeFn<unknown>) {
     this.log('changing', docId);
-    let syncer = this._documents[docId];
+    let syncer = this._messages[docId];
     if (!syncer)
       this.error(new Error('Document doesnt exist with id ' + docId));
     syncer.change(changeFn);
@@ -140,28 +137,27 @@ export class Database extends EventEmitter {
       // LOAD EXISTING DOCUMENTS
       let c = 0;
       let systemDoc: Automerge.Doc<System> = Automerge.load(system[0].binary);
-      this._system = new AutomergeWebsocketSync<System>(systemDoc);
+      this._backchannel = new AutomergeWebsocketSync<System>(systemDoc);
       await this._idb.documents.each(async (_doc) => {
         if (_doc.id !== SYSTEM_ID) {
           c++;
           let doc: Automerge.Doc<Backchannel> = Automerge.load(_doc.binary);
           let contact = this.getContactByDiscoveryKey(_doc.id);
-          let encryptionKey = Buffer.from(contact.key, 'hex');
           let syncer = new AutomergeWebsocketSync<Backchannel>(doc);
-          this._documents[contact.discoveryKey] = syncer;
+          this._messages[contact.discoveryKey] = syncer;
         }
       });
       this.log(`loaded ${c} existing docs`);
-      this.log('got contacts:', this._system.doc.contacts);
+      this.log('got contacts:', this._backchannel.doc.contacts);
       return;
     } else {
       // NEW DOCUMENT!
       let doc: Automerge.Doc<System> = createRootDoc<System>((doc: System) => {
         doc.contacts = [];
       });
-      this._system = new AutomergeWebsocketSync<System>(doc);
-      await this._save(SYSTEM_ID, this._system.doc);
-      this.log('new contact list:', this._system.doc.contacts);
+      this._backchannel = new AutomergeWebsocketSync<System>(doc);
+      await this._save(SYSTEM_ID, this._backchannel.doc);
+      this.log('new contact list:', this._backchannel.doc.contacts);
       return;
     }
   }
@@ -183,8 +179,7 @@ export class Database extends EventEmitter {
     let doc = createRootDoc<Backchannel>((doc: Backchannel) => {
       doc.messages = [];
     });
-    let encryptionKey = Buffer.from(contact.key, 'hex');
-    this._documents[docId] = new AutomergeWebsocketSync<Backchannel>(doc);
+    this._messages[docId] = new AutomergeWebsocketSync<Backchannel>(doc);
     this.log('addContact', contact);
     return id;
   }
@@ -215,11 +210,11 @@ export class Database extends EventEmitter {
   }
 
   getMessages(id: DocumentId): string[] {
-    return this._documents[id].doc.messages;
+    return this._messages[id].doc.messages;
   }
 
   getContactById(id: ContactId): IContact {
-    let contacts = this._system.doc.contacts.filter((c) => c.id === id);
+    let contacts = this._backchannel.doc.contacts.filter((c) => c.id === id);
     if (!contacts.length) this.error(new Error('No contact with id ' + id));
     return contacts[0];
   }
@@ -229,7 +224,7 @@ export class Database extends EventEmitter {
    * @param {string} discoveryKey - the discovery key for this contact
    */
   getContactByDiscoveryKey(discoveryKey: string): IContact {
-    let contacts = this._system.doc.contacts.filter(
+    let contacts = this._backchannel.doc.contacts.filter(
       (c) => c.discoveryKey === discoveryKey
     );
     if (!contacts.length) {
@@ -245,17 +240,17 @@ export class Database extends EventEmitter {
 
   async save() {
     let c = 0;
-    for (let d in this._documents) {
+    for (let d in this._messages) {
       await this._save(d);
       c++;
     }
-    await this._save(SYSTEM_ID, this._system.doc);
+    await this._save(SYSTEM_ID, this._backchannel.doc);
     this.log(`saved ${c} documents`);
   }
 
   async destroy() {
     let tasks = [];
-    this._documents.forEach((_, docId) => {
+    this._messages.forEach((_, docId) => {
       tasks.push(this._idb.documents.delete(docId));
     });
     this.log('destroying', tasks.length);
@@ -264,11 +259,11 @@ export class Database extends EventEmitter {
   }
 
   _changeContactList(changeFn: Automerge.ChangeFn<unknown>) {
-    this._system.change(changeFn);
+    this._backchannel.change(changeFn);
   }
 
   async _save(id: DocumentId, _doc?: Automerge.Doc<System>): Promise<string> {
-    let doc = _doc || this._documents[id].doc;
+    let doc = _doc || this._messages[id].doc;
     return this._idb.documents.put({
       id,
       binary: Automerge.save(doc),
