@@ -77,8 +77,9 @@ test('integration send a message', (done) => {
   // what we do when bob's device has received the message
   async function onSync() {
     jest.runOnlyPendingTimers();
-    let messages = devices.bob.db.getMessagesByContactId(petalice_id);
+    let messages = devices.bob.getMessages(petalice_id);
     expect(messages.length).toBe(1);
+    console.log(messages[0]);
     expect(messages[0].text).toBe(outgoing.text);
     done();
   }
@@ -130,14 +131,14 @@ test('presence', (done) => {
   jest.runOnlyPendingTimers();
 });
 
-test.only('adds and syncs contacts with another device', (done) => {
+test('adds and syncs contacts with another device', (done) => {
   devices.android = createDevice('p');
   devices.android.on('open', () => {
     let key = crypto.randomBytes(32);
 
     let called = 0;
 
-    async function onSync() {
+    async function onSync(documentId) {
       jest.runOnlyPendingTimers();
       called++;
       if (called < 2) return;
@@ -150,9 +151,9 @@ test.only('adds and syncs contacts with another device', (done) => {
       done();
     }
 
-    devices.alice.on('patch', onSync);
+    devices.alice.on('sync', onSync);
     jest.runOnlyPendingTimers();
-    devices.android.on('patch', onSync);
+    devices.android.on('sync', onSync);
     jest.runOnlyPendingTimers();
 
     let android_id = devices.alice.addDevice({

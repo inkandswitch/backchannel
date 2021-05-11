@@ -8,12 +8,10 @@ export default class AutomergeWebsocketSync<T> extends EventEmitter {
   public socket: WebSocket;
   private syncState: Automerge.SyncState;
   private log: debug;
-  private key: Buffer;
 
-  constructor(doc: Automerge.Doc<T>, encryptionKey: Buffer) {
+  constructor(doc: Automerge.Doc<T>) {
     super();
     this.doc = doc;
-    this.key = encryptionKey;
     this.syncState = Automerge.initSyncState();
     this.log = debug('bc:multidevice:' + crypto.randomBytes(6).toString('hex'));
   }
@@ -42,7 +40,10 @@ export default class AutomergeWebsocketSync<T> extends EventEmitter {
       this.syncState
     );
     this.syncState = nextSyncState;
-    if (msg === null) return false;
+    if (msg === null) {
+      this.emit('sync');
+      return false;
+    }
     this.log('sending', msg);
     this.socket.send(msg);
     return true;

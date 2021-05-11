@@ -1,4 +1,4 @@
-import { ContactId, IContact, IMessage } from './types';
+import { ContactId, IContact } from './types';
 import AutomergeWebsocketSync from './AutomergeWebsocketSync';
 import Dexie from 'dexie';
 import * as Automerge from 'automerge';
@@ -15,7 +15,7 @@ interface SavedBinary {
 }
 
 interface Backchannel {
-  messages: Automerge.List<IMessage>;
+  messages: Automerge.List<string>;
 }
 
 interface System {
@@ -74,18 +74,24 @@ export class Database extends EventEmitter {
 
   connected(contact: IContact, socket: WebSocket) {
     // Start encrypted protocol
-    let syncer;
+    let syncer, documentId;
     if (contact.device) {
+      documentId = SYSTEM_ID;
       syncer = this._system;
       this.log('is a device');
     } else {
-      syncer = this._documents[contact.discoveryKey];
+      documentId = contact.discoveryKey;
+      syncer = this._documents[documentId];
       this.log('is a contact');
     }
     this.log('adding peer');
     syncer.addPeer(socket);
     syncer.on('patch', (patch) => {
       this.emit('patch');
+    });
+    syncer.on('sync', () => {
+      this.log('sync', documentId);
+      this.emit('sync', contact.discoveryKey);
     });
     this.log('connected', contact.discoveryKey);
   }
@@ -126,17 +132,14 @@ export class Database extends EventEmitter {
       // LOAD EXISTING DOCUMENTS
       let c = 0;
       let systemDoc: Automerge.Doc<System> = Automerge.load(system[0].binary);
-      this._system = new AutomergeWebsocketSync<System>(systemDoc, null);
+      this._system = new AutomergeWebsocketSync<System>(systemDoc);
       await this._idb.documents.each(async (_doc) => {
         if (_doc.id !== SYSTEM_ID) {
           c++;
           let doc: Automerge.Doc<Backchannel> = Automerge.load(_doc.binary);
           let contact = this.getContactByDiscoveryKey(_doc.id);
           let encryptionKey = Buffer.from(contact.key, 'hex');
-          let syncer = new AutomergeWebsocketSync<Backchannel>(
-            doc,
-            encryptionKey
-          );
+          let syncer = new AutomergeWebsocketSync<Backchannel>(doc);
           this._documents[contact.discoveryKey] = syncer;
         }
       });
@@ -146,7 +149,7 @@ export class Database extends EventEmitter {
     } else {
       // NEW DOCUMENT!
       let doc: Automerge.Doc<System> = Automerge.from({ contacts: [] });
-      this._system = new AutomergeWebsocketSync<System>(doc, null);
+      this._system = new AutomergeWebsocketSync<System>(doc);
       await this._save(SYSTEM_ID, this._system.doc);
       this.log('new contact list:', this._system.doc.contacts);
       return;
@@ -172,10 +175,7 @@ export class Database extends EventEmitter {
       discoveryKey: contact.discoveryKey,
     });
     let encryptionKey = Buffer.from(contact.key, 'hex');
-    this._documents[docId] = new AutomergeWebsocketSync<Backchannel>(
-      doc,
-      encryptionKey
-    );
+    this._documents[docId] = new AutomergeWebsocketSync<Backchannel>(doc);
     this.log('addContact', contact);
     return id;
   }
@@ -194,20 +194,18 @@ export class Database extends EventEmitter {
     });
   }
 
-  addMessage(msg: IMessage, docId: DocumentId): string {
-    msg.id = uuid();
+  addMessage(msg: string, docId: DocumentId) {
     this.change(docId, (doc: Backchannel) => {
       doc.messages.push(msg);
     });
-    return msg.id;
   }
 
-  getMessagesByContactId(cid: ContactId): IMessage[] {
+  getMessagesByContactId(cid: ContactId): string[] {
     let contact = this.getContactById(cid);
     return this.getMessages(contact.discoveryKey);
   }
 
-  getMessages(id: DocumentId): IMessage[] {
+  getMessages(id: DocumentId): string[] {
     return this._documents[id].doc.messages;
   }
 

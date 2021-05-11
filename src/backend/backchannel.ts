@@ -30,9 +30,11 @@ export class Backchannel extends events.EventEmitter {
     super();
     this._wormhole = Wormhole();
     this.db = db;
+    this.db.on('sync', (docId) => {
+      this.emit('sync', docId);
+    });
     this.db.on('patch', (patch) => {
       this.emit('patch', patch);
-      this.log('patch', patch);
     });
     this._client = this._createClient(relay);
     let pending = 2;
@@ -73,19 +75,28 @@ export class Backchannel extends events.EventEmitter {
     return this.db.addContact(contact);
   }
 
+  getMessages(contactId: ContactId): IMessage[] {
+    let contact = this.db.getContactById(contactId);
+    return this.db
+      .getMessagesByContactId(contactId)
+      .map((msg) => IMessage.decode(msg, contact.key));
+  }
+
   /**
    * Send a message to a contact. Assumes that you've already
    * connected with the contact from listening to the `contact.connected` event
    * @param {WebSocket} socket: the open socket for the contact
    */
-  sendMessage(contactId: ContactId, text: string): string {
+  sendMessage(contactId: ContactId, text: string) {
     let msg: IMessage = {
       text: text,
       timestamp: Date.now().toString(),
     };
     this.log('sending message', msg);
     let contact = this.db.getContactById(contactId);
-    return this.db.addMessage(msg, contact.discoveryKey);
+
+    let encoded = IMessage.encode(msg, contact.key);
+    this.db.addMessage(encoded, contact.discoveryKey);
   }
 
   /**
