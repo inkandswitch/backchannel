@@ -125,11 +125,10 @@ export class Database extends EventEmitter {
     if (system.length) {
       // LOAD EXISTING DOCUMENTS
       let c = 0;
+      let systemDoc: Automerge.Doc<System> = Automerge.load(system[0].binary);
+      this._system = new AutomergeWebsocketSync<System>(systemDoc, null);
       await this._idb.documents.each(async (_doc) => {
-        if (_doc.id === SYSTEM_ID) {
-          let systemDoc: Automerge.Doc<System> = Automerge.load(_doc.binary);
-          this._system = new AutomergeWebsocketSync<System>(systemDoc, null);
-        } else {
+        if (_doc.id !== SYSTEM_ID) {
           c++;
           let doc: Automerge.Doc<Backchannel> = Automerge.load(_doc.binary);
           let contact = this.getContactByDiscoveryKey(_doc.id);
