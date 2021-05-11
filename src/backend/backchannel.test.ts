@@ -137,7 +137,7 @@ test.only('adds and syncs contacts with another device', (done) => {
 
     let called = 0;
 
-    async function onSync({ contact }) {
+    async function onSync() {
       jest.runOnlyPendingTimers();
       called++;
       if (called < 2) return;
@@ -150,9 +150,9 @@ test.only('adds and syncs contacts with another device', (done) => {
       done();
     }
 
-    devices.alice.on('sync', onSync);
+    devices.alice.on('patch', onSync);
     jest.runOnlyPendingTimers();
-    devices.android.on('sync', onSync);
+    devices.android.on('patch', onSync);
     jest.runOnlyPendingTimers();
 
     let android_id = devices.alice.addDevice({

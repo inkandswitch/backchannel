@@ -145,10 +145,7 @@ export class Database extends EventEmitter {
       return;
     } else {
       // NEW DOCUMENT!
-      let doc: Automerge.Doc<System> = Automerge.from(
-        { contacts: [] },
-        'e4e2e3'
-      );
+      let doc: Automerge.Doc<System> = Automerge.from({ contacts: [] });
       this._system = new AutomergeWebsocketSync<System>(doc, null);
       await this._save(SYSTEM_ID, this._system.doc);
       this.log('new contact list:', this._system.doc.contacts);
@@ -170,13 +167,10 @@ export class Database extends EventEmitter {
     });
 
     let docId = contact.discoveryKey;
-    let doc = Automerge.from(
-      {
-        messages: [],
-        discoveryKey: contact.discoveryKey,
-      },
-      contact.key
-    );
+    let doc = Automerge.from({
+      messages: [],
+      discoveryKey: contact.discoveryKey,
+    });
     let encryptionKey = Buffer.from(contact.key, 'hex');
     this._documents[docId] = new AutomergeWebsocketSync<Backchannel>(
       doc,
