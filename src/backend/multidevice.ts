@@ -1,86 +1,65 @@
 import Automerge from 'automerge';
 import debug from 'debug';
+import { EventEmitter } from 'events';
+import crypto from 'crypto';
 
-enum MUTLIDEVICE_EVENT {
-  DONE = '0',
-}
-
-export default class AutomergeWebsocketSync<T> {
-  private _doc: Automerge.Doc<T>;
+export default class AutomergeWebsocketSync<T> extends EventEmitter {
+  public doc: Automerge.Doc<T>;
+  public socket: WebSocket;
   private syncState: Automerge.SyncState;
   private log: debug;
-  private socket: WebSocket;
+  private key: Buffer;
 
-  constructor(doc: Automerge.Doc<T>, socket: WebSocket) {
-    this._doc = doc;
-    this.log = debug('bc:multidevice');
+  constructor(doc: Automerge.Doc<T>, encryptionKey: Buffer) {
+    super();
+    this.doc = doc;
+    this.key = encryptionKey;
+    this.log = debug('bc:multidevice:' + crypto.randomBytes(6).toString('hex'));
+  }
+
+  addPeer(socket: WebSocket) {
     this.socket = socket;
+
+    this.syncState = Automerge.initSyncState();
+    this._sendSyncMsg();
+
+    socket.binaryType = 'arraybuffer';
+
+    socket.onmessage = (e) => {
+      let msg = e.data;
+      let decoded = new Uint8Array(msg);
+      this.log('got sync message', decoded);
+      this._receive(this.syncState, decoded);
+      this._sendSyncMsg();
+    };
   }
 
-  async sync(key: Buffer, options?): Promise<Automerge.Patch[]> {
-    let socket = this.socket;
-    let patches = [];
-    this.syncState = Automerge.Backend.initSyncState();
-    return new Promise<Automerge.Patch[]>((resolve, reject) => {
-      let done = false;
-      this._sendSyncMsg(socket);
-
-      socket.onclose = () => {
-        this.socket = null;
-        this.log('socket closed');
-      };
-
-      socket.onerror = (err) => {
-        this.log('socket error', err);
-        reject(err);
-      };
-
-      socket.binaryType = 'arraybuffer';
-      socket.onmessage = (e) => {
-        let msg = e.data;
-        let decoded = new Uint8Array(msg);
-
-        switch (msg) {
-          case MUTLIDEVICE_EVENT.DONE:
-            if (done) return resolve(patches);
-            done = this._sendSyncMsg(socket);
-            break;
-          default:
-            this.log('got sync message');
-            let patch = this._receive(this.syncState, decoded);
-            patches.push(patch);
-            done = this._sendSyncMsg(socket);
-            break;
-        }
-      };
-    });
+  change(changeFn: Automerge.ChangeFn<unknown>) {
+    this.doc = Automerge.change(this.doc, changeFn);
   }
 
-  _sendSyncMsg(socket: WebSocket) {
-    let [syncState, msg] = Automerge.generateSyncMessage(
-      this._doc,
+  _sendSyncMsg() {
+    let [nextSyncState, msg] = Automerge.generateSyncMessage(
+      this.doc,
       this.syncState
     );
-    this.syncState = syncState;
-    if (msg === null) {
-      this.log('sending done');
-      socket.send(MUTLIDEVICE_EVENT.DONE);
-      return true;
-    } else {
-      this.log('sending', msg);
-      socket.send(msg);
-      return false;
-    }
+    this.syncState = nextSyncState;
+    if (msg === null) return false;
+    this.log('sending', msg);
+    this.socket.send(msg);
+    return true;
   }
 
   _receive(syncState, syncMsg): Automerge.Patch {
     let [newDoc, s2, patch] = Automerge.receiveSyncMessage(
-      this._doc,
+      this.doc,
       syncState,
       syncMsg
     );
-    this._doc = newDoc;
+    this.doc = newDoc;
     this.syncState = s2;
+    this.log('got new sync state');
+    if (patch) this.emit('patch', patch);
     return patch;
   }
 }

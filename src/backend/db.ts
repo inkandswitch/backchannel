@@ -1,148 +1,186 @@
-import { DiscoveryKey, Key, ContactId, IContact, IMessage } from './types';
-import Dexie from 'dexie';
-import Automerge from 'automerge';
+import { ContactId, IContact, IMessage } from './types';
 import AutomergeWebsocketSync from './multidevice';
+import Dexie from 'dexie';
+import * as Automerge from 'automerge';
 import { EventEmitter } from 'events';
 import debug from 'debug';
 import { v4 as uuid } from 'uuid';
+import * as crypto from './crypto';
 
-type ActorId = string;
-type DeviceId = Key;
+type DocumentId = string;
 
-interface Actor {
-  id: ActorId;
-  messages: Automerge.BinaryDocument;
-  contacts: Automerge.BinaryDocument;
+interface SavedBinary {
+  id: string;
+  binary: Automerge.BinaryDocument;
 }
 
-interface MessagesList {
-  list: Automerge.List<IMessage>;
+interface Backchannel {
+  messages: Automerge.List<IMessage>;
 }
 
-interface ContactList {
-  list: Automerge.List<IContact>;
-}
-
-export interface Device {
-  key: DeviceId;
-  discoveryKey: DiscoveryKey;
-  description: string;
+interface System {
+  contacts: Automerge.List<IContact>;
 }
 
 class IndexedDatabase extends Dexie {
-  actors: Dexie.Table<Actor, ActorId>; // ActorId = type of the primkey
+  documents: Dexie.Table<SavedBinary, ContactId>;
 
   constructor(dbname) {
     super(dbname);
     this.version(1).stores({
-      actors: 'id',
+      documents: 'id',
     });
-    this.actors = this.table('actors');
+    this.documents = this.table('documents');
   }
 }
 
+const SYSTEM_ID = 'BACKCHANNEL_SYSTEM';
+
 export class Database extends EventEmitter {
-  _contacts: Automerge.Doc<ContactList>;
-  _messages: Automerge.Doc<MessagesList>;
   _idb: IndexedDatabase;
+  _system: AutomergeWebsocketSync<System>;
+  _documents: Map<DocumentId, AutomergeWebsocketSync<Backchannel>>;
+
   opened: boolean;
   log: debug;
-  _syncers: Map<ContactId, Automerge.SyncState>;
 
   constructor(dbname) {
     super();
     this._idb = new IndexedDatabase(dbname);
     this.open().then(() => {
       this.opened = true;
+      this.log('open');
       this.emit('open');
     });
     this.log = debug('bc:db');
-    this._syncers = new Map<ContactId, Automerge.SyncState>();
+    this._documents = new Map<
+      DocumentId,
+      AutomergeWebsocketSync<Backchannel>
+    >();
   }
 
-  get devices() {
-    return this._contacts.list.filter((c) => c.mine === 1);
-  }
-
-  async save() {
-    await this._idb.actors.put({
-      id: Automerge.getActorId(this._messages),
-      messages: Automerge.save(this._messages),
-      contacts: Automerge.save(this._contacts),
-    });
-  }
-
-  disconnected(contact) {
-    this._syncers = null;
+  /**
+   * Is this contact currently connected to us? i.e., currently online and we
+   * have an open websocket connection with them
+   * @param {ContactId} contactId
+   * @return {boolean} connected
+   */
+  isConnected(contactId: ContactId): boolean {
+    let contact = this.getContactById(contactId);
+    let docId = contact.discoveryKey;
+    let doc = this._documents.get(docId);
+    return doc && !!doc.socket;
   }
 
   connected(contact: IContact, socket: WebSocket) {
-    let doc;
-    if (contact.mine) {
-      doc = this._contacts;
+    // Start encrypted protocol
+    let syncer;
+    if (contact.device) {
+      syncer = this._system;
     } else {
-      doc = this._messages;
+      syncer = this._documents[contact.discoveryKey];
     }
-    this.log('connected', contact);
-    this._syncers[contact.id] = new AutomergeWebsocketSync<typeof doc>(
-      doc,
-      socket
-    );
+    syncer.addPeer(socket);
+    syncer.on('patch', (patch) => {
+      this.emit('patch');
+      this.log('got patch', patch);
+    });
+    this.log('connected', contact.discoveryKey);
   }
 
-  async sync(contact: IContact) {
-    let manager = this._syncers[contact.id];
-    if (!manager) {
-      this.log('no sockets available, not syncing with ', contact.id);
-      return false;
-    }
-    this.log('syncing', contact.id);
-    let patch = await manager.sync(Buffer.from(contact.key, 'hex'));
-    this.emit('patch', patch);
+  disconnected(documentId) {
+    this._documents[documentId].socket = null;
+  }
+
+  error(err) {
+    this.log('got error', err);
+    throw new Error(err);
+  }
+
+  getContacts(): IContact[] {
+    return this._system.doc.contacts;
+  }
+
+  getDocument(contact: IContact) {
+    return this._documents[contact.discoveryKey];
+  }
+
+  change(docId: DocumentId, changeFn: Automerge.ChangeFn<unknown>) {
+    this.log('changing', docId);
+    let syncer = this._documents[docId];
+    if (!syncer)
+      this.error(new Error('Document doesnt exist with id ' + docId));
+    syncer.change(changeFn);
   }
 
   async open() {
     if (this.opened) return;
-    let actor = await this._getActor();
-    if (actor) {
-      // LOAD EXISTING DOCUMENT
-      this._messages = Automerge.load(actor.messages, actor.id);
-      this._contacts = Automerge.load(actor.contacts, actor.id);
-      this.log('loading existing doc', actor.id);
+    let system = await this._idb.documents
+      .where({ id: SYSTEM_ID })
+      .limit(1)
+      .toArray();
+    if (system.length) {
+      // LOAD EXISTING DOCUMENTS
+      let c = 0;
+      await this._idb.documents.each(async (_doc) => {
+        if (_doc.id === SYSTEM_ID) {
+          let systemDoc: Automerge.Doc<System> = Automerge.load(_doc.binary);
+          this._system = new AutomergeWebsocketSync<System>(systemDoc, null);
+        } else {
+          c++;
+          let doc: Automerge.Doc<Backchannel> = Automerge.load(_doc.binary);
+          let contact = this.getContactByDiscoveryKey(_doc.id);
+          let encryptionKey = Buffer.from(contact.key, 'hex');
+          let syncer = new AutomergeWebsocketSync<Backchannel>(
+            doc,
+            encryptionKey
+          );
+          this._documents[contact.discoveryKey] = syncer;
+        }
+      });
+      this.log(`loaded ${c} existing docs`);
+      this.log('got contacts:', this._system.doc.contacts);
+      return;
     } else {
       // NEW DOCUMENT!
-      this._messages = Automerge.init();
-      let actor_id = Automerge.getActorId(this._messages);
-      this._contacts = Automerge.init(actor_id);
-      this.log('new doc', actor_id);
-
-      this._idb.actors.add({
-        id: actor_id,
-        messages: Automerge.save(this._messages),
-        contacts: Automerge.save(this._contacts),
-      });
-
-      this._contacts = Automerge.change(this._contacts, (doc) => {
-        doc.list = [];
-      });
-
-      this._messages = Automerge.change(this._messages, (doc) => {
-        doc.list = [];
-      });
+      let doc: Automerge.Doc<System> = Automerge.from(
+        { contacts: [] },
+        'e4e2e3'
+      );
+      this._system = new AutomergeWebsocketSync<System>(doc, null);
+      await this._save(SYSTEM_ID, this._system.doc);
+      this.log('new contact list:', this._system.doc.contacts);
+      return;
     }
   }
 
   /**
    * Add a contact.
-   * TODO: Automatically broadcast to my devices that I've added a contact and
-   * start the sync.
    */
   addContact(contact: IContact): ContactId {
     let id = uuid();
-    this._contacts = Automerge.change(this._contacts, (doc: ContactList) => {
+    contact.discoveryKey = crypto.computeDiscoveryKey(
+      Buffer.from(contact.key, 'hex')
+    );
+    this._changeContactList((doc: System) => {
       contact.id = id;
-      doc.list.push(contact);
+      doc.contacts.push(contact);
     });
+
+    let docId = contact.discoveryKey;
+    let doc = Automerge.from(
+      {
+        messages: [],
+        discoveryKey: contact.discoveryKey,
+      },
+      contact.key
+    );
+    let encryptionKey = Buffer.from(contact.key, 'hex');
+    this._documents[docId] = new AutomergeWebsocketSync<Backchannel>(
+      doc,
+      encryptionKey
+    );
+    this.log('addContact', contact);
     return id;
   }
 
@@ -152,36 +190,34 @@ export class Database extends EventEmitter {
    * @param {IContact} contact - The contact to update to the database
    */
   editMoniker(id: ContactId, moniker: string) {
-    this._contacts = Automerge.change(this._contacts, (doc: ContactList) => {
-      let contacts = doc.list.filter((c) => c.id === id);
-      if (!contacts.length) {
-        throw new Error('Could not find contact with id' + id);
-      }
+    this._changeContactList((doc: System) => {
+      let contacts = doc.contacts.filter((c) => c.id === id);
+      if (!contacts.length)
+        this.error(new Error('Could not find contact with id' + id));
       contacts[0].moniker = moniker;
     });
   }
 
-  addMessage(msg: IMessage): IMessage {
-    let id = uuid();
-    this._messages = Automerge.change(this._messages, (doc: MessagesList) => {
-      msg.id = id;
-      doc.list.push(msg);
+  addMessage(msg: IMessage, docId: DocumentId): string {
+    msg.id = uuid();
+    this.change(docId, (doc: Backchannel) => {
+      doc.messages.push(msg);
     });
-    msg.id = id;
-    let contact = this.getContactById(msg.contact);
-    this.sync(contact);
-    return msg;
+    return msg.id;
   }
 
   getMessagesByContactId(cid: ContactId): IMessage[] {
-    return this._messages.list.filter((m) => cid === m.contact);
+    let contact = this.getContactById(cid);
+    return this.getMessages(contact.discoveryKey);
+  }
+
+  getMessages(id: DocumentId): IMessage[] {
+    return this._documents[id].doc.messages;
   }
 
   getContactById(id: ContactId): IContact {
-    let contacts = this._contacts.list.filter((c) => c.id === id);
-    if (!contacts.length) {
-      throw new Error('No contact with id ' + id);
-    }
+    let contacts = this._system.doc.contacts.filter((c) => c.id === id);
+    if (!contacts.length) this.error(new Error('No contact with id ' + id));
     return contacts[0];
   }
 
@@ -190,40 +226,49 @@ export class Database extends EventEmitter {
    * @param {string} discoveryKey - the discovery key for this contact
    */
   getContactByDiscoveryKey(discoveryKey: string): IContact {
-    let contacts = this._contacts.list.filter(
+    let contacts = this._system.doc.contacts.filter(
       (c) => c.discoveryKey === discoveryKey
     );
     if (!contacts.length) {
-      throw new Error(
-        'No contact with that document? that shouldnt be possible. Maybe you cleared your cache...'
+      this.error(
+        new Error(
+          'No contact with that document? that shouldnt be possible. Maybe you cleared your cache...'
+        )
       );
     }
 
     return contacts[0];
   }
 
-  listContacts(): IContact[] {
-    return this._contacts.list;
-  }
-
-  async _getActor(): Promise<Actor> {
-    let actors = await this._idb.actors.limit(1).toArray();
-    if (!actors.length) return null;
-    return actors[0];
+  async save() {
+    let c = 0;
+    for (let d in this._documents) {
+      await this._save(d);
+      c++;
+    }
+    await this._save(SYSTEM_ID, this._system.doc);
+    this.log(`saved ${c} documents`);
   }
 
   async destroy() {
-    let actor = await this._getActor();
-    if (actor) {
-      await this._idb.actors.delete(actor.id);
-    } else {
-      throw new Error(
-        'Nothing to destroy@!!! actor doesnt exist with id=' + actor
-      );
-    }
-
-    this._contacts = null;
-    this._messages = null;
+    let tasks = [];
+    this._documents.forEach((_, docId) => {
+      tasks.push(this._idb.documents.delete(docId));
+    });
+    this.log('destroying', tasks.length);
     this.opened = false;
+    return Promise.all(tasks);
+  }
+
+  _changeContactList(changeFn: Automerge.ChangeFn<unknown>) {
+    this._system.change(changeFn);
+  }
+
+  async _save(id: DocumentId, _doc?: Automerge.Doc<System>): Promise<string> {
+    let doc = _doc || this._documents[id].doc;
+    return this._idb.documents.put({
+      id,
+      binary: Automerge.save(doc),
+    });
   }
 }

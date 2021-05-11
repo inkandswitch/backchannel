@@ -11,14 +11,12 @@ export interface IContact {
   moniker?: string;
   discoveryKey?: DiscoveryKey; // -> hash of code
   key: Key; // -> shared secret key I've accepted with them
-  mine: number; // > is this my device?
+  device: number;
 }
 
 export class IMessage {
   id?: MessageId;
-  incoming: boolean; // -> incoming or outgoing message
   timestamp: string;
-  contact?: ContactId;
   text?: string;
   filename?: string;
   mime_type?: string;
@@ -36,7 +34,6 @@ export class IMessage {
     return {
       text: plainText,
       timestamp: Date.now().toString(),
-      incoming: true,
     };
   }
 }

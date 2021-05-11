@@ -6,14 +6,7 @@ import debug from 'debug';
 
 import * as crypto from './crypto';
 import { Database } from './db';
-import {
-  Key,
-  Code,
-  ContactId,
-  IContact,
-  IMessage,
-  DiscoveryKey,
-} from './types';
+import { Code, ContactId, IContact, IMessage, DiscoveryKey } from './types';
 import Wormhole from './wormhole';
 import type { SecureWormhole, MagicWormhole } from './wormhole';
 
@@ -24,7 +17,6 @@ export class Backchannel extends events.EventEmitter {
   public db: Database;
   private _wormhole: MagicWormhole;
   private _client: Client;
-  private _sockets = new Map<ContactId, WebSocket>();
   private _open = true || false;
   private log = debug;
 
@@ -69,17 +61,16 @@ export class Backchannel extends events.EventEmitter {
    * @param {IContact} contact - The contact to add to the database
    * @returns {ContactId} id - The local id number for this contact
    */
-  async addContact(contact: IContact): Promise<ContactId> {
-    contact.discoveryKey = crypto.computeDiscoveryKey(
-      Buffer.from(contact.key, 'hex')
-    );
+  addContact(contact: IContact): ContactId {
     contact.moniker = contact.moniker || catnames.random();
+    contact.device = 0;
     return this.db.addContact(contact);
   }
 
-  async addDevice(contact: IContact): Promise<ContactId> {
-    contact.mine = 1;
-    return this.addContact(contact);
+  addDevice(contact: IContact): ContactId {
+    contact.moniker = contact.moniker || 'my device';
+    contact.device = 1;
+    return this.db.addContact(contact);
   }
 
   /**
@@ -87,15 +78,14 @@ export class Backchannel extends events.EventEmitter {
    * connected with the contact from listening to the `contact.connected` event
    * @param {WebSocket} socket: the open socket for the contact
    */
-  sendMessage(contactId: ContactId, text: string): IMessage {
+  sendMessage(contactId: ContactId, text: string): string {
     let msg: IMessage = {
       text: text,
-      contact: contactId,
       timestamp: Date.now().toString(),
-      incoming: false,
     };
     this.log('sending message', msg);
-    return this.db.addMessage(msg);
+    let contact = this.db.getContactById(contactId);
+    return this.db.addMessage(msg, contact.discoveryKey);
   }
 
   /**
@@ -108,8 +98,9 @@ export class Backchannel extends events.EventEmitter {
     this._client.join(contact.discoveryKey);
   }
 
-  async connectToContactId(cid: ContactId) {
-    let contact = await this.db.getContactById(cid);
+  connectToContactId(cid: ContactId) {
+    this.log('connecting to contact with id', cid);
+    let contact = this.db.getContactById(cid);
     this.connectToContact(contact);
   }
 
@@ -129,27 +120,17 @@ export class Backchannel extends events.EventEmitter {
   }
 
   // sender/initiator
-  async announce(code: Code, mine?: boolean): Promise<ContactId> {
+  async announce(code: Code): Promise<ContactId> {
     let connection = await this._wormhole.announce(code);
-    return this._createContactFromWormhole(connection, mine);
+    let metadata = this._createContactFromWormhole(connection);
+    return this.addContact(metadata);
   }
 
   // redeemer/receiver
-  // TODO: rename these functions and dont use flags
-  // so it is more clear what's happening...
-  async accept(code: Code, mine?: boolean): Promise<ContactId> {
+  async accept(code: Code): Promise<ContactId> {
     let connection = await this._wormhole.accept(code);
-    return this._createContactFromWormhole(connection, mine);
-  }
-
-  /**
-   * Is this contact currently connected to us? i.e., currently online and we
-   * have an open websocket connection with them
-   * @param {ContactId} contactId
-   * @return {boolean} connected
-   */
-  isConnected(contactId: ContactId): boolean {
-    return this._sockets.has(contactId);
+    let metadata = this._createContactFromWormhole(connection);
+    return this.addContact(metadata);
   }
 
   /**
@@ -163,21 +144,15 @@ export class Backchannel extends events.EventEmitter {
     await this.db.destroy();
   }
 
-  // PRIVATE
-  private _getSocketByContactId(cid: ContactId): WebSocket {
-    return this._sockets.get(cid);
-  }
-
-  private async _onPeerDisconnect(discoveryKey: DiscoveryKey) {
-    let contact = await this.db.getContactByDiscoveryKey(discoveryKey);
-    this._sockets.delete(contact.id);
+  private _onPeerDisconnect(discoveryKey: DiscoveryKey) {
+    let contact = this.db.getContactByDiscoveryKey(discoveryKey);
+    this.log('onPeerDisconnect');
     this.emit('contact.disconnected', { contact });
-    this.db.disconnected(contact);
+    this.db.disconnected(discoveryKey);
   }
 
-  private async _onPeerConnect(socket: WebSocket, documentId: DiscoveryKey) {
-    let contact = await this.db.getContactByDiscoveryKey(documentId);
-
+  private _onPeerConnect(socket: WebSocket, discoveryKey: DiscoveryKey) {
+    let contact = this.db.getContactByDiscoveryKey(discoveryKey);
     try {
       this.db.connected(contact, socket);
     } catch (err) {
@@ -185,18 +160,20 @@ export class Backchannel extends events.EventEmitter {
       this.emit('contact.error', err);
     }
 
+    socket.onclose = () => {
+      this._onPeerDisconnect(discoveryKey);
+    };
+
     socket.onerror = (err) => {
       console.error('error', err);
       console.trace(err);
     };
 
-    this._sockets.set(contact.id, socket);
     let openContact = {
       socket,
       contact,
-      documentId,
     };
-    this.log('got contact', openContact.contact, documentId);
+    this.log('got contact', discoveryKey);
     this.emit('contact.connected', openContact);
   }
 
@@ -220,15 +197,10 @@ export class Backchannel extends events.EventEmitter {
     return client;
   }
 
-  private _createContactFromWormhole(
-    connection: SecureWormhole,
-    mine
-  ): Promise<ContactId> {
-    let metadata = {
+  private _createContactFromWormhole(connection: SecureWormhole): IContact {
+    return {
       key: arrayToHex(connection.key),
-      mine,
+      mine: 0,
     };
-
-    return this.addContact(metadata);
   }
 }

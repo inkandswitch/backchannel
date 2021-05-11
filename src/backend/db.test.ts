@@ -26,7 +26,7 @@ test('getContactById', async () => {
   expect(contact.moniker).toBe('bob');
 });
 
-test('listContacts', async () => {
+test('getContacts', async () => {
   let bob_id = db.addContact({
     moniker: 'bob',
     key: crypto.randomBytes(32).toString('hex'),
@@ -44,7 +44,7 @@ test('listContacts', async () => {
 
   let alice = db.getContactById(alice_id);
 
-  let contacts = db.listContacts();
+  let contacts = db.getContacts();
   expect(contacts.length).toBe(2);
   let sorted = contacts.sort((a, b) => a.moniker > b.moniker);
   expect(sorted[0]).toBe(bob);
@@ -83,27 +83,21 @@ test('getMessagesByContactId', () => {
 
   let msgs = [
     {
-      incoming: false,
       text: 'hey .... whats up',
-      contact: alice_id,
       timestamp: new Date().toString(),
     },
     {
-      incoming: false,
       text: 'h4x the planet',
-      contact: alice_id,
       timestamp: new Date().toString(),
     },
     {
-      incoming: true,
       text: 'ok bob',
-      contact: alice_id,
       timestamp: new Date().toString(),
     },
   ];
 
-  msgs.map((msg) => db.addMessage(msg));
-
+  let contact = db.getContactById(alice_id);
+  msgs.map((msg) => db.addMessage(msg, contact.discoveryKey));
   let messages = db.getMessagesByContactId(alice_id);
   expect(messages.length).toBe(msgs.length);
 });
@@ -136,14 +130,14 @@ test('save/load', (done) => {
   let karen = db.getContactById(bob_id);
   expect(bob.moniker).toBe('bob');
   expect(karen.moniker).toBe('karen');
+  db.save().then(() => {
+    db = null;
 
-  db.save();
-  db = null;
-
-  db = new Database(dbname);
-  db.on('open', async () => {
-    let maybe_karen = db.getContactById(bob_id);
-    expect(maybe_karen).toStrictEqual(karen);
-    done();
+    db = new Database(dbname);
+    db.on('open', () => {
+      let maybe_karen = db.getContactById(bob_id);
+      expect(maybe_karen).toStrictEqual(karen);
+      done();
+    });
   });
 });

@@ -1,5 +1,6 @@
 import { Backchannel } from './backchannel';
 import { Database } from './db';
+import Automerge from 'automerge';
 import crypto from 'crypto';
 
 let doc,
@@ -8,7 +9,7 @@ let doc,
 let devices = {
   alice: null,
   bob: null,
-  alice_phone: null,
+  android: null,
 };
 
 function createDevice(name) {
@@ -55,28 +56,11 @@ afterEach(async () => {
   let promise = Promise.resolve();
   if (devices.alice) await devices.alice.destroy();
   if (devices.bob) await devices.bob.destroy();
-  if (devices.alice_phone) await devices.alice_phone.destroy();
+  if (devices.android) await devices.android.destroy();
   return promise;
 });
 
-test('add and retrieve a contact', async () => {
-  // create a document, let's say we already did the wormhole handshake
-  // TADA!!!
-  // and alice can list the contacts and get bob
-  let contacts = await devices.alice.db.listContacts();
-  expect(contacts.length).toBe(1);
-  expect(contacts[0].moniker).toBe('bob');
-  expect(contacts[0].key).toBe(doc);
-  expect(contacts[0].id).toBe(petbob_id);
-
-  let bob = devices.alice.db.getContactById(petbob_id);
-  expect(bob.id).toBe(petbob_id);
-
-  let alice = devices.bob.db.getContactById(petalice_id);
-  expect(alice.id).toBe(petalice_id);
-});
-
-test.only('integration send a message', (done) => {
+test('integration send a message', (done) => {
   // OK, now let's send bob a message 'hello'
   let outgoing = {
     contact: petbob_id,
@@ -85,16 +69,15 @@ test.only('integration send a message', (done) => {
 
   // sending a message
   async function onConnect({ socket, contact }) {
-    // only if the contact is bob!
     expect(contact.id).toBe(petbob_id);
     devices.alice.sendMessage(outgoing.contact, outgoing.text);
     jest.runOnlyPendingTimers();
   }
 
   // what we do when bob's device has received the message
-  async function onSync({ contact }) {
+  async function onSync() {
     jest.runOnlyPendingTimers();
-    let messages = devices.bob.db.getMessagesByContactId(contact.id);
+    let messages = devices.bob.db.getMessagesByContactId(petalice_id);
     expect(messages.length).toBe(1);
     expect(messages[0].text).toBe(outgoing.text);
     done();
@@ -126,8 +109,8 @@ test('presence', (done) => {
     // only if the contact is bob!
     expect(contact.id).toBe(petbob_id);
     // ok bob will now disconnect
-    jest.runOnlyPendingTimers();
     socket.close();
+    jest.runOnlyPendingTimers();
   }
 
   async function onDisconnect({ contact, documentId }) {
@@ -148,46 +131,41 @@ test('presence', (done) => {
 });
 
 test('adds and syncs contacts with another device', (done) => {
-  devices.alice_phone = createDevice('p');
+  devices.android = createDevice('p');
+  devices.android.on('open', () => {
+    let key = crypto.randomBytes(32);
 
-  let key = crypto.randomBytes(32);
+    let called = 0;
 
-  let called = 0;
+    async function onSync({ contact }) {
+      jest.runOnlyPendingTimers();
+      called++;
+      if (called < 2) return;
 
-  async function onSync({ contact }) {
+      let bob = devices.alice.db.getContactById(petbob_id);
+      expect(bob.id).toBe(petbob_id);
+      let synced_bob = devices.android.db.getContactById(bob.id);
+
+      expect(synced_bob.key).toBe(bob.key);
+      done();
+    }
+
+    devices.alice.on('sync', onSync);
     jest.runOnlyPendingTimers();
-    called++;
-    if (called < 2) return;
+    devices.android.on('sync', onSync);
+    jest.runOnlyPendingTimers();
 
-    let bob = devices.alice.db.getContactById(petbob_id);
-    expect(bob.id).toBe(petbob_id);
-    let synced_bob = devices.alice_phone.db.getContactById(bob.id);
-
-    expect(synced_bob.key).toBe(bob.key);
-    done();
-  }
-
-  devices.alice.once('contact.synced', onSync);
-  jest.runOnlyPendingTimers();
-  devices.alice_phone.once('contact.synced', onSync);
-  jest.runOnlyPendingTimers();
-
-  devices.alice
-    .addDevice({
+    let android_id = devices.alice.addDevice({
       key,
       moniker: 'my android',
-    })
-    .then((android_id) => {
-      devices.alice_phone.on('server.connect', async () => {
-        let windows_id = await devices.alice_phone.addDevice({
-          key,
-          moniker: 'my windows laptop',
-        });
-
-        devices.alice.connectToContactId(android_id);
-        devices.alice_phone.connectToContactId(windows_id);
-        jest.runOnlyPendingTimers();
-      });
-      jest.runOnlyPendingTimers();
     });
+    let alice_id = devices.android.addDevice({
+      key,
+      moniker: 'my windows laptop',
+    });
+
+    devices.alice.connectToContactId(android_id);
+    devices.android.connectToContactId(alice_id);
+    jest.runOnlyPendingTimers();
+  });
 });
