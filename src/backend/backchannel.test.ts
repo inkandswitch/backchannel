@@ -130,7 +130,7 @@ test('presence', (done) => {
   jest.runOnlyPendingTimers();
 });
 
-test('adds and syncs contacts with another device', (done) => {
+test.only('adds and syncs contacts with another device', (done) => {
   devices.android = createDevice('p');
   devices.android.on('open', () => {
     let key = crypto.randomBytes(32);

@@ -200,7 +200,7 @@ export class Backchannel extends events.EventEmitter {
   private _createContactFromWormhole(connection: SecureWormhole): IContact {
     return {
       key: arrayToHex(connection.key),
-      mine: 0,
+      device: 0,
     };
   }
 }

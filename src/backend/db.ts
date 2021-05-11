@@ -1,5 +1,5 @@
 import { ContactId, IContact, IMessage } from './types';
-import AutomergeWebsocketSync from './multidevice';
+import AutomergeWebsocketSync from './AutomergeWebsocketSync';
 import Dexie from 'dexie';
 import * as Automerge from 'automerge';
 import { EventEmitter } from 'events';
@@ -77,18 +77,21 @@ export class Database extends EventEmitter {
     let syncer;
     if (contact.device) {
       syncer = this._system;
+      this.log('is a device');
     } else {
       syncer = this._documents[contact.discoveryKey];
+      this.log('is a contact');
     }
+    this.log('adding peer');
     syncer.addPeer(socket);
     syncer.on('patch', (patch) => {
       this.emit('patch');
-      this.log('got patch', patch);
     });
     this.log('connected', contact.discoveryKey);
   }
 
   disconnected(documentId) {
+    this.log('disconnected', documentId);
     this._documents[documentId].socket = null;
   }
 

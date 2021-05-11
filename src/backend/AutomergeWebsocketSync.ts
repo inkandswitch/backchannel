@@ -14,13 +14,13 @@ export default class AutomergeWebsocketSync<T> extends EventEmitter {
     super();
     this.doc = doc;
     this.key = encryptionKey;
+    this.syncState = Automerge.initSyncState();
     this.log = debug('bc:multidevice:' + crypto.randomBytes(6).toString('hex'));
   }
 
   addPeer(socket: WebSocket) {
+    if (this.socket) throw new Error('Only one peer at a time');
     this.socket = socket;
-
-    this.syncState = Automerge.initSyncState();
     this._sendSyncMsg();
 
     socket.binaryType = 'arraybuffer';
@@ -28,9 +28,7 @@ export default class AutomergeWebsocketSync<T> extends EventEmitter {
     socket.onmessage = (e) => {
       let msg = e.data;
       let decoded = new Uint8Array(msg);
-      this.log('got sync message', decoded);
       this._receive(this.syncState, decoded);
-      this._sendSyncMsg();
     };
   }
 
@@ -58,8 +56,9 @@ export default class AutomergeWebsocketSync<T> extends EventEmitter {
     );
     this.doc = newDoc;
     this.syncState = s2;
-    this.log('got new sync state');
+    this.log('got new sync state', s2);
     if (patch) this.emit('patch', patch);
+    this._sendSyncMsg();
     return patch;
   }
 }
