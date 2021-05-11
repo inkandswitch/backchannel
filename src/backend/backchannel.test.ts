@@ -79,7 +79,6 @@ test('integration send a message', (done) => {
     jest.runOnlyPendingTimers();
     let messages = devices.bob.getMessages(petalice_id);
     expect(messages.length).toBe(1);
-    console.log(messages[0]);
     expect(messages[0].text).toBe(outgoing.text);
     done();
   }

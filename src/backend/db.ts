@@ -1,7 +1,7 @@
-import { ContactId, IContact } from './types';
+import { DiscoveryKey, ContactId, IContact } from './types';
 import AutomergeWebsocketSync from './AutomergeWebsocketSync';
 import Dexie from 'dexie';
-import * as Automerge from 'automerge';
+import Automerge from 'automerge';
 import { EventEmitter } from 'events';
 import debug from 'debug';
 import { v4 as uuid } from 'uuid';
@@ -20,6 +20,14 @@ interface Backchannel {
 
 interface System {
   contacts: Automerge.List<IContact>;
+}
+
+function createRootDoc<T>(changeFn: Automerge.ChangeFn<T>): Automerge.Doc<T> {
+  return Automerge.load(
+    Automerge.getLastLocalChange(
+      Automerge.change(Automerge.init('0000'), { time: 0 }, changeFn)
+    )
+  );
 }
 
 class IndexedDatabase extends Dexie {
@@ -148,7 +156,9 @@ export class Database extends EventEmitter {
       return;
     } else {
       // NEW DOCUMENT!
-      let doc: Automerge.Doc<System> = Automerge.from({ contacts: [] });
+      let doc: Automerge.Doc<System> = createRootDoc<System>((doc: System) => {
+        doc.contacts = [];
+      });
       this._system = new AutomergeWebsocketSync<System>(doc);
       await this._save(SYSTEM_ID, this._system.doc);
       this.log('new contact list:', this._system.doc.contacts);
@@ -170,9 +180,8 @@ export class Database extends EventEmitter {
     });
 
     let docId = contact.discoveryKey;
-    let doc = Automerge.from({
-      messages: [],
-      discoveryKey: contact.discoveryKey,
+    let doc = createRootDoc<Backchannel>((doc: Backchannel) => {
+      doc.messages = [];
     });
     let encryptionKey = Buffer.from(contact.key, 'hex');
     this._documents[docId] = new AutomergeWebsocketSync<Backchannel>(doc);
