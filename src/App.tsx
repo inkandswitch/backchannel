@@ -185,12 +185,13 @@ export default function App() {
         {(params) => <Mailbox contactId={parseInt(params.cid)} />}
       </Route>
       <Route path="/">
-        <Button onClick={clearDb}>ClearDB</Button>
         <TopBar>
           <A href="add">Input code</A>
           <A href="generate">Generate code</A>
+          <A href="">Contacts</A>
         </TopBar>
         <ContactList />
+        <Button onClick={clearDb}>ClearDB</Button>
       </Route>
     </div>
   );

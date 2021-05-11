@@ -3,12 +3,14 @@ import React from 'react';
 import { css } from '@emotion/react/macro';
 import { Link } from 'wouter';
 
+import { color } from './tokens';
+
 export function TopBar(props) {
   return (
     <div
       {...props}
       css={css`
-        background: gray;
+        background: ${color.primary};
         text-align: center;
         padding: 16px 0;
       `}
