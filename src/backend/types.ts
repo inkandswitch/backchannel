@@ -16,6 +16,8 @@ export interface IContact {
 
 export class IMessage {
   id?: MessageId;
+  target: ContactId;
+  incoming?: boolean;
   timestamp: string;
   text?: string;
   filename?: string;
@@ -23,17 +25,13 @@ export class IMessage {
 
   static encode(msg: IMessage, key: Key): string {
     let buf_key = Buffer.from(key, 'hex');
-    let encoded = symmetric.encrypt(buf_key, msg.text);
+    let encoded = symmetric.encrypt(buf_key, JSON.stringify(msg));
     return JSON.stringify(encoded);
   }
 
   static decode(json: string, key: Key): IMessage {
     let buf_key = Buffer.from(key, 'hex');
     let decoded: EncryptedProtocolMessage = JSON.parse(json);
-    let plainText = symmetric.decrypt(buf_key, decoded);
-    return {
-      text: plainText,
-      timestamp: Date.now().toString(),
-    };
+    return JSON.parse(symmetric.decrypt(buf_key, decoded));
   }
 }

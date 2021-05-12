@@ -85,11 +85,20 @@ export class Backchannel extends events.EventEmitter {
     return this.db.addContact(contact);
   }
 
+  /**
+   * Get messages with another contact 
+   * @param contactId The ID of the contact
+   * @returns 
+   */
   getMessagesByContactId(contactId: ContactId): IMessage[] {
     let contact = this.db.getContactById(contactId);
     return this.db
       .getDocument(contact.discoveryKey)
-      .messages.map((msg) => IMessage.decode(msg, contact.key));
+      .messages.map((msg) => {
+        let decoded = IMessage.decode(msg, contact.key);
+        decoded.incoming = decoded.target !== contactId
+        return decoded;
+      });
   }
 
   listContacts(): IContact[] {
@@ -108,6 +117,7 @@ export class Backchannel extends events.EventEmitter {
   async sendMessage(contactId: ContactId, text: string) {
     let msg: IMessage = {
       id: uuid(),
+      target: contactId,
       text: text,
       timestamp: Date.now().toString(),
     };

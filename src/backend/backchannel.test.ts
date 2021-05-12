@@ -12,7 +12,7 @@ let devices = {
   android: null,
 };
 
-function createDevice(name) {
+function createDevice(name) : Backchannel {
   let dbname = crypto.randomBytes(16);
   let RELAY_URL = 'ws://localhost:3001';
   let db_a = new Database(dbname + name);
@@ -183,4 +183,62 @@ test('adds and syncs contacts with another device', (done) => {
     devices.android.connectToContactId(alice_id);
     jest.runOnlyPendingTimers();
   });
+});
+
+test.only('integration send multiple messages', (done) => {
+  // OK, now let's send bob a message 'hello'
+  let outgoing = {
+    contact: petbob_id,
+    text: 'hello',
+  };
+
+  let response = {
+    contact: petalice_id,
+    text: 'hey bob'
+  }
+
+  // sending a message
+  async function onConnect({ socket, contact }) {
+    expect(contact.id).toBe(petbob_id);
+    devices.alice.sendMessage(outgoing.contact, outgoing.text);
+    jest.runOnlyPendingTimers();
+  }
+
+  // bob's device has received the message, send a message back.
+  async function onSync({ docId, peerId }) {
+    jest.runOnlyPendingTimers();
+    let messages = devices.alice.getMessagesByContactId(petbob_id);
+    expect(messages[0].text).toBe(outgoing.text);
+    expect(messages[1].text).toBe(response.text);
+    expect(messages[0].incoming).toBe(false);
+    expect(messages[1].incoming).toBe(true);
+    let alices = devices.alice.getMessagesByContactId(petbob_id).forEach(m => m.incoming = undefined);
+    let bobs = devices.bob.getMessagesByContactId(petalice_id).forEach(m => m.incoming = undefined);
+    expect(alices).toStrictEqual(bobs);
+    done();
+  }
+
+
+  // bob's device has a message!
+  devices.bob.on('sync', function () {
+    jest.runOnlyPendingTimers();
+    let messages = devices.bob.getMessagesByContactId(petalice_id);
+    expect(messages.length).toBe(1);
+    devices.bob.sendMessage(response.contact, response.text);
+    jest.runOnlyPendingTimers();
+    devices.alice.on('sync', onSync)
+  });
+  jest.runOnlyPendingTimers();
+
+  // sending the message once we an open contact
+  devices.alice.on('contact.connected', onConnect);
+  jest.runOnlyPendingTimers();
+
+  expect(devices.alice.opened()).toBe(true);
+  expect(devices.bob.opened()).toBe(true);
+
+  // joining the document on both sides fires the 'contact.connected' event
+  devices.alice.connectToContactId(petbob_id);
+  devices.bob.connectToContactId(petalice_id);
+  jest.runOnlyPendingTimers();
 });
