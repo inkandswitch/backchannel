@@ -1,4 +1,4 @@
-import sodium from 'sodium-javascript';
+import sodium from 'sodium-universal';
 import crypto from 'crypto';
 import { Key, DiscoveryKey } from './types';
 
