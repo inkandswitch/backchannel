@@ -21,15 +21,20 @@ export class IMessage {
   filename?: string;
   mime_type?: string;
 
-  static encode(msg: IMessage, key: Key): string {
+ static encode(msg: IMessage, key: Key): string {
     let buf_key = Buffer.from(key, 'hex');
-    let encoded = symmetric.encrypt(buf_key, JSON.stringify(msg));
+    let encoded = symmetric.encrypt(buf_key, msg.text);
     return JSON.stringify(encoded);
   }
 
   static decode(json: string, key: Key): IMessage {
     let buf_key = Buffer.from(key, 'hex');
     let decoded: EncryptedProtocolMessage = JSON.parse(json);
-    return JSON.parse(symmetric.decrypt(buf_key, decoded));
+    let plainText = symmetric.decrypt(buf_key, decoded);
+    return {
+      text: plainText,
+      timestamp: Date.now().toString(), // FIXME
+      incoming: true,
+    };
   }
 }
