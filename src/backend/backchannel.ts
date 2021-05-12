@@ -3,13 +3,16 @@ import { Client } from '@localfirst/relay-client';
 import events from 'events';
 import catnames from 'cat-names';
 import debug from 'debug';
+import Automerge from 'automerge';
 
-import * as crypto from './crypto';
-import { Database } from './db';
+import { createRootDoc, Database } from './db';
 import { Code, ContactId, IContact, IMessage, DiscoveryKey } from './types';
 import Wormhole from './wormhole';
 import type { SecureWormhole, MagicWormhole } from './wormhole';
 
+interface Mailbox {
+  messages: Automerge.List<string>;
+}
 /**
  * The backchannel class manages the database and wormholes
  */
@@ -30,12 +33,11 @@ export class Backchannel extends events.EventEmitter {
     super();
     this._wormhole = Wormhole();
     this.db = db;
-    this.db.on('sync', (docId) => {
-      this.emit('sync', docId);
+    this.db.on('sync', ({ docId, peerId }) => {
+      this.log('sync', { docId, peerId });
+      this.emit('sync', { docId, peerId });
     });
-    this.db.on('patch', (patch) => {
-      this.emit('patch', patch);
-    });
+
     this._client = this._createClient(relay);
     let pending = 2;
     this._client.once('server.connect', () => {
@@ -66,7 +68,14 @@ export class Backchannel extends events.EventEmitter {
   addContact(contact: IContact): ContactId {
     contact.moniker = contact.moniker || catnames.random();
     contact.device = 0;
-    return this.db.addContact(contact);
+    let id = this.db.addContact(contact);
+
+    let docId = contact.discoveryKey;
+    let doc = createRootDoc<Mailbox>((doc: Mailbox) => {
+      doc.messages = [];
+    });
+    this.db.addDocument(docId, doc);
+    return id;
   }
 
   addDevice(contact: IContact): ContactId {
@@ -75,11 +84,15 @@ export class Backchannel extends events.EventEmitter {
     return this.db.addContact(contact);
   }
 
-  getMessages(contactId: ContactId): IMessage[] {
+  getMessagesByContactId(contactId: ContactId): IMessage[] {
     let contact = this.db.getContactById(contactId);
     return this.db
-      .getMessagesByContactId(contactId)
-      .map((msg) => IMessage.decode(msg, contact.key));
+      .getDocument(contact.discoveryKey)
+      .messages.map((msg) => IMessage.decode(msg, contact.key));
+  }
+
+  listContacts(): IContact[] {
+    return this.db.getContacts();
   }
 
   /**
@@ -94,9 +107,8 @@ export class Backchannel extends events.EventEmitter {
     };
     this.log('sending message', msg);
     let contact = this.db.getContactById(contactId);
-
     let encoded = IMessage.encode(msg, contact.key);
-    this.db.addMessage(encoded, contact.discoveryKey);
+    this._addMessage(encoded, contact);
   }
 
   /**
@@ -155,17 +167,45 @@ export class Backchannel extends events.EventEmitter {
     await this.db.destroy();
   }
 
+  /**
+   * Is this contact currently connected to us? i.e., currently online and we
+   * have an open websocket connection with them
+   * @param {ContactId} contactId
+   * @return {boolean} connected
+   */
+  isConnected(contactId: ContactId): boolean {
+    let doc = this.db.getDocumentByContactId(contactId);
+    return doc && doc.hasPeer(contactId);
+  }
+
   private _onPeerDisconnect(discoveryKey: DiscoveryKey) {
     let contact = this.db.getContactByDiscoveryKey(discoveryKey);
+    this.db.onDisconnect(discoveryKey, contact.id);
     this.log('onPeerDisconnect');
     this.emit('contact.disconnected', { contact });
-    this.db.disconnected(discoveryKey);
   }
 
   private _onPeerConnect(socket: WebSocket, discoveryKey: DiscoveryKey) {
     let contact = this.db.getContactByDiscoveryKey(discoveryKey);
     try {
-      this.db.connected(contact, socket);
+      socket.binaryType = 'arraybuffer';
+      let send = (msg) => {
+        socket.send(msg);
+      };
+
+      let onmessage;
+      if (contact.device) {
+        onmessage = this.db.onDeviceConnect(contact.id, send);
+      } else {
+        let docId = contact.discoveryKey;
+        onmessage = this.db.onPeerConnect(docId, contact.id, send);
+      }
+
+      socket.onmessage = (e) => {
+        onmessage(e.data);
+      };
+
+      this.log('connected', contact.discoveryKey);
     } catch (err) {
       this.log('contact.error', err);
       this.emit('contact.error', err);
@@ -213,5 +253,12 @@ export class Backchannel extends events.EventEmitter {
       key: arrayToHex(connection.key),
       device: 0,
     };
+  }
+
+  private _addMessage(msg: string, contact: IContact) {
+    let docId = contact.discoveryKey;
+    this.db.change(docId, (doc: Mailbox) => {
+      doc.messages.push(msg);
+    });
   }
 }

@@ -1,18 +1,21 @@
 import Automerge from 'automerge';
 import debug from 'debug';
 import { EventEmitter } from 'events';
-import crypto from 'crypto';
 
 type PeerId = string;
 interface Peer {
   id: string;
-  socket: WebSocket;
+  send: Function;
   state: Automerge.SyncState;
+  updated: false;
 }
 
-export default class AutomergeWebsocketSync<T> extends EventEmitter {
+enum MESSAGE_TYPES {
+  DONE = '0',
+}
+
+export default class AutomergeDiscovery<T> extends EventEmitter {
   public doc: Automerge.Doc<T>;
-  public socket: WebSocket;
   private peers: Map<PeerId, Automerge.SyncState>;
   private log: debug;
 
@@ -20,26 +23,46 @@ export default class AutomergeWebsocketSync<T> extends EventEmitter {
     super();
     this.doc = doc;
     this.peers = new Map<PeerId, Peer>();
-    this.log = debug('bc:multidevice:' + crypto.randomBytes(6).toString('hex'));
+    this.log = debug('bc:AutomergePeers');
   }
 
-  addPeer(id: string, socket: WebSocket) {
-    let peer = { id, socket, state: Automerge.initSyncState() };
+  removePeer(id): boolean {
+    return this.peers.delete(id);
+  }
+
+  hasPeer(id): boolean {
+    return this.peers.has(id);
+  }
+
+  addPeer(id: string, send) {
+    let peer = { id, send, state: Automerge.initSyncState() };
     this.peers[id] = peer;
+
     this._sendSyncMsg(peer);
-
-    socket.binaryType = 'arraybuffer';
-
-    socket.onmessage = (e) => {
+    return (msg) => {
       let peer = this.peers[id];
-      let msg = e.data;
-      let decoded = new Uint8Array(msg);
-      this._receive(peer, decoded);
+      switch (msg) {
+        case MESSAGE_TYPES.DONE:
+          if (peer.updated) {
+            this.emit('sync');
+            return;
+          }
+          break;
+        default:
+          let decoded = new Uint8Array(msg);
+          this._receive(peer, decoded);
+          this._sendSyncMsg(peer);
+      }
     };
   }
 
-  change(changeFn: Automerge.ChangeFn<unknown>) {
+  change(changeFn: Automerge.ChangeFn<T>) {
     this.doc = Automerge.change(this.doc, changeFn);
+    for (let id in this.peers) {
+      let peer = this.peers[id];
+      peer.updated = false;
+      this._sendSyncMsg(peer);
+    }
   }
 
   _sendSyncMsg(peer) {
@@ -49,11 +72,13 @@ export default class AutomergeWebsocketSync<T> extends EventEmitter {
     );
     peer.state = nextSyncState;
     if (msg === null) {
-      this.emit('sync');
+      this.log('sending done');
+      peer.updated = true;
+      peer.send(MESSAGE_TYPES.DONE);
       return false;
     }
     this.log('sending', msg);
-    peer.socket.send(msg);
+    peer.send(msg);
     return true;
   }
 
@@ -67,7 +92,6 @@ export default class AutomergeWebsocketSync<T> extends EventEmitter {
     peer.state = s2;
     this.log('got new sync state', s2);
     if (patch) this.emit('patch', patch);
-    this._sendSyncMsg(peer);
     return patch;
   }
 }

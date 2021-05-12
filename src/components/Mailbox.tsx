@@ -23,15 +23,15 @@ export default function Mailbox(props: Props) {
       console.log('got a contact', contact);
       if (contact.id === contactId) {
         setContact(contact);
-        let connected = backchannel.isConnected(contactId);
+        let connected = backchannel.db.isConnected(contactId);
         console.log('connected?', connected);
         setConnected(connected);
       }
     }
 
     let subscribeToConnections = async () => {
-      let intendedContact = await backchannel.db.getContactById(contactId);
-      let messages = await backchannel.db.getMessagesByContactId(contactId);
+      let intendedContact = backchannel.getContactById(contactId);
+      let messages = backchannel.getMessagesByContactId(contactId);
       setMessages(messages);
       console.log('subscribing to contact', intendedContact);
       backchannel.on('contact.connected', onContact);

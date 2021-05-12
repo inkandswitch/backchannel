@@ -75,33 +75,6 @@ test('getContactByDiscoveryKey', () => {
   expect(maybe_bob).toBe(bob);
 });
 
-test('getMessagesByContactId', () => {
-  let alice_id = db.addContact({
-    moniker: 'alice',
-    key: crypto.randomBytes(32).toString('hex'),
-  });
-
-  let msgs = [
-    {
-      text: 'hey .... whats up',
-      timestamp: new Date().toString(),
-    },
-    {
-      text: 'h4x the planet',
-      timestamp: new Date().toString(),
-    },
-    {
-      text: 'ok bob',
-      timestamp: new Date().toString(),
-    },
-  ];
-
-  let contact = db.getContactById(alice_id);
-  msgs.map((msg) => db.addMessage(msg, contact.discoveryKey));
-  let messages = db.getMessagesByContactId(alice_id);
-  expect(messages.length).toBe(msgs.length);
-});
-
 test('editMoniker', () => {
   let bob_id = db.addContact({
     moniker: 'bob',

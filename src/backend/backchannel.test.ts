@@ -60,6 +60,20 @@ afterEach(async () => {
   return promise;
 });
 
+test('getMessagesByContactId', () => {
+  let alice_id = devices.bob.addContact({
+    moniker: 'alice',
+    key: crypto.randomBytes(32).toString('hex'),
+  });
+
+  let msgs = ['hey .... whats up', 'h4x the planet', 'ok bob'];
+
+  let contact = devices.bob.db.getContactById(alice_id);
+  msgs.map((msg) => devices.bob.sendMessage(contact.id, msg));
+  let messages = devices.bob.getMessagesByContactId(alice_id);
+  expect(messages.length).toBe(msgs.length);
+});
+
 test('integration send a message', (done) => {
   // OK, now let's send bob a message 'hello'
   let outgoing = {
@@ -77,14 +91,14 @@ test('integration send a message', (done) => {
   // what we do when bob's device has received the message
   async function onSync() {
     jest.runOnlyPendingTimers();
-    let messages = devices.bob.getMessages(petalice_id);
+    let messages = devices.bob.getMessagesByContactId(petalice_id);
     expect(messages.length).toBe(1);
     expect(messages[0].text).toBe(outgoing.text);
     done();
   }
 
   // bob's device has a message!
-  devices.bob.on('patch', onSync);
+  devices.bob.on('sync', onSync);
   jest.runOnlyPendingTimers();
 
   // sending the message once we an open contact
