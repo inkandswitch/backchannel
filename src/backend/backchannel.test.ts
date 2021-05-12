@@ -1,6 +1,5 @@
-import { Backchannel } from './backchannel';
+import { Mailbox, Backchannel } from './backchannel';
 import { Database } from './db';
-import Automerge from 'automerge';
 import crypto from 'crypto';
 
 let doc,
@@ -12,10 +11,10 @@ let devices = {
   android: null,
 };
 
-function createDevice(name) : Backchannel {
+function createDevice(name): Backchannel {
   let dbname = crypto.randomBytes(16);
   let RELAY_URL = 'ws://localhost:3001';
-  let db_a = new Database(dbname + name);
+  let db_a = new Database<Mailbox>(dbname + name);
   return new Backchannel(db_a, RELAY_URL);
 }
 
@@ -185,7 +184,7 @@ test('adds and syncs contacts with another device', (done) => {
   });
 });
 
-test.only('integration send multiple messages', (done) => {
+test('integration send multiple messages', (done) => {
   // OK, now let's send bob a message 'hello'
   let outgoing = {
     contact: petbob_id,
@@ -194,8 +193,8 @@ test.only('integration send multiple messages', (done) => {
 
   let response = {
     contact: petalice_id,
-    text: 'hey bob'
-  }
+    text: 'hey bob',
+  };
 
   // sending a message
   async function onConnect({ socket, contact }) {
@@ -212,12 +211,15 @@ test.only('integration send multiple messages', (done) => {
     expect(messages[1].text).toBe(response.text);
     expect(messages[0].incoming).toBe(false);
     expect(messages[1].incoming).toBe(true);
-    let alices = devices.alice.getMessagesByContactId(petbob_id).forEach(m => m.incoming = undefined);
-    let bobs = devices.bob.getMessagesByContactId(petalice_id).forEach(m => m.incoming = undefined);
+    let alices = devices.alice
+      .getMessagesByContactId(petbob_id)
+      .forEach((m) => (m.incoming = undefined));
+    let bobs = devices.bob
+      .getMessagesByContactId(petalice_id)
+      .forEach((m) => (m.incoming = undefined));
     expect(alices).toStrictEqual(bobs);
     done();
   }
-
 
   // bob's device has a message!
   devices.bob.on('sync', function () {
@@ -226,7 +228,7 @@ test.only('integration send multiple messages', (done) => {
     expect(messages.length).toBe(1);
     devices.bob.sendMessage(response.contact, response.text);
     jest.runOnlyPendingTimers();
-    devices.alice.on('sync', onSync)
+    devices.alice.on('sync', onSync);
   });
   jest.runOnlyPendingTimers();
 
