@@ -29,6 +29,7 @@
     "react-chat-elements": "^10.14.0",
     "react-dom": "^17.0.2",
     "react-scripts": "4.0.3",
+    "sodium-javascript": "github:okdistribute/sodium-javascript",
     "stream-browserify": "^3.0.0",
     "util": "^0.12.3",
     "web-vitals": "^1.0.1",
