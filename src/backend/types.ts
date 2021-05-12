@@ -21,7 +21,7 @@ export class IMessage {
   filename?: string;
   mime_type?: string;
 
- static encode(msg: IMessage, key: Key): string {
+  static encode(msg: IMessage, key: Key): string {
     let buf_key = Buffer.from(key, 'hex');
     let encoded = symmetric.encrypt(buf_key, msg.text);
     return JSON.stringify(encoded);
