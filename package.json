@@ -36,6 +36,7 @@
     "wouter": "^2.7.4"
   },
   "devDependencies": {
+    "@babel/plugin-transform-modules-commonjs": "^7.14.0",
     "@localfirst/relay": "^3.0.0",
     "@testing-library/jest-dom": "^5.11.4",
     "@testing-library/react": "^11.1.0",
@@ -72,6 +73,11 @@
       "last 1 chrome version",
       "last 1 firefox version",
       "last 1 safari version"
+    ]
+  },
+  "jest": {
+    "transformIgnorePatterns": [
+      "node_modules/(?!@ngrx|(?!deck.gl)|ng-dynamic)"
     ]
   }
 }
