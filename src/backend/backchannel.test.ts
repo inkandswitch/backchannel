@@ -89,9 +89,10 @@ test('integration send a message', (done) => {
   }
 
   // what we do when bob's device has received the message
-  async function onSync() {
+  async function onSync({ docId, peerId }) {
     jest.runOnlyPendingTimers();
     let messages = devices.bob.getMessagesByContactId(petalice_id);
+    expect(peerId).toBe(petalice_id);
     expect(messages.length).toBe(1);
     expect(messages[0].text).toBe(outgoing.text);
     done();

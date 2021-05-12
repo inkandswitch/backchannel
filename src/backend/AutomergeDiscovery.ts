@@ -3,11 +3,12 @@ import debug from 'debug';
 import { EventEmitter } from 'events';
 
 type PeerId = string;
+
 interface Peer {
   id: string;
   send: Function;
   state: Automerge.SyncState;
-  updated: false;
+  idle: false;
 }
 
 enum MESSAGE_TYPES {
@@ -34,8 +35,16 @@ export default class AutomergeDiscovery<T> extends EventEmitter {
     return this.peers.has(id);
   }
 
+  idle() {
+    for (let peerId in this.peers) {
+      let p = this.peers[peerId];
+      if (!p.idle) return false;
+    }
+    return true;
+  }
+
   addPeer(id: string, send) {
-    let peer = { id, send, state: Automerge.initSyncState() };
+    let peer = { id, idle: false, send, state: Automerge.initSyncState() };
     this.peers[id] = peer;
 
     this._sendSyncMsg(peer);
@@ -43,8 +52,8 @@ export default class AutomergeDiscovery<T> extends EventEmitter {
       let peer = this.peers[id];
       switch (msg) {
         case MESSAGE_TYPES.DONE:
-          if (peer.updated) {
-            this.emit('sync');
+          if (peer.idle) {
+            this.emit('sync', peer.id);
             return;
           }
           break;
@@ -60,7 +69,7 @@ export default class AutomergeDiscovery<T> extends EventEmitter {
     this.doc = Automerge.change(this.doc, changeFn);
     for (let id in this.peers) {
       let peer = this.peers[id];
-      peer.updated = false;
+      peer.idle = false;
       this._sendSyncMsg(peer);
     }
   }
@@ -73,7 +82,7 @@ export default class AutomergeDiscovery<T> extends EventEmitter {
     peer.state = nextSyncState;
     if (msg === null) {
       this.log('sending done');
-      peer.updated = true;
+      peer.idle = true;
       peer.send(MESSAGE_TYPES.DONE);
       return false;
     }

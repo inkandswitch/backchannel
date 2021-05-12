@@ -79,17 +79,11 @@ export class Database<T> extends EventEmitter {
 
   onDeviceConnect(peerId: string, send: Function): Function {
     let doc = this._root;
-    doc.on('sync', () => {
-      this.emit('sync', { docId: SYSTEM_ID, peerId });
-    });
     return doc.addPeer(peerId, send);
   }
 
   onPeerConnect(docId: DocumentId, peerId: string, send: Function): Function {
     let doc = this._syncer(docId);
-    doc.on('sync', () => {
-      this.emit('sync', { docId, peerId });
-    });
     return doc.addPeer(peerId, send);
   }
 
@@ -120,6 +114,18 @@ export class Database<T> extends EventEmitter {
     syncer.change(changeFn);
   }
 
+  _createSyncer<J>(
+    docId: DocumentId,
+    doc: Automerge.Doc<J>
+  ): AutomergeDiscovery<J> {
+    let syncer = new AutomergeDiscovery<J>(doc);
+    syncer.on('sync', (peerId) => {
+      this.log('got sync', docId, peerId);
+      this.emit('sync', { docId, peerId });
+    });
+    return syncer;
+  }
+
   async open() {
     if (this.opened) return;
     let system = await this._idb.documents
@@ -130,13 +136,12 @@ export class Database<T> extends EventEmitter {
       // LOAD EXISTING DOCUMENTS
       let c = 0;
       let systemDoc: Automerge.Doc<System> = Automerge.load(system[0].binary);
-      this._root = new AutomergeDiscovery<System>(systemDoc);
+      this._root = this._createSyncer(SYSTEM_ID, systemDoc);
       await this._idb.documents.each(async (_doc) => {
         if (_doc.id !== SYSTEM_ID) {
           c++;
           let doc: Automerge.Doc<T> = Automerge.load(_doc.binary);
-          let syncer = new AutomergeDiscovery<T>(doc);
-          this._syncers[_doc.id] = syncer;
+          this._syncers[_doc.id] = this._createSyncer(_doc.id, doc);
         }
       });
       this.log(`loaded ${c} existing docs`);
@@ -144,10 +149,12 @@ export class Database<T> extends EventEmitter {
       return;
     } else {
       // NEW DOCUMENT!
-      let doc: Automerge.Doc<System> = createRootDoc<System>((doc: System) => {
-        doc.contacts = [];
-      });
-      this._root = new AutomergeDiscovery<System>(doc);
+      let systemDoc: Automerge.Doc<System> = createRootDoc<System>(
+        (doc: System) => {
+          doc.contacts = [];
+        }
+      );
+      this._root = this._createSyncer(SYSTEM_ID, systemDoc);
       await this.save();
       this.log('new contact list:', this._root.doc.contacts);
       return;
@@ -173,8 +180,8 @@ export class Database<T> extends EventEmitter {
   /**
    *
    */
-  addDocument<T>(docId, doc: Automerge.Doc<T>) {
-    this._syncers[docId] = new AutomergeDiscovery<T>(doc);
+  addDocument<T>(docId: DocumentId, doc: Automerge.Doc<T>) {
+    this._syncers[docId] = this._createSyncer(docId, doc);
     this.log('addDocument', docId, doc);
   }
 
