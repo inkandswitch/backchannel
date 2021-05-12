@@ -182,7 +182,7 @@ export default function App() {
         <CodeView view={'generate'} />
       </Route>
       <Route path="/mailbox/:cid">
-        {(params) => <Mailbox contactId={parseInt(params.cid)} />}
+        {(params) => <Mailbox contactId={params.cid} />}
       </Route>
       <Route path="/">
         <Button onClick={clearDb}>ClearDB</Button>

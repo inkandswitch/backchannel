@@ -22,7 +22,8 @@ export function createRootDoc<T>(
   changeFn: Automerge.ChangeFn<T>
 ): Automerge.Doc<T> {
   return Automerge.load(
-    Automerge.getLastLocalChange(
+    // @ts-ignore
+    Automerge.Frontend.getLastLocalChange(
       Automerge.change(Automerge.init('0000'), { time: 0 }, changeFn)
     )
   );
@@ -33,7 +34,7 @@ class IndexedDatabase extends Dexie {
 
   constructor(dbname) {
     super(dbname);
-    this.version(1).stores({
+    this.version(2).stores({
       documents: 'id',
     });
     this.documents = this.table('documents');
@@ -98,6 +99,25 @@ export class Database<T> extends EventEmitter {
     let syncer = this._syncers[docId];
     if (!syncer) throw new Error('No doc for docId ' + docId);
     return syncer.doc;
+  }
+
+  /**
+   * Is this contact currently connected to us? i.e., currently online and we
+   * have an open websocket connection with them
+   * @param {ContactId} contactId
+   * @return {boolean} connected
+   */
+  isConnected(contactId: ContactId): boolean {
+    let contact = this.getContactById(contactId);
+    let docId;
+    if (contact.device) {
+      docId = SYSTEM_ID;
+    } else {
+      docId = contact.discoveryKey;
+    }
+    let doc = this._syncers[docId];
+    this.log('isConnected', docId, contactId);
+    return doc && doc.hasPeer(contactId);
   }
 
   getDocumentByContactId(contactId: ContactId): Automerge.Doc<T> {

@@ -4,20 +4,21 @@ import events from 'events';
 import catnames from 'cat-names';
 import debug from 'debug';
 import Automerge from 'automerge';
+import { v4 as uuid } from 'uuid';
 
 import { createRootDoc, Database } from './db';
 import { Code, ContactId, IContact, IMessage, DiscoveryKey } from './types';
 import Wormhole from './wormhole';
 import type { SecureWormhole, MagicWormhole } from './wormhole';
 
-interface Mailbox {
+export interface Mailbox {
   messages: Automerge.List<string>;
 }
 /**
  * The backchannel class manages the database and wormholes
  */
 export class Backchannel extends events.EventEmitter {
-  public db: Database;
+  public db: Database<Mailbox>;
   private _wormhole: MagicWormhole;
   private _client: Client;
   private _open = true || false;
@@ -29,7 +30,7 @@ export class Backchannel extends events.EventEmitter {
    * @constructor
    * @param {string} dbName - the name of the database saved in IndexedDb
    */
-  constructor(db: Database, relay: string) {
+  constructor(db: Database<Mailbox>, relay: string) {
     super();
     this._wormhole = Wormhole();
     this.db = db;
@@ -95,13 +96,18 @@ export class Backchannel extends events.EventEmitter {
     return this.db.getContacts();
   }
 
+  isConnected(contactId: ContactId) {
+    return this.db.isConnected(contactId);
+  }
+
   /**
    * Send a message to a contact. Assumes that you've already
    * connected with the contact from listening to the `contact.connected` event
    * @param {WebSocket} socket: the open socket for the contact
    */
-  sendMessage(contactId: ContactId, text: string) {
+  async sendMessage(contactId: ContactId, text: string) {
     let msg: IMessage = {
+      id: uuid(),
       text: text,
       timestamp: Date.now().toString(),
     };
@@ -109,6 +115,8 @@ export class Backchannel extends events.EventEmitter {
     let contact = this.db.getContactById(contactId);
     let encoded = IMessage.encode(msg, contact.key);
     this._addMessage(encoded, contact);
+    await this.db.save();
+    return msg;
   }
 
   /**
@@ -146,14 +154,18 @@ export class Backchannel extends events.EventEmitter {
   async announce(code: Code): Promise<ContactId> {
     let connection = await this._wormhole.announce(code);
     let metadata = this._createContactFromWormhole(connection);
-    return this.addContact(metadata);
+    let id = this.addContact(metadata);
+    await this.db.save();
+    return id;
   }
 
   // redeemer/receiver
   async accept(code: Code): Promise<ContactId> {
     let connection = await this._wormhole.accept(code);
     let metadata = this._createContactFromWormhole(connection);
-    return this.addContact(metadata);
+    let id = this.addContact(metadata);
+    await this.db.save();
+    return id;
   }
 
   /**
@@ -165,17 +177,6 @@ export class Backchannel extends events.EventEmitter {
     this._open = false;
     await this._client.disconnectServer();
     await this.db.destroy();
-  }
-
-  /**
-   * Is this contact currently connected to us? i.e., currently online and we
-   * have an open websocket connection with them
-   * @param {ContactId} contactId
-   * @return {boolean} connected
-   */
-  isConnected(contactId: ContactId): boolean {
-    let doc = this.db.getDocumentByContactId(contactId);
-    return doc && doc.hasPeer(contactId);
   }
 
   private _onPeerDisconnect(discoveryKey: DiscoveryKey) {
