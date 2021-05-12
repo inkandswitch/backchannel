@@ -126,7 +126,7 @@ export class Database<T> extends EventEmitter {
     return this.getDocument(docId);
   }
 
-  change(docId: DocumentId, changeFn: Automerge.ChangeFn<unknown>) {
+  change(docId: DocumentId, changeFn: Automerge.ChangeFn<T>) {
     this.log('changing', docId);
     let syncer = this._syncers[docId];
     if (!syncer)
@@ -268,7 +268,7 @@ export class Database<T> extends EventEmitter {
     return Promise.all(tasks);
   }
 
-  _changeContactList(changeFn: Automerge.ChangeFn<unknown>) {
+  _changeContactList(changeFn: Automerge.ChangeFn<System>) {
     this._root.change(changeFn);
   }
 
