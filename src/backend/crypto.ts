@@ -1,4 +1,6 @@
-import sodium from 'sodium-javascript';
+import sodium from 'sodium-universal';
+import crypto from 'crypto';
+import { Key, DiscoveryKey } from './types';
 
 export type EncryptedProtocolMessage = {
   cipher: string;
@@ -31,3 +33,9 @@ export const symmetric = {
     return plainText.toString('utf-8');
   },
 };
+
+export function computeDiscoveryKey(key: Buffer): DiscoveryKey {
+  let hash = crypto.createHash('sha256');
+  hash.update(key);
+  return hash.digest('hex');
+}
