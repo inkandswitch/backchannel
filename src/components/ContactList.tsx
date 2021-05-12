@@ -5,6 +5,7 @@ import { Link } from 'wouter';
 import Backchannel from '../backend';
 import { color } from './tokens';
 import { IMessage } from '../backend/types';
+import { timestampToDate } from './util';
 
 let backchannel = Backchannel();
 
@@ -66,8 +67,7 @@ export default function ContactList(props) {
           let latestMessage, latestMessageTime;
           if (latestMessages && latestMessages[contact.id]) {
             latestMessage = latestMessages[contact.id];
-            const timestamp = new Date(parseInt(latestMessage.timestamp));
-            latestMessageTime = timestamp.toLocaleDateString();
+            latestMessageTime = timestampToDate(latestMessage.timestamp);
           }
 
           return (
