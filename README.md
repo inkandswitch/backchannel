@@ -29,6 +29,31 @@ Then, you can build the javascript bundle which includes hotreloading.
 npm start
 ```
 
+## Viewing the Documentation
+
+The docs can be auto-generated locally. The following command outputs the generated documentation into
+`build/docs/api`. 
+
+```
+npm run build:docs
+```
+
+Then you can view the docs locally with an http-server, you can use something
+like the node `http-server`.
+
+```
+npm i -g http-server
+http-server build/docs/api
+```
+
+Or with npx:
+
+```
+npx http-server build/docs/api
+```
+
+You can then view the main documentation locally at http://localhost:port/classes/backend_backchannel.backchannel.html
+
 
 ## Testing
 

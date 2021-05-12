@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { css } from '@emotion/react/macro';
 import { Link, Route, useLocation } from 'wouter';
 
@@ -19,11 +19,28 @@ type CodeViewMode = 'add' | 'generate';
 
 const CodeView = ({ view }: { view: CodeViewMode }) => {
   let [code, setCode] = useState<Code>('');
-  let [message, _setMessage] = useState('');
-  let [messageTimeoutID, setMessageTimeoutID] = useState(null);
+  let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
   //eslint-disable-next-line
   let [_, setLocation] = useLocation();
+
+  useEffect(() => {
+    // get code on initial page load
+    if (!code) {
+      onClickGenerate();
+    }
+  });
+
+  // Set user feedback message to disappear if necessary
+  useEffect(() => {
+    if (message) {
+      const timeout = setTimeout(() => {
+        setMessage('');
+      }, USER_FEEDBACK_TIMER);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [message]);
 
   let onError = (err: Error) => {
     console.error('got error from backend', err);
@@ -41,35 +58,10 @@ const CodeView = ({ view }: { view: CodeViewMode }) => {
       let cid: ContactId = await backchannel.accept(code);
       console.log('opening mailbox', cid);
       setErrorMsg('');
-      clearMessage(messageTimeoutID);
       setLocation(`/mailbox/${cid}`);
     } catch (err) {
       onError(err);
     }
-  }
-
-  function clearMessage(id) {
-    console.log('clearing', id);
-
-    if (id) {
-      clearTimeout(id);
-    }
-  }
-
-  function setMessage(message: string) {
-    clearMessage(messageTimeoutID); // TODO this doesn't clear, probably need to use useEffect
-
-    // Set message to be displayed
-    _setMessage(message);
-
-    // Reset after a certain amount of time
-    const timeoutID = setTimeout(() => {
-      setMessage('');
-    }, USER_FEEDBACK_TIMER);
-    // Update new timeoutID
-    console.log('new timeout id', timeoutID);
-
-    setMessageTimeoutID(timeoutID);
   }
 
   async function onClickGenerate() {
@@ -81,19 +73,19 @@ const CodeView = ({ view }: { view: CodeViewMode }) => {
       if (code) {
         setCode(code);
 
-        // automatically copy to clipboad. TODO doesn't work on safari
-        const copySuccess = await copyToClipboard(code);
-        if (copySuccess) {
-          setMessage('Code copied!'); // TODO this gets called multiple times?
-        }
-
         // This promise returns once the other party redeems the code
         let cid: ContactId = await backchannel.announce(code);
-        clearMessage(messageTimeoutID);
         setLocation(`/mailbox/${cid}`);
       }
     } catch (err) {
       onError(err);
+    }
+  }
+
+  async function onClickCopy() {
+    const copySuccess = await copyToClipboard(code);
+    if (copySuccess) {
+      setMessage('Code copied!');
     }
   }
 
@@ -123,11 +115,7 @@ const CodeView = ({ view }: { view: CodeViewMode }) => {
               value={code}
               readOnly
             />
-            {code ? (
-              <Button onClick={() => copyToClipboard(code)}>Copy</Button>
-            ) : (
-              <Button onClick={onClickGenerate}>Generate</Button>
-            )}
+            <Button onClick={onClickCopy}>Copy</Button>
           </React.Fragment>
         )}
         <Link
@@ -185,12 +173,13 @@ export default function App() {
         {(params) => <Mailbox contactId={params.cid} />}
       </Route>
       <Route path="/">
-        <Button onClick={clearDb}>ClearDB</Button>
         <TopBar>
           <A href="add">Input code</A>
           <A href="generate">Generate code</A>
+          <A href="">Contacts</A>
         </TopBar>
         <ContactList />
+        <Button onClick={clearDb}>ClearDB</Button>
       </Route>
     </div>
   );
