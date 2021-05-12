@@ -54,10 +54,8 @@ export default class AutomergeDiscovery<T> extends EventEmitter {
       let peer = this.peers.get(id);
       switch (msg) {
         case MESSAGE_TYPES.DONE:
-          if (peer.idle) {
-            this.emit('sync', peer.id);
-            return;
-          }
+          if (peer.idle) this.emit('sync', peer.id);
+          else this._sendSyncMsg(peer)
           break;
         default:
           msg = new Uint8Array(msg);
@@ -85,6 +83,7 @@ export default class AutomergeDiscovery<T> extends EventEmitter {
     if (msg === null) {
       this.log('sending done');
       peer.idle = true;
+      this.peers.set(peer.id, peer);
       peer.send(MESSAGE_TYPES.DONE);
       return false;
     } else {

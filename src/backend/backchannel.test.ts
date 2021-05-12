@@ -1,6 +1,8 @@
 import { Mailbox, Backchannel } from './backchannel';
 import { Database } from './db';
 import crypto from 'crypto';
+import { getPortPromise as getAvailablePort } from 'portfinder'
+import { Server } from '@localfirst/relay'
 
 let doc,
   petbob_id,
@@ -10,13 +12,23 @@ let devices = {
   bob: null,
   android: null,
 };
+let server, port = null
 
 function createDevice(name): Backchannel {
   let dbname = crypto.randomBytes(16);
-  let RELAY_URL = 'ws://localhost:3001';
   let db_a = new Database<Mailbox>(dbname + name);
-  return new Backchannel(db_a, RELAY_URL);
+  return new Backchannel(db_a, `ws://localhost:${port}`);
 }
+
+beforeAll(async () => {
+  port = await getAvailablePort({ port: 3010 })
+  server = new Server({ port })
+  await server.listen({silent: true})
+})
+
+afterAll(async () => {
+  await server.close()
+})
 
 beforeEach((done) => {
   // start a backchannel on bob and alice's devices
@@ -74,6 +86,7 @@ test('integration send a message', (done) => {
   async function onConnect({ socket, contact }) {
     expect(contact.id).toBe(petbob_id);
     devices.alice.sendMessage(outgoing.contact, outgoing.text);
+    jest.runOnlyPendingTimers();
     jest.runOnlyPendingTimers();
   }
 
@@ -186,13 +199,6 @@ test('integration send multiple messages', (done) => {
     text: 'hey bob',
   };
 
-  // sending a message
-  async function onConnect({ socket, contact }) {
-    expect(contact.id).toBe(petbob_id);
-    devices.alice.sendMessage(outgoing.contact, outgoing.text);
-    jest.runOnlyPendingTimers();
-  }
-
   // bob's device has received the message, send a message back.
   async function onSync({ docId, peerId }) {
     jest.runOnlyPendingTimers();
@@ -217,7 +223,8 @@ test('integration send multiple messages', (done) => {
   devices.bob.on('sync', function () {
     jest.runOnlyPendingTimers();
     let messages = devices.bob.getMessagesByContactId(petalice_id);
-    expect(messages.length).toBe(1);
+    expect(messages.length).toBe(2);
+    console.log(messages)
     devices.bob.sendMessage(response.contact, response.text);
     devices.alice.on('sync', onSync);
     jest.runOnlyPendingTimers();
@@ -225,7 +232,12 @@ test('integration send multiple messages', (done) => {
   jest.runOnlyPendingTimers();
 
   // sending the message once we an open contact
-  devices.alice.on('contact.connected', onConnect);
+  devices.alice.on('contact.connected', async function onConnect({ socket, contact }) {
+    expect(contact.id).toBe(petbob_id);
+    devices.alice.sendMessage(outgoing.contact, outgoing.text);
+    jest.runOnlyPendingTimers();
+  });
+
   jest.runOnlyPendingTimers();
 
   expect(devices.alice.opened()).toBe(true);
