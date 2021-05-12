@@ -1,4 +1,4 @@
-import sodium from 'sodium-javascript';
+import sodium from 'sodium-universal';
 
 export type EncryptedProtocolMessage = {
   cipher: string;
