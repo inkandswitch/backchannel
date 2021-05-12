@@ -8,7 +8,7 @@ interface Peer {
   id: string;
   send: Function;
   state: Automerge.SyncState;
-  idle: false;
+  idle: Boolean;
 }
 
 enum MESSAGE_TYPES {
@@ -17,7 +17,7 @@ enum MESSAGE_TYPES {
 
 export default class AutomergeDiscovery<T> extends EventEmitter {
   public doc: Automerge.Doc<T>;
-  private peers: Map<PeerId, Automerge.SyncState>;
+  private peers: Map<PeerId, Peer>;
   private log: debug;
 
   constructor(doc: Automerge.Doc<T>) {
@@ -37,7 +37,7 @@ export default class AutomergeDiscovery<T> extends EventEmitter {
 
   idle() {
     for (let peerId in this.peers) {
-      let p = this.peers[peerId];
+      let p = this.peers.get(peerId);
       if (!p.idle) return false;
     }
     return true;
@@ -45,11 +45,11 @@ export default class AutomergeDiscovery<T> extends EventEmitter {
 
   addPeer(id: string, send) {
     let peer = { id, idle: false, send, state: Automerge.initSyncState() };
-    this.peers[id] = peer;
+    this.peers.set(id, peer);
 
     this._sendSyncMsg(peer);
     return (msg) => {
-      let peer = this.peers[id];
+      let peer = this.peers.get(id);
       switch (msg) {
         case MESSAGE_TYPES.DONE:
           if (peer.idle) {
@@ -66,12 +66,12 @@ export default class AutomergeDiscovery<T> extends EventEmitter {
   }
 
   change(changeFn: Automerge.ChangeFn<T>) {
+    this.log('in change function');
     this.doc = Automerge.change(this.doc, changeFn);
-    for (let id in this.peers) {
-      let peer = this.peers[id];
+    this.peers.forEach((peer) => {
       peer.idle = false;
       this._sendSyncMsg(peer);
-    }
+    });
   }
 
   _sendSyncMsg(peer) {
@@ -80,6 +80,7 @@ export default class AutomergeDiscovery<T> extends EventEmitter {
       peer.state
     );
     peer.state = nextSyncState;
+    this.log('send sycn msg', peer);
     if (msg === null) {
       this.log('sending done');
       peer.idle = true;

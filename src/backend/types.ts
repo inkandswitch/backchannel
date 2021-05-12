@@ -12,6 +12,7 @@ export interface IContact {
   discoveryKey?: DiscoveryKey; // -> hash of code
   key: Key; // -> shared secret key I've accepted with them
   device: number;
+  isConnected?: boolean;
 }
 
 export class IMessage {

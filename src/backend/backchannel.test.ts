@@ -123,16 +123,22 @@ test('presence', (done) => {
     // only if the contact is bob!
     expect(contact.id).toBe(petbob_id);
     // ok bob will now disconnect
+    let contacts = devices.alice.listContacts();
+    expect(contacts[0].isConnected).toBe(true);
     socket.close();
     jest.runOnlyPendingTimers();
   }
 
   async function onDisconnect({ contact, documentId }) {
     // after bob destroys himself, we should get the disconnected event
+    let contacts = devices.alice.listContacts();
+    expect(contacts[0].isConnected).toBe(false);
     expect(contact.id).toBe(petbob_id);
     done();
   }
 
+  let contacts = devices.alice.listContacts();
+  expect(contacts[0].isConnected).toBe(false);
   // sending the message once we an open contact
   devices.alice.on('contact.connected', onConnect);
   devices.alice.on('contact.disconnected', onDisconnect);
@@ -214,9 +220,11 @@ test('integration send multiple messages', (done) => {
     let alices = devices.alice
       .getMessagesByContactId(petbob_id)
       .forEach((m) => (m.incoming = undefined));
+    jest.runOnlyPendingTimers();
     let bobs = devices.bob
       .getMessagesByContactId(petalice_id)
       .forEach((m) => (m.incoming = undefined));
+    jest.runOnlyPendingTimers();
     expect(alices).toStrictEqual(bobs);
     done();
   }
@@ -227,8 +235,8 @@ test('integration send multiple messages', (done) => {
     let messages = devices.bob.getMessagesByContactId(petalice_id);
     expect(messages.length).toBe(1);
     devices.bob.sendMessage(response.contact, response.text);
-    jest.runOnlyPendingTimers();
     devices.alice.on('sync', onSync);
+    jest.runOnlyPendingTimers();
   });
   jest.runOnlyPendingTimers();
 

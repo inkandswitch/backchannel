@@ -103,10 +103,6 @@ export class Backchannel extends events.EventEmitter {
     return this.db.getContacts();
   }
 
-  isConnected(contactId: ContactId) {
-    return this.db.isConnected(contactId);
-  }
-
   /**
    * Send a message to a contact. Assumes that you've already
    * connected with the contact from listening to the `contact.connected` event

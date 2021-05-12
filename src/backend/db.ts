@@ -70,8 +70,13 @@ export class Database<T> extends EventEmitter {
     throw new Error(err);
   }
 
+  private _hydrateContact(contact: IContact): IContact {
+    let isConnected = this.isConnected(contact);
+    return { ...contact, isConnected };
+  }
+
   getContacts(): IContact[] {
-    return this._root.doc.contacts;
+    return this._root.doc.contacts.map((c) => this._hydrateContact(c));
   }
 
   getRootDocument(): AutomergeDiscovery<System> {
@@ -96,7 +101,7 @@ export class Database<T> extends EventEmitter {
 
   getDocument(docId: DocumentId): Automerge.Doc<T> {
     this.log('getting document', docId);
-    let syncer = this._syncers[docId];
+    let syncer = this._syncers.get(docId);
     if (!syncer) throw new Error('No doc for docId ' + docId);
     return syncer.doc;
   }
@@ -104,20 +109,19 @@ export class Database<T> extends EventEmitter {
   /**
    * Is this contact currently connected to us? i.e., currently online and we
    * have an open websocket connection with them
-   * @param {ContactId} contactId
-   * @return {boolean} connected
+   * @param {IContact} contact The contact object
+   * @return {boolean} connected If the contact is currently connected
    */
-  isConnected(contactId: ContactId): boolean {
-    let contact = this.getContactById(contactId);
+  isConnected(contact: IContact): boolean {
     let docId;
     if (contact.device) {
       docId = SYSTEM_ID;
     } else {
       docId = contact.discoveryKey;
     }
-    let doc = this._syncers[docId];
-    this.log('isConnected', docId, contactId);
-    return doc && doc.hasPeer(contactId);
+    let doc = this._syncers.get(docId);
+    this.log('isConnected', docId, contact.id);
+    return doc && doc.hasPeer(contact.id);
   }
 
   getDocumentByContactId(contactId: ContactId): Automerge.Doc<T> {
@@ -128,7 +132,7 @@ export class Database<T> extends EventEmitter {
 
   change(docId: DocumentId, changeFn: Automerge.ChangeFn<T>) {
     this.log('changing', docId);
-    let syncer = this._syncers[docId];
+    let syncer = this._syncers.get(docId);
     if (!syncer)
       this.error(new Error('Document doesnt exist with id ' + docId));
     syncer.change(changeFn);
@@ -161,7 +165,7 @@ export class Database<T> extends EventEmitter {
         if (_doc.id !== SYSTEM_ID) {
           c++;
           let doc: Automerge.Doc<T> = Automerge.load(_doc.binary);
-          this._syncers[_doc.id] = this._createSyncer(_doc.id, doc);
+          this._syncers.set(_doc.id, this._createSyncer(_doc.id, doc));
         }
       });
       this.log(`loaded ${c} existing docs`);
@@ -193,15 +197,17 @@ export class Database<T> extends EventEmitter {
       contact.id = id;
       doc.contacts.push(contact);
     });
-    this.log('addDocument', contact);
     return id;
   }
 
   /**
-   *
+   * Add a document to the database.
+   * @param docId Unique documentid for this document
+   * @param doc An automerge document
    */
-  addDocument<T>(docId: DocumentId, doc: Automerge.Doc<T>) {
-    this._syncers[docId] = this._createSyncer(docId, doc);
+  addDocument(docId: DocumentId, doc: Automerge.Doc<T>) {
+    let syncer: AutomergeDiscovery<T> = this._createSyncer<T>(docId, doc);
+    this._syncers.set(docId, syncer);
     this.log('addDocument', docId, doc);
   }
 
@@ -222,7 +228,7 @@ export class Database<T> extends EventEmitter {
   getContactById(id: ContactId): IContact {
     let contacts = this._root.doc.contacts.filter((c) => c.id === id);
     if (!contacts.length) this.error(new Error('No contact with id ' + id));
-    return contacts[0];
+    return this._hydrateContact(contacts[0]);
   }
 
   /**
@@ -241,7 +247,7 @@ export class Database<T> extends EventEmitter {
       );
     }
 
-    return contacts[0];
+    return this._hydrateContact(contacts[0]);
   }
 
   async save() {
@@ -281,6 +287,6 @@ export class Database<T> extends EventEmitter {
   }
 
   _syncer(docId) {
-    return this._syncers[docId];
+    return this._syncers.get(docId);
   }
 }

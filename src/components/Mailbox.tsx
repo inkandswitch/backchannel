@@ -20,18 +20,21 @@ export default function Mailbox(props: Props) {
   let { contactId } = props;
   let [messages, setMessages] = useState([]);
   let [messageText, setMessageText] = useState('');
-  let [contact, setContact] = useState(null);
-  let [connected, setConnected] = useState(false);
+  let [contact, setContact] = useState(
+    backchannel.db.getContactById(contactId)
+  );
+  let [connected, setConnected] = useState(contact && contact.isConnected);
 
   useEffect(() => {
     function onContact({ contact }) {
       if (contact.id === contactId) {
-        setContact(contact);
+        console.log('contact connected', contactId);
         setConnected(true);
       }
     }
     function onContactDisconnected({ contact }) {
       if (contact.id === contactId) {
+        console.log('contact disconnected', contactId);
         setConnected(false);
       }
     }
