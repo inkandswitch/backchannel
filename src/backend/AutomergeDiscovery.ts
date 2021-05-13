@@ -94,7 +94,7 @@ export default class AutomergeDiscovery<T> extends EventEmitter {
     return true;
   }
 
-  _receive(peer, syncMsg: Uint8Array): Automerge.Patch {
+  _receive(peer, syncMsg: Automerge.BinarySyncMessage): Automerge.Patch {
     let [newDoc, s2, patch] = Automerge.receiveSyncMessage(
       this.doc,
       peer.state,
