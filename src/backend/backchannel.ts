@@ -55,7 +55,7 @@ export class Backchannel extends events.EventEmitter {
     this.log = debug('bc:backchannel');
   }
 
-  _emitOpen() {
+  private _emitOpen() {
     this._open = true;
     this.emit('open');
   }
@@ -318,7 +318,7 @@ export class Backchannel extends events.EventEmitter {
    * @param {IContact} contact - The contact to add to the database
    * @returns {ContactId} id - The local id number for this contact
    */
-  _addContact(contact: IContact): ContactId {
+  private _addContact(contact: IContact): ContactId {
     contact.moniker = contact.moniker || catnames.random();
     contact.device = 0;
     let id = this.db.addContact(contact);
