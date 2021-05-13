@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState, useEffect } from 'react';
 import { css } from '@emotion/react/macro';
-import { ContactId, IMessage, IContact } from '../backend/types';
+import { ContactId } from '../backend/types';
 import { Button } from './';
 import Backchannel from '../backend';
 import { color, fontSize } from './tokens';
@@ -29,6 +29,7 @@ export default function Mailbox(props: Props) {
     function onContact({ contact }) {
       if (contact.id === contactId) {
         console.log('contact connected', contactId);
+        setContact(contact)
         setConnected(true);
       }
     }
@@ -105,6 +106,7 @@ export default function Mailbox(props: Props) {
       >
         <Link href="/">
           <img
+            alt="arrow left"
             src={ArrowLeft}
             css={css`
               cursor: pointer;

@@ -1,4 +1,4 @@
-import { DiscoveryKey, ContactId, IContact } from './types';
+import { ContactId, IContact } from './types';
 import AutomergeDiscovery from './AutomergeDiscovery';
 import Dexie from 'dexie';
 import Automerge from 'automerge';

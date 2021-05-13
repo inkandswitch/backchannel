@@ -4,7 +4,7 @@ import { css } from '@emotion/react/macro';
 import { Link } from 'wouter';
 import Backchannel from '../backend';
 import { color } from './tokens';
-import { IMessage, DiscoveryKey } from '../backend/types';
+import { IMessage } from '../backend/types';
 import { timestampToDate } from './util';
 
 let backchannel = Backchannel();
