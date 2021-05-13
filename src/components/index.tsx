@@ -8,15 +8,30 @@ import { color } from './tokens';
 export function TopBar(props) {
   return (
     <div
-      {...props}
       css={css`
         background: ${color.primary};
+        color: ${color.chatHeaderText};
         text-align: center;
-        padding: 16px 0;
+        padding: 18px;
+        position: fixed;
+        width: 100%;
+        display: flex;
+        flex-direction: row;
       `}
+      {...props}
     />
   );
 }
+
+export const Content = (props) => (
+  <div
+    css={css`
+      padding-top: 60px;
+      flex: 1 0 auto;
+    `}
+    {...props}
+  />
+);
 
 export function A({ children, href, ...props }) {
   return (

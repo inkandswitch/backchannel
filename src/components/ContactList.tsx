@@ -6,6 +6,7 @@ import Backchannel from '../backend';
 import { color } from './tokens';
 import { IMessage } from '../backend/types';
 import { timestampToDate } from './util';
+import { Content } from '../components';
 
 let backchannel = Backchannel();
 
@@ -49,11 +50,7 @@ export default function ContactList(props) {
   }, []);
 
   return (
-    <div
-      css={css`
-        text-align: left;
-      `}
-    >
+    <Content>
       <ul
         css={css`
           list-style: none;
@@ -139,6 +136,6 @@ export default function ContactList(props) {
           );
         })}
       </ul>
-    </div>
+    </Content>
   );
 }
