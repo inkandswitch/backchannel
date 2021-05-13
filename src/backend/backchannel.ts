@@ -66,7 +66,7 @@ export class Backchannel extends events.EventEmitter {
 
   /**
    * Create a one-time code for a new backchannel contact.
-   * @returns Promise<Code> The code to use in announce
+   * @returns {Code} code The code to use in announce
    */
   async getCode(): Promise<Code> {
     let code = await this._wormhole.getCode();
@@ -78,8 +78,8 @@ export class Backchannel extends events.EventEmitter {
    * recipient of the code calling backchannel.accept(code) on the other side. A
    * contact will then be created with an anonymous handle and the id returned. 
    * 
-   * @param code The code to announce
-   * @returns Promise<ContactId> The ID of the contact in the database
+   * @param {Code} code The code to announce
+   * @returns {ContactId} The ID of the contact in the database
    */
   async announce(code: Code): Promise<ContactId> {
     let connection = await this._wormhole.announce(code);
@@ -95,8 +95,8 @@ export class Backchannel extends events.EventEmitter {
    * another instance. Once the contact has been established, a contact will
    * then be created with an anonymous handle and the id returned. 
    * 
-   * @param code The code to accept
-   * @returns Promise<ContactId> The ID of the contact in the database
+   * @param {Code} code The code to accept
+   * @returns {ContactId} The ID of the contact in the database
    */
   async accept(code: Code): Promise<ContactId> {
     let connection = await this._wormhole.accept(code);
@@ -109,8 +109,8 @@ export class Backchannel extends events.EventEmitter {
 
   /**
    * This updates the moniker for a given ccontact and saves the contact in the database
-   * @param contactId string The contact id to edit
-   * @param moniker string The new moniker for this contact
+   * @param {ContactId} contactId The contact id to edit
+   * @param {string} moniker The new moniker for this contact
    * @returns
    */
   async editMoniker(contactId: ContactId, moniker: string): Promise<void> {
@@ -122,8 +122,8 @@ export class Backchannel extends events.EventEmitter {
    * Add a device, which is a special type of contact that has privileged access
    * to syncronize the contact list. Add a key to encrypt the contact list over
    * the wire using symmetric encryption.
-   * @param description string The description for this device (e.g., "bob's laptop")
-   * @param key Buffer The encryption key for this device (optional)
+   * @param {string} description The description for this device (e.g., "bob's laptop")
+   * @param {Buffer} key The encryption key for this device (optional)
    * @returns
    */
   addDevice(description: string, key?: Buffer): ContactId {
@@ -151,7 +151,7 @@ export class Backchannel extends events.EventEmitter {
 
   /**
    * Returns a list of contacts.
-   * @returns IContact[] An array of contacts
+   * @returns An array of contacts
    */
   listContacts(): IContact[] {
     return this.db.getContacts();
@@ -179,7 +179,7 @@ export class Backchannel extends events.EventEmitter {
 
   /**
    * Start connecting to the contact. 
-   * @param contact IContact The contact to connect to
+   * @param {IContact} contact The contact to connect to
    */
   connectToContact(contact: IContact) {
     if (!contact || !contact.discoveryKey)
@@ -189,7 +189,7 @@ export class Backchannel extends events.EventEmitter {
 
   /**
    * Start connecting to the contact. 
-   * @param cid ContactId The contact id
+   * @param {ContactId} cid The contact id
    */
   connectToContactId(cid: ContactId) {
     this.log('connecting to contact with id', cid);
@@ -200,7 +200,6 @@ export class Backchannel extends events.EventEmitter {
   /**
    * Start connecting to all known contacts. Danger: opens a websocket
    * connection for each contact which could be an expensive operation.
-   * @param cid ContactId The contact id
    */
   connectToAllContacts() {
     let contacts = this.listContacts();
