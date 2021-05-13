@@ -44,15 +44,18 @@ class IndexedDatabase extends Dexie {
 const SYSTEM_ID = 'BACKCHANNEL_ROOT_DOCUMENT';
 
 export class Database<T> extends EventEmitter {
-  _idb: IndexedDatabase;
-  _root: AutomergeDiscovery<System>;
-  _syncers: Map<DocumentId, AutomergeDiscovery<T>>;
+  private _idb: IndexedDatabase;
+  private _root: AutomergeDiscovery<System>;
+  private _syncers: Map<DocumentId, AutomergeDiscovery<T>>;
+  private log: debug;
 
   opened: boolean;
-  log: debug;
 
-  static ROOT = SYSTEM_ID;
-
+  /**
+   * Create a new database for a given Automerge document type.
+   * 
+   * @param {string} dbname The name of the database
+   */
   constructor(dbname) {
     super();
     this._idb = new IndexedDatabase(dbname);
@@ -88,7 +91,7 @@ export class Database<T> extends EventEmitter {
     return this._addPeer(doc, peerId, send);
   }
 
-  _addPeer(doc: AutomergeDiscovery<unknown>, peerId: string, send: Function) {
+  private _addPeer(doc: AutomergeDiscovery<unknown>, peerId: string, send: Function) {
     let contact = this.getContactById(peerId);
     this.log('adding peer', contact);
     let peer = {
@@ -135,6 +138,11 @@ export class Database<T> extends EventEmitter {
     return doc && doc.hasPeer(contact.id);
   }
 
+  /**
+   * Get the document for this contact. 
+   * @param {ContactId} contactId 
+   * @returns Automerge document
+   */
   getDocumentByContactId(contactId: ContactId): Automerge.Doc<T> {
     let contact = this.getContactById(contactId);
     let docId = contact.discoveryKey;
@@ -149,7 +157,7 @@ export class Database<T> extends EventEmitter {
     syncer.change(changeFn);
   }
 
-  _createSyncer<J>(
+  private _createSyncer<J>(
     docId: DocumentId,
     doc: Automerge.Doc<J>
   ): AutomergeDiscovery<J> {
@@ -161,7 +169,12 @@ export class Database<T> extends EventEmitter {
     return syncer;
   }
 
-  async open() {
+  /**
+   * Open the database. This is called automatically when you create the
+   * instance and you don't need to call it. 
+   * @returns When the database has been opened 
+   */
+  async open() : Promise<void> {
     if (this.opened) return;
     let system = await this._idb.documents
       .where({ id: SYSTEM_ID })
