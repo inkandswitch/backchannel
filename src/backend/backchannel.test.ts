@@ -27,13 +27,13 @@ beforeEach((done) => {
   // OK, so now I create a petname for bob on alice's device..
 
   async function create() {
-    petbob_id = await devices.alice.addContact({
+    petbob_id = await devices.alice._addContact({
       key: doc,
       moniker: 'bob',
     });
 
     // OK, so now I create a petname for bob on alice's device..
-    petalice_id = await devices.bob.addContact({
+    petalice_id = await devices.bob._addContact({
       key: doc,
       moniker: 'alice',
     });
@@ -60,7 +60,7 @@ afterEach(async () => {
 });
 
 test('getMessagesByContactId', () => {
-  let alice_id = devices.bob.addContact({
+  let alice_id = devices.bob._addContact({
     moniker: 'alice',
     key: crypto.randomBytes(32).toString('hex'),
   });
