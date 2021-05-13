@@ -153,7 +153,7 @@ test('presence', (done) => {
 test('adds and syncs contacts with another device', (done) => {
   devices.android = createDevice('p');
   devices.android.on('open', () => {
-    let key = crypto.randomBytes(32);
+    let key = crypto.randomBytes(32).toString('hex');
 
     let called = 0;
 
@@ -175,14 +175,8 @@ test('adds and syncs contacts with another device', (done) => {
     devices.android.on('sync', onSync);
     jest.runOnlyPendingTimers();
 
-    let android_id = devices.alice.addDevice({
-      key,
-      moniker: 'my android',
-    });
-    let alice_id = devices.android.addDevice({
-      key,
-      moniker: 'my windows laptop',
-    });
+    let android_id = devices.alice.addDevice(key, 'my android');
+    let alice_id = devices.android.addDevice(key, 'my windows laptop');
 
     devices.alice.connectToContactId(android_id);
     devices.android.connectToContactId(alice_id);

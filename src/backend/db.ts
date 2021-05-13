@@ -85,12 +85,23 @@ export class Database<T> extends EventEmitter {
 
   onDeviceConnect(peerId: string, send: Function): Function {
     let doc = this._root;
-    return doc.addPeer(peerId, send);
+    return this._addPeer(doc, peerId, send);
+  }
+
+  _addPeer(doc: AutomergeDiscovery<unknown>, peerId: string, send: Function) {
+    let contact = this.getContactById(peerId);
+    this.log('adding peer', contact);
+    let peer = {
+      id: peerId,
+      send,
+      key: Buffer.from(contact.key, 'hex'),
+    };
+    return doc.addPeer(peerId, peer);
   }
 
   onPeerConnect(docId: DocumentId, peerId: string, send: Function): Function {
     let doc = this._syncer(docId);
-    return doc.addPeer(peerId, send);
+    return this._addPeer(doc, peerId, send);
   }
 
   onDisconnect(docId, peerId) {

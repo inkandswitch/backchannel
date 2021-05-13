@@ -7,8 +7,9 @@ type PeerId = string;
 interface Peer {
   id: string;
   send: Function;
-  state: Automerge.SyncState;
-  idle: Boolean;
+  key?: Buffer;
+  state?: Automerge.SyncState;
+  idle?: Boolean;
 }
 
 enum MESSAGE_TYPES {
@@ -43,8 +44,9 @@ export default class AutomergeDiscovery<T> extends EventEmitter {
     return true;
   }
 
-  addPeer(id: string, send) {
-    let peer = { id, idle: false, send, state: Automerge.initSyncState() };
+  addPeer(id: string, peer: Peer) {
+    peer.idle = false;
+    peer.state = Automerge.initSyncState();
     this.peers.set(id, peer);
 
     this._sendSyncMsg(peer);
@@ -58,8 +60,8 @@ export default class AutomergeDiscovery<T> extends EventEmitter {
           }
           break;
         default:
-          let decoded = new Uint8Array(msg);
-          this._receive(peer, decoded);
+          msg = new Uint8Array(msg);
+          this._receive(peer, msg);
           this._sendSyncMsg(peer);
       }
     };
@@ -80,19 +82,19 @@ export default class AutomergeDiscovery<T> extends EventEmitter {
       peer.state
     );
     peer.state = nextSyncState;
-    this.log('send sycn msg', peer);
     if (msg === null) {
       this.log('sending done');
       peer.idle = true;
       peer.send(MESSAGE_TYPES.DONE);
       return false;
+    } else {
+      this.log('sending', msg);
+      peer.send(msg);
     }
-    this.log('sending', msg);
-    peer.send(msg);
     return true;
   }
 
-  _receive(peer, syncMsg): Automerge.Patch {
+  _receive(peer, syncMsg: Uint8Array): Automerge.Patch {
     let [newDoc, s2, patch] = Automerge.receiveSyncMessage(
       this.doc,
       peer.state,

@@ -79,9 +79,21 @@ export class Backchannel extends events.EventEmitter {
     return id;
   }
 
-  addDevice(contact: IContact): ContactId {
-    contact.moniker = contact.moniker || 'my device';
-    contact.device = 1;
+  /**
+   * Add a device, which is a special type of contact that has privileged access
+   * to syncronize the contact list. Add a key to encrypt the contact list over
+   * the wire using symmetric encryption.
+   * @param description
+   * @param description string The description for this device (e.g., "bob's laptop")
+   * @param key Buffer The encryption key for this device (optional)
+   * @returns
+   */
+  addDevice(description: string, key?: Buffer): ContactId {
+    let contact: IContact = {
+      key: key.toString('hex'),
+      moniker: description || 'my device',
+      device: 1,
+    };
     return this.db.addContact(contact);
   }
 
@@ -194,7 +206,7 @@ export class Backchannel extends events.EventEmitter {
     let contact = this.db.getContactByDiscoveryKey(discoveryKey);
     try {
       socket.binaryType = 'arraybuffer';
-      let send = (msg) => {
+      let send = (msg: Uint8Array) => {
         socket.send(msg);
       };
 
