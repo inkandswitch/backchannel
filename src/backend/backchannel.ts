@@ -61,6 +61,17 @@ export class Backchannel extends events.EventEmitter {
   }
 
   /**
+   * This updates the moniker for a given ccontact and saves the contact in the database
+   * @param contactId string The contact id to edit
+   * @param moniker string The new moniker for this contact
+   * @returns
+   */
+  async editMoniker(contactId: ContactId, moniker: string): Promise<void> {
+    this.db.editMoniker(contactId, moniker);
+    return this.db.save();
+  }
+
+  /**
    * Create a new contact in the database
    *
    * @param {IContact} contact - The contact to add to the database
@@ -83,7 +94,6 @@ export class Backchannel extends events.EventEmitter {
    * Add a device, which is a special type of contact that has privileged access
    * to syncronize the contact list. Add a key to encrypt the contact list over
    * the wire using symmetric encryption.
-   * @param description
    * @param description string The description for this device (e.g., "bob's laptop")
    * @param key Buffer The encryption key for this device (optional)
    * @returns

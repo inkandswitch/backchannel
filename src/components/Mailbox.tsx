@@ -29,7 +29,7 @@ export default function Mailbox(props: Props) {
     function onContact({ contact }) {
       if (contact.id === contactId) {
         console.log('contact connected', contactId);
-        setContact(contact)
+        setContact(contact);
         setConnected(true);
       }
     }
