@@ -1,6 +1,6 @@
 import sodium from 'sodium-universal';
 import crypto from 'crypto';
-import { Key, DiscoveryKey } from './types';
+import { DiscoveryKey } from './types';
 
 export type EncryptedProtocolMessage = {
   cipher: string;
