@@ -228,7 +228,7 @@ export class Database<T> extends EventEmitter {
    * @param {IContact} contact - The contact to update to the database
    */
   editMoniker(id: ContactId, moniker: string) {
-    this._changeContactList((doc: System) => {
+    return this._changeContactList((doc: System) => {
       let contacts = doc.contacts.filter((c) => c.id === id);
       if (!contacts.length)
         this.error(new Error('Could not find contact with id' + id));

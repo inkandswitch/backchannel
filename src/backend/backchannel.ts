@@ -15,7 +15,9 @@ export interface Mailbox {
   messages: Automerge.List<string>;
 }
 /**
- * The backchannel class manages the database and wormholes
+ * The backchannel class manages the database and wormholes.
+ * 
+ * Call backchannel.db.save() periodically to ensure changes are saved.
  */
 export class Backchannel extends events.EventEmitter {
   public db: Database<Mailbox>;
@@ -26,9 +28,11 @@ export class Backchannel extends events.EventEmitter {
 
   /**
    * Create a new backchannel client. Each instance represents a user opening
-   * the backchannel app on their device.
+   * the backchannel app on their device. There is one Mailbox per contact which
+   * is identified by the contact's discoveryKey.
    * @constructor
-   * @param {string} dbName - the name of the database saved in IndexedDb
+   * @param db Database<Mailbox> Use a database of type Mailbox, the only document supported currently
+   * @param relay string The URL of the relay
    */
   constructor(db: Database<Mailbox>, relay: string) {
     super();
