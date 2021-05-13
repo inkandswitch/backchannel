@@ -65,6 +65,49 @@ export class Backchannel extends events.EventEmitter {
   }
 
   /**
+   * Create a one-time code for a new backchannel contact.
+   * @returns Promise<Code> The code to use in announce
+   */
+  async getCode(): Promise<Code> {
+    let code = await this._wormhole.getCode();
+    return code;
+  }
+
+  /**
+   * Announce the code to the magic wormhole service. This blocks on the
+   * recipient of the code calling backchannel.accept(code) on the other side. A
+   * contact will then be created with an anonymous handle and the id returned. 
+   * 
+   * @param code The code to announce
+   * @returns Promise<ContactId> The ID of the contact in the database
+   */
+  async announce(code: Code): Promise<ContactId> {
+    let connection = await this._wormhole.announce(code);
+    let metadata = this._createContactFromWormhole(connection);
+    let id = this._addContact(metadata);
+    await this.db.save();
+    return id;
+  }
+
+  /**
+   * Open a websocket connection to the magic wormhole service and accept the
+   * code. Will fail if someone has not called backchannel.announce(code) on
+   * another instance. Once the contact has been established, a contact will
+   * then be created with an anonymous handle and the id returned. 
+   * 
+   * @param code The code to accept
+   * @returns Promise<ContactId> The ID of the contact in the database
+   */
+  async accept(code: Code): Promise<ContactId> {
+    let connection = await this._wormhole.accept(code);
+    let metadata = this._createContactFromWormhole(connection);
+    let id = this._addContact(metadata);
+    await this.db.save();
+    return id;
+  }
+
+
+  /**
    * This updates the moniker for a given ccontact and saves the contact in the database
    * @param contactId string The contact id to edit
    * @param moniker string The new moniker for this contact
@@ -73,25 +116,6 @@ export class Backchannel extends events.EventEmitter {
   async editMoniker(contactId: ContactId, moniker: string): Promise<void> {
     this.db.editMoniker(contactId, moniker);
     return this.db.save();
-  }
-
-  /**
-   * Create a new contact in the database
-   *
-   * @param {IContact} contact - The contact to add to the database
-   * @returns {ContactId} id - The local id number for this contact
-   */
-  addContact(contact: IContact): ContactId {
-    contact.moniker = contact.moniker || catnames.random();
-    contact.device = 0;
-    let id = this.db.addContact(contact);
-
-    let docId = contact.discoveryKey;
-    let doc = createRootDoc<Mailbox>((doc: Mailbox) => {
-      doc.messages = [];
-    });
-    this.db.addDocument(docId, doc);
-    return id;
   }
 
   /**
@@ -112,7 +136,7 @@ export class Backchannel extends events.EventEmitter {
   }
 
   /**
-   * Get messages with another contact
+   * Get messages with another contact.
    * @param contactId The ID of the contact
    * @returns
    */
@@ -125,6 +149,10 @@ export class Backchannel extends events.EventEmitter {
     });
   }
 
+  /**
+   * Returns a list of contacts.
+   * @returns IContact[] An array of contacts
+   */
   listContacts(): IContact[] {
     return this.db.getContacts();
   }
@@ -150,8 +178,8 @@ export class Backchannel extends events.EventEmitter {
   }
 
   /**
-   * Join a document and start connecting to peers that have it
-   * @param {DocumentId} documentId
+   * Start connecting to the contact. 
+   * @param contact IContact The contact to connect to
    */
   connectToContact(contact: IContact) {
     if (!contact || !contact.discoveryKey)
@@ -159,6 +187,10 @@ export class Backchannel extends events.EventEmitter {
     this._client.join(contact.discoveryKey);
   }
 
+  /**
+   * Start connecting to the contact. 
+   * @param cid ContactId The contact id
+   */
   connectToContactId(cid: ContactId) {
     this.log('connecting to contact with id', cid);
     let contact = this.db.getContactById(cid);
@@ -166,7 +198,19 @@ export class Backchannel extends events.EventEmitter {
   }
 
   /**
-   * Leave a document and disconnect from peers
+   * Start connecting to all known contacts. Danger: opens a websocket
+   * connection for each contact which could be an expensive operation.
+   * @param cid ContactId The contact id
+   */
+  connectToAllContacts() {
+    let contacts = this.listContacts();
+    contacts.forEach((contact) => {
+      this.connectToContact(contact);
+    })
+  }
+
+  /**
+   * Leave a document and disconnect from peers.
    * @param {DocumentId} documentId
    */
   disconnectFromContact(contact: IContact) {
@@ -175,33 +219,9 @@ export class Backchannel extends events.EventEmitter {
     this._client.leave(contact.discoveryKey);
   }
 
-  async getCode(): Promise<Code> {
-    let code = await this._wormhole.getCode();
-    return code;
-  }
-
-  // sender/initiator
-  async announce(code: Code): Promise<ContactId> {
-    let connection = await this._wormhole.announce(code);
-    let metadata = this._createContactFromWormhole(connection);
-    let id = this.addContact(metadata);
-    await this.db.save();
-    return id;
-  }
-
-  // redeemer/receiver
-  async accept(code: Code): Promise<ContactId> {
-    let connection = await this._wormhole.accept(code);
-    let metadata = this._createContactFromWormhole(connection);
-    let id = this.addContact(metadata);
-    await this.db.save();
-    return id;
-  }
-
   /**
-   * Destroy this instance and delete the data
-   * Disconnects from all websocket clients
-   * Danger! Unrecoverable!
+   * Destroy this instance and delete the data. Disconnects from all websocket
+   * clients.  Danger! Unrecoverable!
    */
   async destroy() {
     this._open = false;
@@ -292,4 +312,24 @@ export class Backchannel extends events.EventEmitter {
       doc.messages.push(msg);
     });
   }
+
+  /**
+   * Create a new contact in the database
+   *
+   * @param {IContact} contact - The contact to add to the database
+   * @returns {ContactId} id - The local id number for this contact
+   */
+  _addContact(contact: IContact): ContactId {
+    contact.moniker = contact.moniker || catnames.random();
+    contact.device = 0;
+    let id = this.db.addContact(contact);
+
+    let docId = contact.discoveryKey;
+    let doc = createRootDoc<Mailbox>((doc: Mailbox) => {
+      doc.messages = [];
+    });
+    this.db.addDocument(docId, doc);
+    return id;
+  }
+
 }
