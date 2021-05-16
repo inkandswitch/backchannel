@@ -51,12 +51,8 @@ export class Backchannel extends events.EventEmitter {
     });
 
     this._client = this._createClient(relay);
-    let pending = 2;
-    this._client.once('server.connect', () => {
-      if (!--pending) this._emitOpen();
-    });
     this.db.once('open', () => {
-      if (!--pending) this._emitOpen();
+      this._emitOpen();
     });
 
     this.log = debug('bc:backchannel');
