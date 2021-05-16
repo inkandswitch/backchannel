@@ -27,16 +27,11 @@ beforeEach((done) => {
   // OK, so now I create a petname for bob on alice's device..
 
   async function create() {
-    petbob_id = await devices.alice._addContact({
-      key: doc,
-      moniker: 'bob',
-    });
+    petbob_id = await devices.alice._addContact(doc);
+    devices.alice.editMoniker(petbob_id, 'bob');
 
-    // OK, so now I create a petname for bob on alice's device..
-    petalice_id = await devices.bob._addContact({
-      key: doc,
-      moniker: 'alice',
-    });
+    petalice_id = await devices.bob._addContact(doc);
+    devices.bob.editMoniker(petalice_id, 'alice');
   }
 
   devices.alice.once('open', () => {
@@ -59,17 +54,12 @@ afterEach(async () => {
   return promise;
 });
 
-test('getMessagesByContactId', () => {
-  let alice_id = devices.bob._addContact({
-    moniker: 'alice',
-    key: crypto.randomBytes(32).toString('hex'),
-  });
-
+test('getMessagesByContactId', async () => {
   let msgs = ['hey .... whats up', 'h4x the planet', 'ok bob'];
 
-  let contact = devices.bob.db.getContactById(alice_id);
+  let contact = devices.bob.db.getContactById(petalice_id);
   msgs.map((msg) => devices.bob.sendMessage(contact.id, msg));
-  let messages = devices.bob.getMessagesByContactId(alice_id);
+  let messages = devices.bob.getMessagesByContactId(petalice_id);
   expect(messages.length).toBe(msgs.length);
 });
 

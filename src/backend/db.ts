@@ -53,7 +53,7 @@ export class Database<T> extends EventEmitter {
 
   /**
    * Create a new database for a given Automerge document type.
-   * 
+   *
    * @param {string} dbname The name of the database
    */
   constructor(dbname) {
@@ -91,7 +91,11 @@ export class Database<T> extends EventEmitter {
     return this._addPeer(doc, peerId, send);
   }
 
-  private _addPeer(doc: AutomergeDiscovery<unknown>, peerId: string, send: Function) {
+  private _addPeer(
+    doc: AutomergeDiscovery<unknown>,
+    peerId: string,
+    send: Function
+  ) {
     let contact = this.getContactById(peerId);
     this.log('adding peer', contact);
     let peer = {
@@ -139,8 +143,8 @@ export class Database<T> extends EventEmitter {
   }
 
   /**
-   * Get the document for this contact. 
-   * @param {ContactId} contactId 
+   * Get the document for this contact.
+   * @param {ContactId} contactId
    * @returns Automerge document
    */
   getDocumentByContactId(contactId: ContactId): Automerge.Doc<T> {
@@ -171,10 +175,10 @@ export class Database<T> extends EventEmitter {
 
   /**
    * Open the database. This is called automatically when you create the
-   * instance and you don't need to call it. 
-   * @returns When the database has been opened 
+   * instance and you don't need to call it.
+   * @returns When the database has been opened
    */
-  async open() : Promise<void> {
+  async open(): Promise<void> {
     if (this.opened) return;
     let system = await this._idb.documents
       .where({ id: SYSTEM_ID })
@@ -209,16 +213,24 @@ export class Database<T> extends EventEmitter {
     }
   }
 
+  addDevice(key: string, description: string): ContactId {
+    return this.addContact(key, description, 1);
+  }
+
   /**
    * Add a contact.
    */
-  addContact(contact: IContact): ContactId {
+  addContact(key: string, moniker: string, device?: number): ContactId {
     let id = uuid();
-    contact.discoveryKey = crypto.computeDiscoveryKey(
-      Buffer.from(contact.key, 'hex')
-    );
+    let discoveryKey = crypto.computeDiscoveryKey(Buffer.from(key, 'hex'));
+    let contact: IContact = {
+      id,
+      key,
+      moniker,
+      discoveryKey,
+      device: device ? 1 : 0,
+    };
     this._changeContactList((doc: System) => {
-      contact.id = id;
       doc.contacts.push(contact);
     });
     return id;
@@ -229,10 +241,11 @@ export class Database<T> extends EventEmitter {
    * @param docId Unique documentid for this document
    * @param doc An automerge document
    */
-  addDocument(docId: DocumentId, doc: Automerge.Doc<T>) {
+  addDocument(docId: DocumentId, doc: Automerge.Doc<T>): Promise<unknown> {
     let syncer: AutomergeDiscovery<T> = this._createSyncer<T>(docId, doc);
     this._syncers.set(docId, syncer);
     this.log('addDocument', docId, doc);
+    return this.save();
   }
 
   /**
@@ -275,16 +288,24 @@ export class Database<T> extends EventEmitter {
   }
 
   async save() {
-    await this._idb.documents.put({
-      id: SYSTEM_ID,
-      binary: Automerge.save(this._root.doc),
+    let tasks = [];
+    this._syncers.forEach((doc: AutomergeDiscovery<T>, docId) => {
+      tasks.push(
+        this._idb.documents.put({
+          id: docId,
+          binary: Automerge.save(doc.doc),
+        })
+      );
     });
-    let c = 1;
-    for (let d in this._syncers) {
-      await this._save(d);
-      c++;
-    }
+    tasks.push(
+      this._idb.documents.put({
+        id: SYSTEM_ID,
+        binary: Automerge.save(this._root.doc),
+      })
+    );
+    let c = tasks.length;
     this.log(`saved ${c} documents`);
+    return Promise.all(tasks);
   }
 
   async destroy() {
@@ -300,14 +321,6 @@ export class Database<T> extends EventEmitter {
 
   _changeContactList(changeFn: Automerge.ChangeFn<System>) {
     this._root.change(changeFn);
-  }
-
-  async _save(id: DocumentId, _doc?: Automerge.Doc<T>): Promise<string> {
-    let doc = _doc || this.getDocument(id);
-    return this._idb.documents.put({
-      id,
-      binary: Automerge.save(doc),
-    });
   }
 
   _syncer(docId) {
