@@ -1,6 +1,7 @@
 import { Database } from './db';
 import crypto from 'crypto';
 import Automerge from 'automerge';
+import { Mailbox } from './backchannel';
 
 let db;
 let dbname;
@@ -83,7 +84,7 @@ test('save/load', (done) => {
   expect(karen.moniker).toBe('karen');
 
   let docId = crypto.randomBytes(32).toString('hex');
-  let doc = Automerge.change(Automerge.init(), (doc) => {
+  let doc = Automerge.change(Automerge.init(), (doc: Mailbox) => {
     doc.messages = ['hello friend'];
   });
   db.addDocument(docId, doc).then(() => {
