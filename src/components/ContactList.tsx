@@ -59,7 +59,7 @@ export default function ContactList(props) {
       backchannel.removeListener('contact.connected', refreshContactList);
       backchannel.removeListener('sync', refreshContactList);
     };
-  }, [contacts]);
+  }, []);
 
   return (
     <div
