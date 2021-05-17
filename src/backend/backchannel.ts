@@ -91,7 +91,7 @@ export class Backchannel extends events.EventEmitter {
    * @returns {ContactId} The ID of the contact in the database
    */
   async announce(code: Code): Promise<ContactId> {
-    let connection: SecureWormhole = await this._wormhole.announce(code);
+    let connection: SecureWormhole = await this._wormhole.announce(code.trim());
     let key = arrayToHex(connection.key);
     let id = await this._addContact(key);
     await this.db.save();
@@ -108,7 +108,7 @@ export class Backchannel extends events.EventEmitter {
    * @returns {ContactId} The ID of the contact in the database
    */
   async accept(code: Code): Promise<ContactId> {
-    let connection: SecureWormhole = await this._wormhole.accept(code);
+    let connection: SecureWormhole = await this._wormhole.accept(code.trim());
     let key = arrayToHex(connection.key);
     let id = await this._addContact(key);
     await this.db.save();
