@@ -82,7 +82,7 @@ export class Database<T> extends EventEmitter {
 
   private _hydrateContact(contact: IContact): IContact {
     let isConnected = this.isConnected(contact);
-    return { ...contact, isConnected };
+    return { isConnected, ...contact };
   }
 
   getContacts(): IContact[] {
