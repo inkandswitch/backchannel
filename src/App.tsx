@@ -9,6 +9,7 @@ import { TopBar, A, Button } from './components';
 import Mailbox from './components/Mailbox';
 import ContactList from './components/ContactList';
 import Backchannel from './backend';
+import { ERROR } from './backend/backchannel';
 
 let backchannel = Backchannel();
 
@@ -146,6 +147,8 @@ const CodeView = ({ view }: { view: CodeViewMode }) => {
 };
 
 export default function App() {
+  let [relayError, setRelayError] = useState(null);
+  let [retries, setRetries] = useState(0);
   function clearDb() {
     backchannel
       .destroy()
@@ -156,6 +159,45 @@ export default function App() {
         console.error('error clearing db', err);
       });
   }
+
+  useEffect(() => {
+    function onError (err, code: ERROR) {
+      switch (code) {
+        case ERROR.UNREACHABLE:
+          let ms = err.delay % 1000;
+          let s = (err.delay - ms) / 1000;
+          var secs = s % 60;
+          let rest = 'Retrying...'
+          if (secs > 1) rest = `Retrying in ${secs} seconds. (${retries} attempts)`
+          let message = `${err.message}. ${rest}`
+          setRelayError(message)
+          setRetries(retries+1)
+          break;
+        case ERROR.PEER:
+          // TODO: do something
+          break;
+        default:
+          break
+      }
+      console.error(err)
+    };
+
+    function onServerConnect() {
+      console.log('on server connect!')
+      if (relayError) {
+        setRelayError(null)
+        setRetries(0)
+      }
+    }
+
+    backchannel.on('error', onError)
+    backchannel.on('server.connect', onServerConnect)
+
+    return () => {
+      backchannel.removeListener('error', onError)
+      backchannel.removeListener('server.connect', onServerConnect)
+    }
+  });
 
   return (
     <div
@@ -180,6 +222,7 @@ export default function App() {
         </TopBar>
         <ContactList />
         <Button onClick={clearDb}>ClearDB</Button>
+        {relayError && <div>{relayError}</div>}
       </Route>
     </div>
   );

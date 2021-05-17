@@ -20,7 +20,7 @@ window.addEventListener('beforeunload', function (event) {
 });
 
 // TODO: Loading screen
-backchannel.on('open', async () => {
+backchannel.once('open', async () => {
   render(
     <React.StrictMode>
       <App />
@@ -28,4 +28,5 @@ backchannel.on('open', async () => {
     document.getElementById('root')
   );
 });
+
 reportWebVitals();

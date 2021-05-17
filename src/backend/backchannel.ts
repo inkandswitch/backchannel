@@ -20,6 +20,11 @@ import type { SecureWormhole, MagicWormhole } from './wormhole';
 
 type DocumentId = string;
 
+export enum ERROR {
+  UNREACHABLE = 404,
+  PEER = 500,
+}
+
 export interface Mailbox {
   messages: Automerge.List<string>;
 }
@@ -51,21 +56,18 @@ export class Backchannel extends events.EventEmitter {
       this.log('sync', { docId, peerId });
       this.emit('sync', { docId, peerId });
     });
-
+    this._client = this._createClient(relay);
     this.db.once('open', () => {
       let documentIds = this.db.documents;
+      this._emitOpen();
       this.log(`Joining ${documentIds.length} documentIds`);
-      this._client = this._createClient(relay, documentIds);
-      this._client.on('server.connect', () => {
-        this._emitOpen();
-      });
+      documentIds.forEach(docId => this._client.join(docId))
     });
 
     this.log = debug('bc:backchannel');
   }
 
   private _emitOpen() {
-    this._open = true;
     this.emit('open');
   }
 
@@ -192,6 +194,7 @@ export class Backchannel extends events.EventEmitter {
    * @param {IContact} contact The contact to connect to
    */
   connectToContact(contact: IContact) {
+    if (!this._open) return;
     if (!contact || !contact.discoveryKey)
       throw new Error('contact.discoveryKey required');
     this._client.join(contact.discoveryKey);
@@ -212,6 +215,7 @@ export class Backchannel extends events.EventEmitter {
    * connection for each contact which could be an expensive operation.
    */
   connectToAllContacts() {
+    if (!this._open) return;
     let contacts = this.listContacts();
     contacts.forEach((contact) => {
       this.connectToContact(contact);
@@ -234,7 +238,7 @@ export class Backchannel extends events.EventEmitter {
    */
   async destroy() {
     this._open = false;
-    await this._client.disconnectServer();
+    if (this.opened()) await this._client.disconnectServer();
     await this.db.destroy();
   }
 
@@ -282,19 +286,34 @@ export class Backchannel extends events.EventEmitter {
     };
 
     socket.onerror = (err) => {
-      console.error('error', err);
-      console.trace(err);
+      let code = ERROR.PEER
+      this.emit('error', err, code)
     };
   }
 
-  private _createClient(relay: string, documentIds: DocumentId[]): Client {
+  private _createClient(relay: string, documentIds?: DocumentId[]): Client {
     let client = new Client({
       url: relay,
       documentIds,
     });
 
-    client.once('server.disconnect', () => {
+    client.on('error', (err) => {
+      let error = {
+        message: 'Relay unreachable',
+        delay: client.retryDelay
+      };
+      let code = ERROR.UNREACHABLE;
+      this.emit('error', error, code);
+    });
+
+    client.on('server.connect', () => {
+      this.emit('server.connect');
+      this._open = true;
+    });
+
+    client.on('server.disconnect', () => {
       this.emit('server.disconnect');
+      this._open = false;
     });
 
     client
