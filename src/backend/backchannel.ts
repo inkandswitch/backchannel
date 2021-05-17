@@ -288,7 +288,13 @@ export class Backchannel extends events.EventEmitter {
         onmessage(e.data);
       };
 
-      this.log('connected', contact.discoveryKey);
+      contact.isConnected = this.db.isConnected(contact);
+      this.log('contact.connected', contact);
+      let openContact = {
+        socket,
+        contact,
+      };
+      this.emit('contact.connected', openContact);
     } catch (err) {
       this.log('contact.error', err);
       this.emit('contact.error', err);
@@ -302,13 +308,6 @@ export class Backchannel extends events.EventEmitter {
       console.error('error', err);
       console.trace(err);
     };
-
-    let openContact = {
-      socket,
-      contact,
-    };
-    this.log('got contact', discoveryKey);
-    this.emit('contact.connected', openContact);
   }
 
   private _createClient(relay: string, documentIds: DocumentId[]): Client {
@@ -325,9 +324,9 @@ export class Backchannel extends events.EventEmitter {
       .on('peer.disconnect', ({ documentId }) =>
         this._onPeerDisconnect(documentId)
       )
-      .on('peer.connect', ({ socket, documentId }) =>
-        this._onPeerConnect(socket, documentId)
-      );
+      .on('peer.connect', ({ socket, documentId }) => {
+        this._onPeerConnect(socket, documentId);
+      });
 
     return client;
   }
