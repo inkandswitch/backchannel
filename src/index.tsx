@@ -2,7 +2,6 @@ import React from 'react';
 import { render } from 'react-dom';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import debug from 'debug';
 import Backchannel from './backend';
 
 let backchannel = Backchannel();
