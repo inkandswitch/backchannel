@@ -87,7 +87,7 @@ test('save/load', (done) => {
     doc.messages = ['hello friend'];
   });
   db.addDocument(docId, doc).then(() => {
-    expect(db.documents).toStrictEqual([docId])
+    expect(db.documents).toStrictEqual([docId]);
     let doc = db.getDocument(docId);
     expect(doc.messages.length).toBe(1);
     expect(doc.messages[0]).toBe('hello friend');
@@ -99,7 +99,7 @@ test('save/load', (done) => {
         let maybe_karen = db.getContactById(bob_id);
         expect(maybe_karen).toStrictEqual(karen);
         let doc = db.getDocument(docId);
-        expect(db.documents).toStrictEqual([docId])
+        expect(db.documents).toStrictEqual([docId]);
         expect(doc.messages.length).toBe(1);
         expect(doc.messages[0]).toBe('hello friend');
         done();

@@ -72,7 +72,7 @@ export class Database<T> extends EventEmitter {
    * Get an array of all document ids
    */
   get documents(): string[] {
-    return Array.from(this._syncers.keys())
+    return Array.from(this._syncers.keys());
   }
 
   error(err) {

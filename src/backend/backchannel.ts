@@ -17,7 +17,8 @@ import {
 } from './types';
 import Wormhole from './wormhole';
 import type { SecureWormhole, MagicWormhole } from './wormhole';
-import { DocumentId } from '../../../relay/packages/server/src/types';
+
+type DocumentId = string;
 
 export interface Mailbox {
   messages: Automerge.List<string>;
@@ -52,12 +53,12 @@ export class Backchannel extends events.EventEmitter {
     });
 
     this.db.once('open', () => {
-      let documentIds = this.db.documents
-      this.log('documentIds', documentIds)
+      let documentIds = this.db.documents;
+      this.log(`Joining ${documentIds.length} documentIds`);
       this._client = this._createClient(relay, documentIds);
       this._client.on('server.connect', () => {
         this._emitOpen();
-      })
+      });
     });
 
     this.log = debug('bc:backchannel');
@@ -90,7 +91,7 @@ export class Backchannel extends events.EventEmitter {
    * @returns {ContactId} The ID of the contact in the database
    */
   async announce(code: Code): Promise<ContactId> {
-    let connection = await this._wormhole.announce(code);
+    let connection: SecureWormhole = await this._wormhole.announce(code);
     let key = arrayToHex(connection.key);
     let id = await this._addContact(key);
     await this.db.save();
@@ -107,7 +108,7 @@ export class Backchannel extends events.EventEmitter {
    * @returns {ContactId} The ID of the contact in the database
    */
   async accept(code: Code): Promise<ContactId> {
-    let connection = await this._wormhole.accept(code);
+    let connection: SecureWormhole = await this._wormhole.accept(code);
     let key = arrayToHex(connection.key);
     let id = await this._addContact(key);
     await this.db.save();
@@ -290,7 +291,7 @@ export class Backchannel extends events.EventEmitter {
   private _createClient(relay: string, documentIds: DocumentId[]): Client {
     let client = new Client({
       url: relay,
-      documentIds
+      documentIds,
     });
 
     client.once('server.disconnect', () => {
