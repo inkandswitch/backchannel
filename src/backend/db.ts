@@ -68,6 +68,13 @@ export class Database<T> extends EventEmitter {
     this._syncers = new Map<DocumentId, AutomergeDiscovery<T>>();
   }
 
+  /**
+   * Get an array of all document ids
+   */
+  get documents(): string[] {
+    return Array.from(this._syncers.keys())
+  }
+
   error(err) {
     this.log('got error', err);
     throw new Error(err);

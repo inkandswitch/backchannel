@@ -17,6 +17,7 @@ import {
 } from './types';
 import Wormhole from './wormhole';
 import type { SecureWormhole, MagicWormhole } from './wormhole';
+import { DocumentId } from '../../../relay/packages/server/src/types';
 
 export interface Mailbox {
   messages: Automerge.List<string>;
@@ -50,9 +51,13 @@ export class Backchannel extends events.EventEmitter {
       this.emit('sync', { docId, peerId });
     });
 
-    this._client = this._createClient(relay);
     this.db.once('open', () => {
-      this._emitOpen();
+      let documentIds = this.db.documents
+      this.log('documentIds', documentIds)
+      this._client = this._createClient(relay, documentIds);
+      this._client.on('server.connect', () => {
+        this._emitOpen();
+      })
     });
 
     this.log = debug('bc:backchannel');
@@ -282,9 +287,10 @@ export class Backchannel extends events.EventEmitter {
     this.emit('contact.connected', openContact);
   }
 
-  private _createClient(relay: string): Client {
+  private _createClient(relay: string, documentIds: DocumentId[]): Client {
     let client = new Client({
       url: relay,
+      documentIds
     });
 
     client.once('server.disconnect', () => {
