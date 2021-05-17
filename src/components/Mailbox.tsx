@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState, useEffect } from 'react';
 import { css } from '@emotion/react/macro';
-import { ContactId, IMessage, IContact } from '../backend/types';
+import { ContactId } from '../backend/types';
 import { Button } from './';
 import Backchannel from '../backend';
 import { color, fontSize } from './tokens';
@@ -20,27 +20,32 @@ export default function Mailbox(props: Props) {
   let { contactId } = props;
   let [messages, setMessages] = useState([]);
   let [messageText, setMessageText] = useState('');
-  let [contact, setContact] = useState(null);
-  let [connected, setConnected] = useState(backchannel.isConnected(contactId));
+  let [contact, setContact] = useState(
+    backchannel.db.getContactById(contactId)
+  );
+  let [connected, setConnected] = useState(contact && contact.isConnected);
 
   useEffect(() => {
     function onContact({ contact }) {
-      console.log('got a contact', contact);
       if (contact.id === contactId) {
+        console.log('contact connected', contactId);
         setContact(contact);
-        let connected = backchannel.isConnected(contactId);
-        console.log('connected?', connected);
-        setConnected(connected);
+        setConnected(true);
+      }
+    }
+    function onContactDisconnected({ contact }) {
+      if (contact.id === contactId) {
+        console.log('contact disconnected', contactId);
+        setConnected(false);
       }
     }
 
     let subscribeToConnections = async () => {
-      let intendedContact = await backchannel.getContactById(contactId);
-      let messages = await backchannel.getMessagesByContactId(contactId);
+      let intendedContact = backchannel.db.getContactById(contactId);
+      let messages = backchannel.getMessagesByContactId(contactId);
       setMessages(messages);
-      console.log('subscribing to contact', intendedContact);
       backchannel.on('contact.connected', onContact);
-      backchannel.on('contact.disconnected', onContact);
+      backchannel.on('contact.disconnected', onContactDisconnected);
       backchannel.connectToContact(intendedContact);
     };
 
@@ -52,25 +57,23 @@ export default function Mailbox(props: Props) {
   }, [contactId]);
 
   useEffect(() => {
-    let onMessage = (event) => {
-      let contact: IContact = event.contact;
-      let message: IMessage = event.message;
-      console.log('got a message', contact.id, message.id);
-      if (contactId === contact.id) {
-        setMessages(messages.concat(message));
+    let onMessage = ({ docId, peerId }) => {
+      if (contact && peerId === contact.id) {
+        let messages = backchannel.getMessagesByContactId(contactId);
+        setMessages(messages);
       }
     };
-    backchannel.on('message', onMessage);
+    backchannel.on('sync', onMessage);
 
     return function cleanup() {
       backchannel.removeListener('message', onMessage);
     };
-  }, [contactId, messages]);
+  }, [contactId, contact, messages]);
 
   async function sendMessage(e) {
     e.preventDefault();
-    let message = await backchannel.sendMessage(contactId, messageText);
-    setMessages(messages.concat(message));
+    let msg = await backchannel.sendMessage(contactId, messageText);
+    setMessages(messages.concat(msg));
     setMessageText('');
   }
 
@@ -103,6 +106,7 @@ export default function Mailbox(props: Props) {
       >
         <Link href="/">
           <img
+            alt="arrow left"
             src={ArrowLeft}
             css={css`
               cursor: pointer;

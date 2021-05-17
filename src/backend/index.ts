@@ -1,4 +1,4 @@
-import { Backchannel } from './backchannel';
+import { Mailbox, Backchannel } from './backchannel';
 import config from './config.json';
 import { Database } from './db';
 
@@ -11,7 +11,7 @@ export default function initialize(
   if (instance) return instance;
   let dbName = _dbName || 'backchannel_' + window.location.hash;
   let relay = _relay || config.RELAY_URL;
-  let db = new Database(dbName);
+  let db = new Database<Mailbox>(dbName);
   instance = new Backchannel(db, relay);
   instance.on('error', function onError(err: Error) {
     console.error('Connection error');

@@ -1,44 +1,318 @@
 import { arrayToHex } from 'enc-utils';
 import { Client } from '@localfirst/relay-client';
-import crypto from 'crypto';
 import events from 'events';
 import catnames from 'cat-names';
+import debug from 'debug';
+import Automerge from 'automerge';
+import { v4 as uuid } from 'uuid';
 
-import { Database } from './db';
-import { Code, ContactId, IContact, IMessage } from './types';
+import { createRootDoc, Database } from './db';
+import {
+  Key,
+  Code,
+  ContactId,
+  IContact,
+  IMessage,
+  DiscoveryKey,
+} from './types';
 import Wormhole from './wormhole';
 import type { SecureWormhole, MagicWormhole } from './wormhole';
 
+type DocumentId = string;
+
+export interface Mailbox {
+  messages: Automerge.List<string>;
+}
 /**
- * The backchannel class manages the database and wormholes
+ * The backchannel class manages the database and wormholes.
+ *
+ * Call backchannel.db.save() periodically to ensure changes are saved.
  */
 export class Backchannel extends events.EventEmitter {
+  public db: Database<Mailbox>;
   private _wormhole: MagicWormhole;
-  private _db: Database;
   private _client: Client;
-  private _sockets = new Map<number, WebSocket>();
+  private _open = true || false;
+  private log = debug;
 
   /**
    * Create a new backchannel client. Each instance represents a user opening
-   * the backchannel app on their device.
+   * the backchannel app on their device. There is one Mailbox per contact which
+   * is identified by the contact's discoveryKey.
    * @constructor
-   * @param {string} dbName - the name of the database saved in IndexedDb
+   * @param db Database<Mailbox> Use a database of type Mailbox, the only document supported currently
+   * @param relay string The URL of the relay
    */
-  constructor(db: Database, relay: string) {
+  constructor(db: Database<Mailbox>, relay: string) {
     super();
     this._wormhole = Wormhole();
-    this._db = db;
-    this._client = new Client({
+    this.db = db;
+    this.db.on('sync', ({ docId, peerId }) => {
+      this.log('sync', { docId, peerId });
+      this.emit('sync', { docId, peerId });
+    });
+
+    this.db.once('open', () => {
+      let documentIds = this.db.documents;
+      this.log(`Joining ${documentIds.length} documentIds`);
+      this._client = this._createClient(relay, documentIds);
+      this._client.on('server.connect', () => {
+        this._emitOpen();
+      });
+    });
+
+    this.log = debug('bc:backchannel');
+  }
+
+  private _emitOpen() {
+    this._open = true;
+    this.emit('open');
+  }
+
+  opened() {
+    return this._open;
+  }
+
+  /**
+   * Create a one-time code for a new backchannel contact.
+   * @returns {Code} code The code to use in announce
+   */
+  async getCode(): Promise<Code> {
+    let code = await this._wormhole.getCode();
+    return code;
+  }
+
+  /**
+   * Announce the code to the magic wormhole service. This blocks on the
+   * recipient of the code calling backchannel.accept(code) on the other side. A
+   * contact will then be created with an anonymous handle and the id returned.
+   *
+   * @param {Code} code The code to announce
+   * @returns {ContactId} The ID of the contact in the database
+   */
+  async announce(code: Code): Promise<ContactId> {
+    let connection: SecureWormhole = await this._wormhole.announce(code);
+    let key = arrayToHex(connection.key);
+    let id = await this._addContact(key);
+    await this.db.save();
+    return id;
+  }
+
+  /**
+   * Open a websocket connection to the magic wormhole service and accept the
+   * code. Will fail if someone has not called backchannel.announce(code) on
+   * another instance. Once the contact has been established, a contact will
+   * then be created with an anonymous handle and the id returned.
+   *
+   * @param {Code} code The code to accept
+   * @returns {ContactId} The ID of the contact in the database
+   */
+  async accept(code: Code): Promise<ContactId> {
+    let connection: SecureWormhole = await this._wormhole.accept(code);
+    let key = arrayToHex(connection.key);
+    let id = await this._addContact(key);
+    await this.db.save();
+    return id;
+  }
+
+  /**
+   * This updates the moniker for a given ccontact and saves the contact in the database
+   * @param {ContactId} contactId The contact id to edit
+   * @param {string} moniker The new moniker for this contact
+   * @returns
+   */
+  async editMoniker(contactId: ContactId, moniker: string): Promise<any[]> {
+    this.db.editMoniker(contactId, moniker);
+    return this.db.save();
+  }
+
+  /**
+   * Add a device, which is a special type of contact that has privileged access
+   * to syncronize the contact list. Add a key to encrypt the contact list over
+   * the wire using symmetric encryption.
+   * @param {string} description The description for this device (e.g., "bob's laptop")
+   * @param {Buffer} key The encryption key for this device (optional)
+   * @returns
+   */
+  addDevice(description: string, key?: Buffer): ContactId {
+    let moniker = description || 'my device';
+    return this.db.addDevice(key.toString('hex'), moniker);
+  }
+
+  /**
+   * Get messages with another contact.
+   * @param contactId The ID of the contact
+   * @returns
+   */
+  getMessagesByContactId(contactId: ContactId): IMessage[] {
+    let contact = this.db.getContactById(contactId);
+    try {
+      let doc = this.db.getDocument(contact.discoveryKey);
+      return doc.messages.map((msg) => {
+        let decoded = IMessage.decode(msg, contact.key);
+        decoded.incoming = decoded.target !== contactId;
+        return decoded;
+      });
+    } catch (err) {
+      console.error('error', err);
+      return [];
+    }
+  }
+
+  /**
+   * Returns a list of contacts.
+   * @returns An array of contacts
+   */
+  listContacts(): IContact[] {
+    return this.db.getContacts();
+  }
+
+  /**
+   * Send a message to a contact. Assumes that you've already
+   * connected with the contact from listening to the `contact.connected` event
+   * @param {WebSocket} socket: the open socket for the contact
+   */
+  async sendMessage(contactId: ContactId, text: string) {
+    let msg: IMessage = {
+      id: uuid(),
+      target: contactId,
+      text: text,
+      timestamp: Date.now().toString(),
+    };
+    this.log('sending message', msg);
+    let contact = this.db.getContactById(contactId);
+    let encoded = IMessage.encode(msg, contact.key);
+    this._addMessage(encoded, contact);
+    await this.db.save();
+    return msg;
+  }
+
+  /**
+   * Start connecting to the contact.
+   * @param {IContact} contact The contact to connect to
+   */
+  connectToContact(contact: IContact) {
+    if (!contact || !contact.discoveryKey)
+      throw new Error('contact.discoveryKey required');
+    this._client.join(contact.discoveryKey);
+  }
+
+  /**
+   * Start connecting to the contact.
+   * @param {ContactId} cid The contact id
+   */
+  connectToContactId(cid: ContactId) {
+    this.log('connecting to contact with id', cid);
+    let contact = this.db.getContactById(cid);
+    this.connectToContact(contact);
+  }
+
+  /**
+   * Start connecting to all known contacts. Danger: opens a websocket
+   * connection for each contact which could be an expensive operation.
+   */
+  connectToAllContacts() {
+    let contacts = this.listContacts();
+    contacts.forEach((contact) => {
+      this.connectToContact(contact);
+    });
+  }
+
+  /**
+   * Leave a document and disconnect from peers.
+   * @param {DocumentId} documentId
+   */
+  disconnectFromContact(contact: IContact) {
+    if (!contact || !contact.discoveryKey)
+      throw new Error('contact.discoveryKey required');
+    this._client.leave(contact.discoveryKey);
+  }
+
+  /**
+   * Destroy this instance and delete the data. Disconnects from all websocket
+   * clients.  Danger! Unrecoverable!
+   */
+  async destroy() {
+    this._open = false;
+    await this._client.disconnectServer();
+    await this.db.destroy();
+  }
+
+  private _onPeerDisconnect(discoveryKey: DiscoveryKey) {
+    let contact = this.db.getContactByDiscoveryKey(discoveryKey);
+    this.db.onDisconnect(discoveryKey, contact.id);
+    this.log('onPeerDisconnect');
+    this.emit('contact.disconnected', { contact });
+  }
+
+  private _onPeerConnect(socket: WebSocket, discoveryKey: DiscoveryKey) {
+    let contact = this.db.getContactByDiscoveryKey(discoveryKey);
+    try {
+      socket.binaryType = 'arraybuffer';
+      let send = (msg: Uint8Array) => {
+        socket.send(msg);
+      };
+
+      let onmessage;
+      if (contact.device) {
+        onmessage = this.db.onDeviceConnect(contact.id, send);
+      } else {
+        let docId = contact.discoveryKey;
+        onmessage = this.db.onPeerConnect(docId, contact.id, send);
+      }
+
+      socket.onmessage = (e) => {
+        onmessage(e.data);
+      };
+
+      this.log('connected', contact.discoveryKey);
+    } catch (err) {
+      this.log('contact.error', err);
+      this.emit('contact.error', err);
+    }
+
+    socket.onclose = () => {
+      this._onPeerDisconnect(discoveryKey);
+    };
+
+    socket.onerror = (err) => {
+      console.error('error', err);
+      console.trace(err);
+    };
+
+    let openContact = {
+      socket,
+      contact,
+    };
+    this.log('got contact', discoveryKey);
+    this.emit('contact.connected', openContact);
+  }
+
+  private _createClient(relay: string, documentIds: DocumentId[]): Client {
+    let client = new Client({
       url: relay,
+      documentIds,
     });
-    this._setupListeners();
-    // TODO: catch this error upstream and inform the user properly
-    //
-    this._client.once('server.connect', () => {
-      this.emit('open');
+
+    client.once('server.disconnect', () => {
+      this.emit('server.disconnect');
     });
-    this._db.open().catch((err) => {
-      console.error(`Database open failed : ${err.stack}`);
+
+    client
+      .on('peer.disconnect', ({ documentId }) =>
+        this._onPeerDisconnect(documentId)
+      )
+      .on('peer.connect', ({ socket, documentId }) =>
+        this._onPeerConnect(socket, documentId)
+      );
+
+    return client;
+  }
+
+  private _addMessage(msg: string, contact: IContact) {
+    let docId = contact.discoveryKey;
+    this.db.change(docId, (doc: Mailbox) => {
+      doc.messages.push(msg);
     });
   }
 
@@ -48,205 +322,16 @@ export class Backchannel extends events.EventEmitter {
    * @param {IContact} contact - The contact to add to the database
    * @returns {ContactId} id - The local id number for this contact
    */
-  async addContact(contact: IContact): Promise<ContactId> {
-    let hash = crypto.createHash('sha256');
-    hash.update(contact.key);
-    contact.discoveryKey = hash.digest('hex');
-    contact.moniker = contact.moniker || catnames.random();
-    return this._db.contacts.add(contact);
-  }
-
-  /**
-   * Update an existing contact in the database.
-   * The contact object should have an `id`
-   * @param {IContact} contact - The contact to update to the database
-   */
-  updateContact(contact: IContact): Promise<ContactId> {
-    return this._db.contacts.put(contact);
-  }
-
-  /**
-   * Send a message to a contact. Assumes that you've already
-   * connected with the contact from listening to the `contact.connected` event
-   * @param {WebSocket} socket: the open socket for the contact
-   */
-  async sendMessage(contactId: ContactId, text: string): Promise<IMessage> {
-    let msg: IMessage = {
-      text: text,
-      contact: contactId,
-      timestamp: Date.now().toString(),
-      incoming: false,
-    };
-    let socket: WebSocket = this._getSocketByContactId(contactId);
-    let mid = await this._db.messages.add(msg);
-    let contact = await this.getContactById(contactId);
-    msg.id = mid;
-    let sendable: string = IMessage.encode(msg, contact.key);
-    try {
-      socket.send(sendable);
-    } catch (err) {
-      throw new Error('Unable to send message to ' + contact.moniker);
-    }
-    return msg;
-  }
-
-  async getMessagesByContactId(cid: ContactId): Promise<IMessage[]> {
-    return this._db.messages.where('contact').equals(cid).toArray();
-  }
-
-  async getContactById(id: ContactId): Promise<IContact> {
-    let contacts = await this._db.contacts.where('id').equals(id).toArray();
-    if (!contacts.length) {
-      throw new Error('No contact with id');
-    }
-    return contacts[0];
-  }
-
-  /**
-   * Get contact by discovery key
-   * @param {string} discoveryKey - the discovery key for this contact
-   */
-  async getContactByDiscoveryKey(discoveryKey: string): Promise<IContact> {
-    let contacts = await this._db.contacts
-      .where('discoveryKey')
-      .equals(discoveryKey)
-      .toArray();
-    if (!contacts.length) {
-      throw new Error(
-        'No contact with that document? that shouldnt be possible. Maybe you cleared your cache...'
-      );
-    }
-
-    return contacts[0];
-  }
-
-  /**
-   * Join a document and start connecting to peers that have it
-   * @param {DocumentId} documentId
-   */
-  connectToContact(contact: IContact) {
-    if (!contact || !contact.discoveryKey)
-      throw new Error('contact.discoveryKey required');
-    this._client.join(contact.discoveryKey);
-  }
-
-  async connectToContactId(cid: ContactId) {
-    let contact = await this.getContactById(cid);
-    this.connectToContact(contact);
-  }
-
-  /**
-   * Leave a document and disconnect from peers
-   * @param {DocumentId} documentId
-   */
-  disconnectFromContact(contact: IContact) {
-    if (!contact || !contact.discoveryKey)
-      throw new Error('contact.discoveryKey required');
-    this._client.leave(contact.discoveryKey);
-  }
-
-  async getCode(): Promise<Code> {
-    let code = await this._wormhole.getCode();
-    return code;
-  }
-
-  // sender/initiator
-  async announce(code: Code): Promise<ContactId> {
-    let connection = await this._wormhole.announce(code);
-    return this._createContactFromWormhole(connection);
-  }
-
-  // redeemer/receiver
-  async accept(code: Code): Promise<ContactId> {
-    let connection = await this._wormhole.accept(code);
-    return this._createContactFromWormhole(connection);
-  }
-
-  async listContacts(): Promise<IContact[]> {
-    return await this._db.contacts.toArray();
-  }
-
-  /**
-   * Is this contact currently connected to us? i.e., currently online and we
-   * have an open websocket connection with them
-   * @param {ContactId} contactId
-   * @return {boolean} connected
-   */
-  isConnected(contactId: ContactId): boolean {
-    return this._sockets.has(contactId);
-  }
-
-  /**
-   * Destroy this instance and delete the data
-   * Disconnects from all websocket clients
-   * Danger! Unrecoverable!
-   */
-  async destroy() {
-    await this._client.disconnectServer();
-    await this._db.delete();
-  }
-
-  // PRIVATE
-  private _getSocketByContactId(cid: ContactId): WebSocket {
-    return this._sockets.get(cid);
-  }
-
-  private async _receiveMessage(
-    contact: IContact,
-    msg: string
-  ): Promise<IMessage> {
-    let message: IMessage = IMessage.decode(msg, contact.key);
-    message.contact = contact.id;
-    let id = await this._db.messages.put(message);
-    message.id = id;
-    return message;
-  }
-
-  private _setupListeners() {
-    this._client
-      .on('peer.disconnect', async ({ documentId }) => {
-        let contact = await this.getContactByDiscoveryKey(documentId);
-        this._sockets.delete(contact.id);
-        this.emit('contact.disconnected', { contact });
-      })
-      .on('peer.connect', async ({ socket, documentId }) => {
-        let contact = await this.getContactByDiscoveryKey(documentId);
-        socket.onmessage = (e) => {
-          this._receiveMessage(contact, e.data)
-            .then((message) => {
-              this.emit('message', {
-                contact,
-                message,
-              });
-            })
-            .catch((err) => {
-              console.error('error', err);
-              console.trace(err);
-            });
-        };
-
-        socket.onerror = (err) => {
-          console.error('error', err);
-          console.trace(err);
-        };
-
-        this._sockets.set(contact.id, socket);
-        let openContact = {
-          socket,
-          contact,
-          documentId,
-        };
-        this.emit('contact.connected', openContact);
-      });
-  }
-
-  private _createContactFromWormhole(
-    connection: SecureWormhole
-  ): Promise<ContactId> {
-    let metadata = {
-      key: arrayToHex(connection.key),
-    };
-
-    return this.addContact(metadata);
+  private async _addContact(key: Key): Promise<ContactId> {
+    let moniker = catnames.random();
+    let id = this.db.addContact(key, moniker);
+    let contact = this.db.getContactById(id);
+    let docId = contact.discoveryKey;
+    let doc = createRootDoc<Mailbox>((doc: Mailbox) => {
+      doc.messages = [];
+    });
+    this.log('root dot created', contact.discoveryKey);
+    await this.db.addDocument(docId, doc);
+    return id;
   }
 }
