@@ -13,7 +13,7 @@ let devices = {
 
 function createDevice(name): Backchannel {
   let dbname = crypto.randomBytes(16);
-  let RELAY_URL = 'ws://localhost:3001';
+  let RELAY_URL = process.env.RELAY_URL || 'ws://localhost:3001';
   let db_a = new Database<Mailbox>(dbname + name);
   return new Backchannel(db_a, RELAY_URL);
 }
