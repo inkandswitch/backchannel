@@ -97,7 +97,7 @@ export class Backchannel extends events.EventEmitter {
         let key = arrayToHex(connection.key);
         let id = await this._addContact(key);
         await this.db.save();
-        return id;
+        return resolve(id);
       } catch (err) {
         reject(new Error(
           `Failed to establish a secure connection.`
