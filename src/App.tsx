@@ -26,7 +26,7 @@ const CodeView = ({ view }: { view: CodeViewMode }) => {
 
   useEffect(() => {
     // get code on initial page load
-    if (!code) {
+    if (view === 'generate' && !code && !errorMsg) {
       onClickGenerate();
     }
   });
@@ -61,6 +61,7 @@ const CodeView = ({ view }: { view: CodeViewMode }) => {
       setLocation(`/mailbox/${cid}`);
     } catch (err) {
       onError(err);
+      setCode('')
     }
   }
 
@@ -79,6 +80,7 @@ const CodeView = ({ view }: { view: CodeViewMode }) => {
       }
     } catch (err) {
       onError(err);
+      setCode('')
     }
   }
 
@@ -100,6 +102,7 @@ const CodeView = ({ view }: { view: CodeViewMode }) => {
                 width: 10em;
               `}
               type="text"
+              value={code}
               onChange={handleChange}
             ></input>
             <Button onClick={onClickRedeem}>Redeem</Button>

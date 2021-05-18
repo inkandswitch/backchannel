@@ -91,11 +91,19 @@ export class Backchannel extends events.EventEmitter {
    * @returns {ContactId} The ID of the contact in the database
    */
   async announce(code: Code): Promise<ContactId> {
-    let connection: SecureWormhole = await this._wormhole.announce(code.trim());
-    let key = arrayToHex(connection.key);
-    let id = await this._addContact(key);
-    await this.db.save();
-    return id;
+    return new Promise(async (resolve, reject) => {
+      try {
+        let connection: SecureWormhole = await this._wormhole.announce(code.trim());
+        let key = arrayToHex(connection.key);
+        let id = await this._addContact(key);
+        await this.db.save();
+        return id;
+      } catch (err) {
+        reject(new Error(
+          `Failed to establish a secure connection.`
+        ))
+      }
+    })
   }
 
   /**
@@ -113,7 +121,7 @@ export class Backchannel extends events.EventEmitter {
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
         reject(new Error(
-          `It took more than 20 seconds to find any backchannels with code ${code}. That's highly unusual .. so maybe something is wrong. Maybe tell your friend to again with a different code?`
+          `It took more than 20 seconds to find any backchannels with code ${code}. Try again with a different code?`
         ));
       }, TWENTY_SECONDS);
       try {
