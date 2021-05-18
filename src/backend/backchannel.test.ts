@@ -13,23 +13,13 @@ let devices = {
   android: null,
 };
 let server,
-  port = null;
+  port = 3001;
 
 function createDevice(name): Backchannel {
   let dbname = crypto.randomBytes(16);
   let db_a = new Database<Mailbox>(dbname + name);
   return new Backchannel(db_a, `ws://localhost:${port}`);
 }
-
-beforeAll(async () => {
-  port = await getAvailablePort({ port: 3010 });
-  server = new Server({ port });
-  await server.listen({ silent: true });
-});
-
-afterAll(async () => {
-  await server.close();
-});
 
 beforeEach((done) => {
   // start a backchannel on bob and alice's devices
@@ -224,7 +214,7 @@ test('integration send multiple messages', (done) => {
   devices.bob.on('sync', function () {
     jest.runOnlyPendingTimers();
     let messages = devices.bob.getMessagesByContactId(petalice_id);
-    expect(messages.length).toBe(2);
+    expect(messages.length).toBe(1);
     console.log(messages);
     devices.bob.sendMessage(response.contact, response.text);
     devices.alice.on('sync', onSync);
