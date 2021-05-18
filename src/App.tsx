@@ -61,7 +61,7 @@ const CodeView = ({ view }: { view: CodeViewMode }) => {
       setLocation(`/mailbox/${cid}`);
     } catch (err) {
       onError(err);
-      setCode('')
+      setCode('');
     }
   }
 
@@ -80,7 +80,7 @@ const CodeView = ({ view }: { view: CodeViewMode }) => {
       }
     } catch (err) {
       onError(err);
-      setCode('')
+      setCode('');
     }
   }
 

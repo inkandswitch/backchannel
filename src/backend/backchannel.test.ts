@@ -1,8 +1,8 @@
 import { Mailbox, Backchannel } from './backchannel';
 import { Database } from './db';
 import crypto from 'crypto';
-import { getPortPromise as getAvailablePort } from 'portfinder'
-import { Server } from '@localfirst/relay'
+import { getPortPromise as getAvailablePort } from 'portfinder';
+import { Server } from '@localfirst/relay';
 
 let doc,
   petbob_id,
@@ -12,7 +12,8 @@ let devices = {
   bob: null,
   android: null,
 };
-let server, port = null
+let server,
+  port = null;
 
 function createDevice(name): Backchannel {
   let dbname = crypto.randomBytes(16);
@@ -21,14 +22,14 @@ function createDevice(name): Backchannel {
 }
 
 beforeAll(async () => {
-  port = await getAvailablePort({ port: 3010 })
-  server = new Server({ port })
-  await server.listen({silent: true})
-})
+  port = await getAvailablePort({ port: 3010 });
+  server = new Server({ port });
+  await server.listen({ silent: true });
+});
 
 afterAll(async () => {
-  await server.close()
-})
+  await server.close();
+});
 
 beforeEach((done) => {
   // start a backchannel on bob and alice's devices
@@ -224,7 +225,7 @@ test('integration send multiple messages', (done) => {
     jest.runOnlyPendingTimers();
     let messages = devices.bob.getMessagesByContactId(petalice_id);
     expect(messages.length).toBe(2);
-    console.log(messages)
+    console.log(messages);
     devices.bob.sendMessage(response.contact, response.text);
     devices.alice.on('sync', onSync);
     jest.runOnlyPendingTimers();
@@ -232,11 +233,14 @@ test('integration send multiple messages', (done) => {
   jest.runOnlyPendingTimers();
 
   // sending the message once we an open contact
-  devices.alice.on('contact.connected', async function onConnect({ socket, contact }) {
-    expect(contact.id).toBe(petbob_id);
-    devices.alice.sendMessage(outgoing.contact, outgoing.text);
-    jest.runOnlyPendingTimers();
-  });
+  devices.alice.on(
+    'contact.connected',
+    async function onConnect({ socket, contact }) {
+      expect(contact.id).toBe(petbob_id);
+      devices.alice.sendMessage(outgoing.contact, outgoing.text);
+      jest.runOnlyPendingTimers();
+    }
+  );
 
   jest.runOnlyPendingTimers();
 

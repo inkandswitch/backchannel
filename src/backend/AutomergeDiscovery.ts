@@ -55,7 +55,7 @@ export default class AutomergeDiscovery<T> extends EventEmitter {
       switch (msg) {
         case MESSAGE_TYPES.DONE:
           if (peer.idle) this.emit('sync', peer.id);
-          else this._sendSyncMsg(peer)
+          else this._sendSyncMsg(peer);
           break;
         default:
           msg = new Uint8Array(msg);

@@ -93,17 +93,17 @@ export class Backchannel extends events.EventEmitter {
   async announce(code: Code): Promise<ContactId> {
     return new Promise(async (resolve, reject) => {
       try {
-        let connection: SecureWormhole = await this._wormhole.announce(code.trim());
+        let connection: SecureWormhole = await this._wormhole.announce(
+          code.trim()
+        );
         let key = arrayToHex(connection.key);
         let id = await this._addContact(key);
         await this.db.save();
         return resolve(id);
       } catch (err) {
-        reject(new Error(
-          `Failed to establish a secure connection.`
-        ))
+        reject(new Error(`Failed to establish a secure connection.`));
       }
-    })
+    });
   }
 
   /**
@@ -120,22 +120,24 @@ export class Backchannel extends events.EventEmitter {
     let TWENTY_SECONDS = timeout;
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
-        reject(new Error(
-          `It took more than 20 seconds to find any backchannels with code ${code}. Try again with a different code?`
-        ));
+        reject(
+          new Error(
+            `It took more than 20 seconds to find any backchannels with code ${code}. Try again with a different code?`
+          )
+        );
       }, TWENTY_SECONDS);
       try {
-        let connection: SecureWormhole = await this._wormhole.accept(code.trim());
+        let connection: SecureWormhole = await this._wormhole.accept(
+          code.trim()
+        );
         let key = arrayToHex(connection.key);
         let id = await this._addContact(key);
         await this.db.save();
         return resolve(id);
       } catch (err) {
-        reject(new Error(
-          `Failed to establish a secure connection.`
-        ))
+        reject(new Error(`Failed to establish a secure connection.`));
       }
-    })
+    });
   }
 
   /**
