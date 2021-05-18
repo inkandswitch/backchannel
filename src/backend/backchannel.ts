@@ -105,21 +105,28 @@ export class Backchannel extends events.EventEmitter {
    * then be created with an anonymous handle and the id returned.
    *
    * @param {Code} code The code to accept
+   * @param {number} timeout The timeout before giving up, default 20 seconds
    * @returns {ContactId} The ID of the contact in the database
    */
-  async accept(code: Code): Promise<ContactId> {
-    let TWENTY_SECONDS = 1000 * 2;
+  async accept(code: Code, timeout = 20000): Promise<ContactId> {
+    let TWENTY_SECONDS = timeout;
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
         reject(new Error(
           `It took more than 20 seconds to find any backchannels with code ${code}. That's highly unusual .. so maybe something is wrong. Maybe tell your friend to again with a different code?`
         ));
       }, TWENTY_SECONDS);
-      let connection: SecureWormhole = await this._wormhole.accept(code.trim());
-      let key = arrayToHex(connection.key);
-      let id = await this._addContact(key);
-      await this.db.save();
-      return resolve(id);
+      try {
+        let connection: SecureWormhole = await this._wormhole.accept(code.trim());
+        let key = arrayToHex(connection.key);
+        let id = await this._addContact(key);
+        await this.db.save();
+        return resolve(id);
+      } catch (err) {
+        reject(new Error(
+          `Failed to establish a secure connection.`
+        ))
+      }
     })
   }
 
