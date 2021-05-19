@@ -183,7 +183,6 @@ export class Backchannel extends events.EventEmitter {
     let contact = this.db.getContactById(contactId);
     let encoded = IMessage.encode(msg, contact.key);
     this._addMessage(encoded, contact);
-    await this.db.save();
     return msg;
   }
 
@@ -327,11 +326,11 @@ export class Backchannel extends events.EventEmitter {
     let id = this.db.addContact(key, moniker);
     let contact = this.db.getContactById(id);
     let docId = contact.discoveryKey;
-    let doc = createRootDoc<Mailbox>((doc: Mailbox) => {
+    let doc = this.db.createHeadDocument<Mailbox>((doc: Mailbox) => {
       doc.messages = [];
     });
     this.log('root dot created', contact.discoveryKey);
-    await this.db.addDocument(docId, doc);
+    await this.db.addDocument(docId, doc, Automerge.Backend.init());
     return id;
   }
 }

@@ -18,8 +18,8 @@ afterEach(() => {
   db.destroy();
 });
 
-test('getContactById', async () => {
-  let id = db.addContact(crypto.randomBytes(32).toString(), 'bob');
+test.only('getContactById', async () => {
+  let id = db.addContact(crypto.randomBytes(32).toString('hex'), 'bob');
 
   let contact = db.getContactById(id);
   expect(contact.moniker).toBe('bob');
