@@ -26,9 +26,15 @@ test('getContactById', async () => {
 });
 
 test('getContacts', async () => {
-  let bob_id = await db.addContact(crypto.randomBytes(32).toString('hex'), 'bob');
+  let bob_id = await db.addContact(
+    crypto.randomBytes(32).toString('hex'),
+    'bob'
+  );
 
-  let alice_id = await db.addContact(crypto.randomBytes(32).toString('hex'), 'alice');
+  let alice_id = await db.addContact(
+    crypto.randomBytes(32).toString('hex'),
+    'alice'
+  );
 
   expect(typeof bob_id).toBe('string');
   expect(typeof alice_id).toBe('string');
@@ -44,7 +50,10 @@ test('getContacts', async () => {
 });
 
 test('getContactByDiscoveryKey', async () => {
-  let bob_id = await db.addContact(crypto.randomBytes(32).toString('hex'), 'bob');
+  let bob_id = await db.addContact(
+    crypto.randomBytes(32).toString('hex'),
+    'bob'
+  );
 
   let bob = db.getContactById(bob_id);
   let maybe_bob = db.getContactByDiscoveryKey(bob.discoveryKey);
@@ -52,7 +61,10 @@ test('getContactByDiscoveryKey', async () => {
 });
 
 test('getContactByDiscoveryKey', async () => {
-  let bob_id = await db.addContact(crypto.randomBytes(32).toString('hex'), 'bob');
+  let bob_id = await db.addContact(
+    crypto.randomBytes(32).toString('hex'),
+    'bob'
+  );
 
   let bob = db.getContactById(bob_id);
 
@@ -61,7 +73,10 @@ test('getContactByDiscoveryKey', async () => {
 });
 
 test('editMoniker', async () => {
-  let bob_id = await db.addContact(crypto.randomBytes(32).toString('hex'), 'bob');
+  let bob_id = await db.addContact(
+    crypto.randomBytes(32).toString('hex'),
+    'bob'
+  );
 
   let bob = db.getContactById(bob_id);
   expect(bob.moniker).toBe('bob');
@@ -73,21 +88,22 @@ test('editMoniker', async () => {
 });
 
 test('save/load', async () => {
-  let bob_id = await db.addContact(crypto.randomBytes(32).toString('hex'), 'bob');
+  let bob_id = await db.addContact(
+    crypto.randomBytes(32).toString('hex'),
+    'bob'
+  );
 
   let bob = db.getContactById(bob_id);
   expect(bob.moniker).toBe('bob');
 
-  await db.editMoniker(bob.id, 'karen')
+  await db.editMoniker(bob.id, 'karen');
   let karen = db.getContactById(bob_id);
   expect(bob.moniker).toBe('bob');
   expect(karen.moniker).toBe('karen');
 
-  let docId = karen.discoveryKey
-  await db.addDocument(docId)
-  await db.change(docId, (doc) => {
-    doc.messages = ['hello friend']
-  })
+  let docId = await db.addDocument(karen.id, (doc) => {
+    doc.messages = ['hello friend'];
+  });
 
   expect(db.documents).toStrictEqual([docId]);
   let doc = db.getDocument(docId);
@@ -96,7 +112,7 @@ test('save/load', async () => {
   db = null;
 
   db = new Database(dbname);
-  await db.open()
+  await db.open();
   let maybe_karen = db.getContactById(bob_id);
   expect(maybe_karen).toStrictEqual(karen);
   doc = db.getDocument(docId);

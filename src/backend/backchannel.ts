@@ -47,11 +47,6 @@ export class Backchannel extends events.EventEmitter {
     super();
     this._wormhole = Wormhole();
     this.db = db;
-    this.db.on('sync', ({ docId, peerId }) => {
-      this.log('sync', { docId, peerId });
-      this.emit('sync', { docId, peerId });
-    });
-
     this.db.once('open', () => {
       let documentIds = this.db.documents;
       this.log(`Joining ${documentIds.length} documentIds`);
@@ -119,7 +114,7 @@ export class Backchannel extends events.EventEmitter {
    * @param {string} moniker The new moniker for this contact
    * @returns
    */
-  editMoniker(contactId: ContactId, moniker: string): Promise<void> {
+  async editMoniker(contactId: ContactId, moniker: string): Promise<void> {
     return this.db.editMoniker(contactId, moniker);
   }
 
@@ -131,7 +126,7 @@ export class Backchannel extends events.EventEmitter {
    * @param {Buffer} key The encryption key for this device (optional)
    * @returns
    */
-  addDevice(description: string, key?: Buffer): Promise<ContactId> {
+  async addDevice(description: string, key?: Buffer): Promise<ContactId> {
     let moniker = description || 'my device';
     return this.db.addDevice(key.toString('hex'), moniker);
   }
@@ -145,7 +140,9 @@ export class Backchannel extends events.EventEmitter {
     let contact = this.db.getContactById(contactId);
     try {
       //@ts-ignore
-      let doc: Automerge.Doc<Mailbox> = this.db.getDocument<Mailbox>(contact.discoveryKey);
+      let doc: Automerge.Doc<Mailbox> = this.db.getDocument(
+        contact.discoveryKey
+      );
       return doc.messages.map((msg) => {
         let decoded = IMessage.decode(msg, contact.key);
         decoded.incoming = decoded.target !== contactId;
@@ -161,8 +158,12 @@ export class Backchannel extends events.EventEmitter {
    * Returns a list of contacts.
    * @returns An array of contacts
    */
-  listContacts(): IContact[] {
-    return this.db.getContacts();
+  get contacts(): IContact[] {
+    return this.db.getContacts().filter((c) => c.device === 0);
+  }
+
+  listContacts() {
+    return this.contacts;
   }
 
   /**
@@ -180,7 +181,7 @@ export class Backchannel extends events.EventEmitter {
     this.log('sending message', msg);
     let contact = this.db.getContactById(contactId);
     let encoded = IMessage.encode(msg, contact.key);
-    this._addMessage(encoded, contact);
+    await this._addMessage(encoded, contact);
     return msg;
   }
 
@@ -209,15 +210,14 @@ export class Backchannel extends events.EventEmitter {
    * connection for each contact which could be an expensive operation.
    */
   connectToAllContacts() {
-    let contacts = this.listContacts();
-    contacts.forEach((contact) => {
+    this.contacts.forEach((contact) => {
       this.connectToContact(contact);
     });
   }
 
   /**
    * Leave a document and disconnect from peers.
-   * @param {DocumentId} documentId
+   * @param {IContact} contact The contact object
    */
   disconnectFromContact(contact: IContact) {
     if (!contact || !contact.discoveryKey)
@@ -233,13 +233,6 @@ export class Backchannel extends events.EventEmitter {
     this._open = false;
     await this._client.disconnectServer();
     await this.db.destroy();
-  }
-
-  private _onPeerDisconnect(discoveryKey: DiscoveryKey) {
-    let contact = this.db.getContactByDiscoveryKey(discoveryKey);
-    this.db.onDisconnect(discoveryKey, contact.id);
-    this.log('onPeerDisconnect');
-    this.emit('contact.disconnected', { contact });
   }
 
   private _onPeerConnect(socket: WebSocket, discoveryKey: DiscoveryKey) {
@@ -268,8 +261,13 @@ export class Backchannel extends events.EventEmitter {
       this.emit('contact.error', err);
     }
 
+    // localfirst/relay-client also has a peer.disconnect event
+    // but it is somewhat unreliable. this is better.
     socket.onclose = () => {
-      this._onPeerDisconnect(discoveryKey);
+      let documentId = contact.discoveryKey;
+      this.db.onDisconnect(documentId, contact.id);
+      this.log('disconnect!!!!');
+      this.emit('contact.disconnected', { contact });
     };
 
     socket.onerror = (err) => {
@@ -295,20 +293,16 @@ export class Backchannel extends events.EventEmitter {
       this.emit('server.disconnect');
     });
 
-    client
-      .on('peer.disconnect', ({ documentId }) =>
-        this._onPeerDisconnect(documentId)
-      )
-      .on('peer.connect', ({ socket, documentId }) =>
-        this._onPeerConnect(socket, documentId)
-      );
+    client.on('peer.connect', ({ socket, documentId }) =>
+      this._onPeerConnect(socket, documentId)
+    );
 
     return client;
   }
 
-  private _addMessage(msg: string, contact: IContact) {
+  private async _addMessage(msg: string, contact: IContact) {
     let docId = contact.discoveryKey;
-    this.db.change(docId, (doc: Mailbox) => {
+    await this.db.change(docId, (doc: Mailbox) => {
       doc.messages.push(msg);
     });
   }
@@ -323,10 +317,8 @@ export class Backchannel extends events.EventEmitter {
     let moniker = catnames.random();
     let id = await this.db.addContact(key, moniker);
     let contact = this.db.getContactById(id);
-    let docId = contact.discoveryKey;
     this.log('root dot created', contact.discoveryKey);
-    await this.db.addDocument(docId)
-    await this.db.change(docId, (doc: Mailbox) => {
+    let docId = await this.db.addDocument(contact.id, (doc: Mailbox) => {
       doc.messages = [];
     });
     return id;

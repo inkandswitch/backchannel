@@ -1,4 +1,12 @@
-import { BinaryChange, BinarySyncMessage, Patch, Change, Backend, BackendState, SyncState } from 'automerge';
+import {
+  BinaryChange,
+  BinarySyncMessage,
+  Patch,
+  Change,
+  Backend,
+  BackendState,
+  SyncState,
+} from 'automerge';
 import debug from 'debug';
 import { EventEmitter } from 'events';
 
@@ -12,6 +20,11 @@ interface Peer {
   idle?: Boolean;
 }
 
+enum MESSAGE_TYPES {
+  DONE = '0',
+  HELLO = '1',
+}
+
 export default class AutomergeDiscovery extends EventEmitter {
   public doc: BackendState;
   public docId: string;
@@ -20,7 +33,7 @@ export default class AutomergeDiscovery extends EventEmitter {
 
   constructor(docId: string, backend?: BackendState) {
     super();
-    this.doc = backend || Backend.init()
+    this.doc = backend || Backend.init();
     this.docId = docId;
     this.peers = new Map<PeerId, Peer>();
     this.log = debug('bc:AutomergePeers');
@@ -51,22 +64,34 @@ export default class AutomergeDiscovery extends EventEmitter {
     this._updatePeer(peer);
 
     return (msg) => {
-      // RECEIVED
       let peer = this.peers.get(id);
-      msg = new Uint8Array(msg);
-      this._receive(peer, msg);
-      this._updatePeer(peer);
+      switch (msg) {
+        case MESSAGE_TYPES.DONE:
+          if (peer.idle) {
+            this.emit('sync', peer.id);
+            this.log('got done');
+          }
+          this._updatePeer(peer);
+          break;
+        default:
+          // RECEIVED
+          msg = new Uint8Array(msg);
+          this._receive(peer, msg);
+          this._updatePeer(peer);
+      }
     };
   }
 
-  change(change: Change) : BinaryChange {
+  change(change: Change): BinaryChange {
     // LOCAL CHANGE
     this.log('in change function');
-    const [ newBackend, patch, newChange ] = Backend.applyLocalChange(this.doc, change);
-    this._sendToRenderer(patch)
-    this.doc = newBackend
-    this.updatePeers()
-    return newChange
+    const [newBackend, patch, newChange] = Backend.applyLocalChange(
+      this.doc,
+      change
+    );
+    this._sendToRenderer(patch);
+    this.doc = newBackend;
+    return newChange;
   }
 
   updatePeers() {
@@ -77,7 +102,8 @@ export default class AutomergeDiscovery extends EventEmitter {
   }
 
   _sendToRenderer(patch: Patch) {
-    this.emit('patch', { docId: this.docId, patch })
+    this.log('emitting patch', this.docId);
+    this.emit('patch', { docId: this.docId, patch });
   }
 
   _updatePeer(peer) {
@@ -90,8 +116,13 @@ export default class AutomergeDiscovery extends EventEmitter {
       this.log('sending', msg);
       peer.send(msg);
       return true;
+    } else {
+      if (!peer.idle) {
+        peer.send(MESSAGE_TYPES.DONE);
+        peer.idle = true;
+      }
+      return false;
     }
-    return false
   }
 
   _receive(peer, syncMsg: BinarySyncMessage): Patch {
@@ -102,7 +133,8 @@ export default class AutomergeDiscovery extends EventEmitter {
     );
     this.doc = newDoc;
     peer.state = newSyncState;
-    if (patch) this._sendToRenderer(patch)
+    this.peers.set(peer.id, peer);
+    if (patch) this._sendToRenderer(patch);
     return patch;
   }
 }
