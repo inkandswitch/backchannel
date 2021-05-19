@@ -6,7 +6,7 @@ import debug from 'debug';
 import Automerge from 'automerge';
 import { v4 as uuid } from 'uuid';
 
-import { createRootDoc, Database } from './db';
+import { Database } from './db';
 import {
   Key,
   Code,
@@ -94,7 +94,6 @@ export class Backchannel extends events.EventEmitter {
     let connection: SecureWormhole = await this._wormhole.announce(code);
     let key = arrayToHex(connection.key);
     let id = await this._addContact(key);
-    await this.db.save();
     return id;
   }
 
@@ -111,7 +110,6 @@ export class Backchannel extends events.EventEmitter {
     let connection: SecureWormhole = await this._wormhole.accept(code);
     let key = arrayToHex(connection.key);
     let id = await this._addContact(key);
-    await this.db.save();
     return id;
   }
 
@@ -121,9 +119,8 @@ export class Backchannel extends events.EventEmitter {
    * @param {string} moniker The new moniker for this contact
    * @returns
    */
-  async editMoniker(contactId: ContactId, moniker: string): Promise<any[]> {
-    this.db.editMoniker(contactId, moniker);
-    return this.db.save();
+  editMoniker(contactId: ContactId, moniker: string): Promise<void> {
+    return this.db.editMoniker(contactId, moniker);
   }
 
   /**
@@ -134,7 +131,7 @@ export class Backchannel extends events.EventEmitter {
    * @param {Buffer} key The encryption key for this device (optional)
    * @returns
    */
-  addDevice(description: string, key?: Buffer): ContactId {
+  addDevice(description: string, key?: Buffer): Promise<ContactId> {
     let moniker = description || 'my device';
     return this.db.addDevice(key.toString('hex'), moniker);
   }
@@ -147,7 +144,8 @@ export class Backchannel extends events.EventEmitter {
   getMessagesByContactId(contactId: ContactId): IMessage[] {
     let contact = this.db.getContactById(contactId);
     try {
-      let doc = this.db.getDocument(contact.discoveryKey);
+      //@ts-ignore
+      let doc: Automerge.Doc<Mailbox> = this.db.getDocument<Mailbox>(contact.discoveryKey);
       return doc.messages.map((msg) => {
         let decoded = IMessage.decode(msg, contact.key);
         decoded.incoming = decoded.target !== contactId;
@@ -323,14 +321,14 @@ export class Backchannel extends events.EventEmitter {
    */
   private async _addContact(key: Key): Promise<ContactId> {
     let moniker = catnames.random();
-    let id = this.db.addContact(key, moniker);
+    let id = await this.db.addContact(key, moniker);
     let contact = this.db.getContactById(id);
     let docId = contact.discoveryKey;
-    let doc = this.db.createHeadDocument<Mailbox>((doc: Mailbox) => {
+    this.log('root dot created', contact.discoveryKey);
+    await this.db.addDocument(docId)
+    await this.db.change(docId, (doc: Mailbox) => {
       doc.messages = [];
     });
-    this.log('root dot created', contact.discoveryKey);
-    await this.db.addDocument(docId, doc, Automerge.Backend.init());
     return id;
   }
 }

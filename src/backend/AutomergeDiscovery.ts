@@ -1,4 +1,4 @@
-import { decodeChange, BinarySyncMessage, Patch, Change, Backend, BackendState, SyncState } from 'automerge';
+import { BinaryChange, BinarySyncMessage, Patch, Change, Backend, BackendState, SyncState } from 'automerge';
 import debug from 'debug';
 import { EventEmitter } from 'events';
 
@@ -10,10 +10,6 @@ interface Peer {
   key?: Buffer;
   state?: SyncState;
   idle?: Boolean;
-}
-
-enum MESSAGE_TYPES {
-  DONE = '0',
 }
 
 export default class AutomergeDiscovery extends EventEmitter {
@@ -63,13 +59,14 @@ export default class AutomergeDiscovery extends EventEmitter {
     };
   }
 
-  change(change: Change) {
+  change(change: Change) : BinaryChange {
     // LOCAL CHANGE
     this.log('in change function');
     const [ newBackend, patch, newChange ] = Backend.applyLocalChange(this.doc, change);
-    this._sendToRenderer(patch, decodeChange(newChange))
+    this._sendToRenderer(patch)
     this.doc = newBackend
     this.updatePeers()
+    return newChange
   }
 
   updatePeers() {
@@ -79,8 +76,8 @@ export default class AutomergeDiscovery extends EventEmitter {
     });
   }
 
-  _sendToRenderer(patch: Patch, change?: Change) {
-    this.emit('patch', { docId: this.docId, patch, change })
+  _sendToRenderer(patch: Patch) {
+    this.emit('patch', { docId: this.docId, patch })
   }
 
   _updatePeer(peer) {

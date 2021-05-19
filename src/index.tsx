@@ -11,14 +11,6 @@ declare global {
     spake2: any;
   }
 }
-window.addEventListener('beforeunload', function (event) {
-  if (backchannel.opened()) {
-    backchannel.db.save().then(() => {
-      console.log('SAVED DB');
-    });
-  }
-});
-
 // TODO: Loading screen
 backchannel.on('open', async () => {
   render(

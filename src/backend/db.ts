@@ -1,7 +1,7 @@
 import { ContactId, IContact } from './types';
 import AutomergeDiscovery from './AutomergeDiscovery';
 import { DB } from './automerge-db';
-import Automerge, { Doc, FreezeObject } from 'automerge';
+import Automerge from 'automerge';
 import { EventEmitter } from 'events';
 import debug from 'debug';
 import { v4 as uuid } from 'uuid';
@@ -9,12 +9,6 @@ import * as crypto from './crypto';
 import { Backend } from 'automerge';
 
 type DocumentId = string;
-
-interface SavedBinary {
-  id: string;
-  binary: Automerge.BinaryDocument;
-  changes: Automerge.BinaryChange[]
-}
 
 interface System {
   contacts: Automerge.List<IContact>;
@@ -28,7 +22,8 @@ export class Database<T> extends EventEmitter {
   private _frontends: Map<DocumentId, Automerge.Doc<System | T>>;
   private log: debug;
 
-  opened: boolean;
+  private _opened: boolean;
+  private _opening: boolean = false;
 
   /**
    * Create a new database for a given Automerge document type.
@@ -38,21 +33,21 @@ export class Database<T> extends EventEmitter {
   constructor(dbname) {
     super();
     this._idb = new DB(dbname);
+    this.log = debug('bc:db');
+    this._syncers = new Map<DocumentId, AutomergeDiscovery>();
+    this._frontends = new Map <DocumentId, Automerge.Doc <System | T>>();
     this.open().then(() => {
-      this.opened = true;
+      this._opened = true;
       this.log('open');
       this.emit('open');
     });
-    this.log = debug('bc:db');
-    this._syncers = new Map<DocumentId, AutomergeDiscovery>();
-    this._frontends = new Map < DocumentId, Automerge.Doc <System | T>>();
   }
 
   /**
    * Get an array of all document ids
    */
   get documents(): string[] {
-    return Array.from(this._syncers.keys());
+    return Array.from(this._syncers.keys()).filter(d => d !== SYSTEM_ID);
   }
 
   error(err) {
@@ -129,8 +124,8 @@ export class Database<T> extends EventEmitter {
       docId = contact.discoveryKey;
     }
     let doc = this._syncers.get(docId);
-    this.log('isConnected', docId, contact.id);
-    return doc && doc.hasPeer(contact.id);
+    if (!doc) return false
+    return doc.hasPeer(contact.id);
   }
 
   /**
@@ -144,17 +139,20 @@ export class Database<T> extends EventEmitter {
     return this.getDocument(docId);
   }
 
-  change(docId: DocumentId, changeFn: Automerge.ChangeFn<T>) {
+  async change(docId: DocumentId, changeFn: Automerge.ChangeFn<System | T>) {
     this.log('changing', docId);
     let doc = this._frontends.get(docId)
     const [newDoc, changeData] = Automerge.Frontend.change(doc, changeFn)
+    this._frontends.set(docId, newDoc)
     let syncer = this._syncer(docId);
     if (!syncer)
       this.error(new Error('Document doesnt exist with id ' + docId));
-    syncer.change(changeData);
+    let change = syncer.change(changeData);
+    const decodedChange = Automerge.decodeChange(change)
+    await this._idb.storeChange(docId, (decodedChange as any).hash, change)
   }
 
-  private _createSyncer<J>(
+  private _createSyncer(
     docId: DocumentId,
     backend: Automerge.BackendState,
   ): AutomergeDiscovery {
@@ -172,18 +170,16 @@ export class Database<T> extends EventEmitter {
 
       let newFrontend = Automerge.Frontend.applyPatch(frontend, patch)
       this._frontends.set(docId, newFrontend)
-      const decodedChange = Automerge.decodeChange(change)
-      this._idb.storeChange(docId, (decodedChange as any).hash, change)
     })
 
     return syncer;
   }
 
-  async _loadDocument(docId) : Promise<[ Automerge.BackendState, Automerge.FreezeObject<J> ]> {
+  async addDocument(docId) : Promise<[ Automerge.BackendState, Automerge.FreezeObject<T | System> ]> {
     let doc = await this._idb.getDoc(docId)
-    if (!doc) return Promise.reject()
+    this.log('loading doc', docId)
     const [backend, patch] = Backend.applyChanges(
-      Backend.load(doc.serializedDoc),
+      doc.serializedDoc ? Backend.load(doc.serializedDoc) : Backend.init(),
       doc.changes,
     )
     let frontend: Automerge.Doc<T | System> = Automerge.Frontend.applyPatch(
@@ -192,6 +188,7 @@ export class Database<T> extends EventEmitter {
     this._frontends.set(docId, frontend)
     let syncer = this._createSyncer(docId, backend);
     this._syncers.set(docId, syncer)
+    this.log('setting syncer and frontend', docId)
     return [backend, frontend]
   }
 
@@ -200,44 +197,45 @@ export class Database<T> extends EventEmitter {
    * instance and you don't need to call it.
    * @returns When the database has been opened
    */
-  async open(): Promise<void> {
-    if (this.opened) return;
-    try { 
-      await this._loadDocument(SYSTEM_ID)
-
+  async open(): Promise<any[]> {
+    if (this._opening) return new Promise((resolve) => {
+      this.once('open', resolve)
+    })
+    this._opening = true
+    if (this._opened) return;
+    await this.addDocument(SYSTEM_ID)
+    if (this.root.contacts) {
       // LOAD EXISTING DOCUMENTS
       let c = 0;
       this.log('loading docs')
-      await this.root.contacts.forEach(async contact => {
+      let tasks = []
+      this.root.contacts.forEach(async contact => {
         c++;
         let docId = contact.discoveryKey
-        await this._loadDocument(docId)
+        this.log('loading', docId)
+        tasks.push(this.addDocument(docId))
       });
       this.log(`loaded ${c} existing docs`);
       this.log('got contacts:', this.root.contacts);
-      return;
-    } catch (err) {
+      return Promise.all(tasks);
+    } else {
       // NEW DOCUMENT!
-      let frontend = this.createRootDoc<System>(
-        (doc: System) => {
-          doc.contacts = [];
-        }
-      );
-      let backend = Automerge.Frontend.getBackendState(frontend)
-      await this.addDocument(SYSTEM_ID, frontend, backend)
-      this.log('new contact list:', this.root.contacts);
+      this.log('new contact list. changing', SYSTEM_ID)
+      await this.change(SYSTEM_ID, (doc: System) => {
+        doc.contacts = [];
+      });
       return;
     }
   }
 
-  addDevice(key: string, description: string): ContactId {
+  addDevice(key: string, description: string): Promise<ContactId> {
     return this.addContact(key, description, 1);
   }
 
   /**
    * Add a contact.
    */
-  addContact(key: string, moniker: string, device?: number): ContactId {
+  async addContact(key: string, moniker: string, device?: number): Promise<ContactId> {
     let id = uuid();
     let discoveryKey = crypto.computeDiscoveryKey(Buffer.from(key, 'hex'));
     let contact: IContact = {
@@ -248,23 +246,10 @@ export class Database<T> extends EventEmitter {
       device: device ? 1 : 0,
     };
     this.log('addContact', key, moniker)
-    this._changeContactList((doc: System) => {
+    await this.change(SYSTEM_ID, (doc: System) => {
       doc.contacts.push(contact);
     });
     return id;
-  }
-
-  /**
-   * Add a document to the database.
-   * @param docId Unique documentid for this document
-   * @param doc An automerge document
-   */
-  addDocument(docId: DocumentId, doc: Automerge.Doc<System | T>, backend: Automerge.BackendState): Promise<unknown> {
-    let syncer: AutomergeDiscovery = this._createSyncer(docId, backend);
-    this._frontends.set(docId, doc)
-    this._syncers.set(docId, syncer);
-    this.log('addDocument', docId, doc);
-    return this._idb.saveSnapshot(docId);
   }
 
   /**
@@ -272,8 +257,8 @@ export class Database<T> extends EventEmitter {
    * an `id`. The only valid property you can change is the moniker.
    * @param {IContact} contact - The contact to update to the database
    */
-  editMoniker(id: ContactId, moniker: string) {
-    return this._changeContactList((doc: System) => {
+  editMoniker(id: ContactId, moniker: string) : Promise<void> {
+    return this.change(SYSTEM_ID, (doc: System) => {
       let contacts = doc.contacts.filter((c) => c.id === id);
       if (!contacts.length)
         this.error(new Error('Could not find contact with id' + id));
@@ -307,14 +292,8 @@ export class Database<T> extends EventEmitter {
   }
 
   async destroy() {
-    this.opened = false;
+    this._opened = false;
     this._idb.destroy()
-  }
-
-  _changeContactList(changeFn: Automerge.ChangeFn<System>) {
-    let [ newDoc, changeData ] = Automerge.Frontend.change(this.root, changeFn)
-    this._syncers.get(SYSTEM_ID).change(changeData);
-    this.root = newDoc
   }
 
   _syncer(docId) {

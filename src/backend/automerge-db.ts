@@ -25,7 +25,7 @@ export class DB {
         changeStore.createIndex('docId', 'docId', { unique: false })
         changeStore.createIndex('timestamp', 'timestamp', { unique: false })
 
-        const snapshotStore = db.createObjectStore('snapshots', {
+        db.createObjectStore('snapshots', {
           keyPath: 'docId',
         })
       },
@@ -75,8 +75,6 @@ export class DB {
       (max, rec) => Math.max(rec.timestamp, max),
       null,
     )
-
-    console.log(docId, changes)
 
     return {
       serializedDoc: snapshot?.serializedDoc,
