@@ -36,7 +36,7 @@ export default function AddContact({ backchannel, view }: Props) {
 
   useEffect(() => {
     // get code on initial page load
-    if (!code) {
+    if (view === 'generate' && !code && !errorMsg) {
       onClickGenerate();
     }
   });
@@ -69,6 +69,7 @@ export default function AddContact({ backchannel, view }: Props) {
       setLocation(`/contact/${cid}/add`);
     } catch (err) {
       onError(err);
+      setCode('')
     }
   }
 
@@ -87,6 +88,7 @@ export default function AddContact({ backchannel, view }: Props) {
       }
     } catch (err) {
       onError(err);
+      setCode('')
     }
   }
 
