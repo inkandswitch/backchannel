@@ -1,6 +1,11 @@
+/** @jsxImportSource @emotion/react */
 import React, { useState, useEffect } from 'react';
+import { css } from '@emotion/react/macro';
+
+import { color } from './tokens';
 import Backchannel from '../backend';
 import { ERROR } from '../backend/backchannel';
+
 let backchannel = Backchannel();
 
 export default function NetworkError () {
@@ -16,7 +21,7 @@ export default function NetworkError () {
           var secs = s % 60;
           let rest = 'Retrying...'
           if (secs > 1) rest = `Retrying in ${secs} seconds. (${retries} attempts)`
-          let message = `${err.message}. ${rest}`
+          let message = `Failed to connect to anyone. ${rest}`
           setRelayError(message)
           setRetries(retries + 1)
           break;
@@ -45,5 +50,11 @@ export default function NetworkError () {
     }
   });
 
-  return relayError ? <div>{relayError}</div> : null
+  return relayError ? <div css={css`
+        color: ${color.errorText};
+        background-color: ${color.errorBackground};
+        text-align: center;
+        padding: 18px 0px;
+      `}
+  >{relayError}</div> : null
 }

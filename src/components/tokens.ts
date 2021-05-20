@@ -10,6 +10,8 @@ const rawColor = {
   green: '#00EC5E',
   white: '#ffffff',
   lightPurple: '#9187EB',
+  yellow: '#CC9900',
+  red: '#7C0A02'
 };
 
 /*
@@ -36,6 +38,10 @@ export const color = {
   codeShareBackground: rawColor.darkBlue,
   codeShareText: rawColor.white,
   chatSecondaryText: rawColor.lightPurple,
+  warningText: rawColor.white,
+  warningBackground: rawColor.yellow,
+  errorText: rawColor.white,
+  errorBackground: rawColor.red,
 };
 
 /*
