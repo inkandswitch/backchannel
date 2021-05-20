@@ -35,17 +35,30 @@ export default function ContactList(props) {
   let [latestMessages, setLatestMessages] = useState([]);
 
   useEffect(() => {
-    let contacts = backchannel.listContacts();
-    console.log('got contacts', contacts);
-    setContacts(contacts);
-    contacts.forEach((contact) => {
-      let messages = backchannel.getMessagesByContactId(contact.id);
-      const lastMessage: IMessage = messages.pop();
-      setLatestMessages((latestMessages) => ({
-        ...latestMessages,
-        [contact.id]: lastMessage,
-      }));
-    });
+    function refreshContactList() {
+      let contacts = backchannel.listContacts();
+      console.log('got contacts', contacts);
+      setContacts(contacts);
+      contacts.forEach((contact) => {
+        let messages = backchannel.getMessagesByContactId(contact.id);
+        const lastMessage: IMessage = messages.pop();
+        setLatestMessages((latestMessages) => ({
+          ...latestMessages,
+          [contact.id]: lastMessage,
+        }));
+      });
+    }
+
+    refreshContactList();
+
+    backchannel.on('contact.disconnected', refreshContactList);
+    backchannel.on('contact.connected', refreshContactList);
+    backchannel.on('sync', refreshContactList);
+    return function unsub() {
+      backchannel.removeListener('contact.disconnected', refreshContactList);
+      backchannel.removeListener('contact.connected', refreshContactList);
+      backchannel.removeListener('sync', refreshContactList);
+    };
   }, []);
 
   return (
