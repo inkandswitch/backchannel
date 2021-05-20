@@ -19,6 +19,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
+    - name: Reconfigure git to use HTTP authentication
+      run: >
+        git config --global url."https://github.com/".insteadOf ssh://git@github.com/
+
     - name: Set up Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v1
       with:
