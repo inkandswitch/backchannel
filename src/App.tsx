@@ -68,7 +68,7 @@ function Settings(props) {
         padding-top: 18px;
       `}
     >
-      Settings page will be here :D
+      <p>Settings page will be here :D</p>
       <Button onClick={clearDb}>ClearDB</Button>
     </div>
   );
