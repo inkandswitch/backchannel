@@ -1,4 +1,5 @@
 import { symmetric, EncryptedProtocolMessage } from './crypto';
+import { Backchannel as bc } from './backchannel';
 
 export type MessageId = string;
 export type ContactId = string;
@@ -6,6 +7,7 @@ export type Code = string;
 export type Key = string;
 export type DiscoveryKey = string;
 export type DocumentId = string;
+export type Backchannel = bc;
 
 export interface IContact {
   id?: ContactId;

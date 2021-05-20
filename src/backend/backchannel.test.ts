@@ -1,6 +1,8 @@
 import { Mailbox, Backchannel } from './backchannel';
 import { Database } from './db';
 import crypto from 'crypto';
+import { getPortPromise as getAvailablePort } from 'portfinder';
+import { Server } from '@localfirst/relay';
 
 let doc,
   petbob_id,
@@ -10,12 +12,13 @@ let devices = {
   bob: null,
   android: null,
 };
+let server,
+  port = 3001;
 
 function createDevice(name): Backchannel {
   let dbname = crypto.randomBytes(16);
-  let RELAY_URL = 'ws://localhost:3001';
   let db_a = new Database<Mailbox>(dbname + name);
-  return new Backchannel(db_a, RELAY_URL);
+  return new Backchannel(db_a, `ws://localhost:${port}`);
 }
 
 beforeEach((done) => {
@@ -78,6 +81,7 @@ test('integration send a message', (done) => {
     jest.runOnlyPendingTimers();
 
     await devices.alice.sendMessage(outgoing.contact, outgoing.text);
+    jest.runOnlyPendingTimers();
     jest.runOnlyPendingTimers();
   }
 

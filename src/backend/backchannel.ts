@@ -86,10 +86,18 @@ export class Backchannel extends events.EventEmitter {
    * @returns {ContactId} The ID of the contact in the database
    */
   async announce(code: Code): Promise<ContactId> {
-    let connection: SecureWormhole = await this._wormhole.announce(code);
-    let key = arrayToHex(connection.key);
-    let id = await this._addContact(key);
-    return id;
+    return new Promise(async (resolve, reject) => {
+      try {
+        let connection: SecureWormhole = await this._wormhole.announce(
+          code.trim()
+        );
+        let key = arrayToHex(connection.key);
+        let id = await this._addContact(key);
+        return resolve(id);
+      } catch (err) {
+        reject(new Error(`Failed to establish a secure connection.`));
+      }
+    });
   }
 
   /**
@@ -99,13 +107,30 @@ export class Backchannel extends events.EventEmitter {
    * then be created with an anonymous handle and the id returned.
    *
    * @param {Code} code The code to accept
+   * @param {number} timeout The timeout before giving up, default 20 seconds
    * @returns {ContactId} The ID of the contact in the database
    */
-  async accept(code: Code): Promise<ContactId> {
-    let connection: SecureWormhole = await this._wormhole.accept(code);
-    let key = arrayToHex(connection.key);
-    let id = await this._addContact(key);
-    return id;
+  async accept(code: Code, timeout = 20000): Promise<ContactId> {
+    let TWENTY_SECONDS = timeout;
+    return new Promise(async (resolve, reject) => {
+      setTimeout(() => {
+        reject(
+          new Error(
+            `It took more than 20 seconds to find any backchannels with code ${code}. Try again with a different code?`
+          )
+        );
+      }, TWENTY_SECONDS);
+      try {
+        let connection: SecureWormhole = await this._wormhole.accept(
+          code.trim()
+        );
+        let key = arrayToHex(connection.key);
+        let id = await this._addContact(key);
+        return resolve(id);
+      } catch (err) {
+        reject(new Error(`Failed to establish a secure connection.`));
+      }
+    });
   }
 
   /**
@@ -280,18 +305,18 @@ export class Backchannel extends events.EventEmitter {
 
       socket.addEventListener('close', onclose);
 
-      this.log('connected', contact.discoveryKey);
+      contact.isConnected = this.db.isConnected(contact);
+      this.log('contact.connected', contact);
+      let openContact = {
+        socket,
+        contact,
+      };
+      this.emit('contact.connected', openContact);
     } catch (err) {
       this.log('contact.error', err);
       this.emit('contact.error', err);
     }
 
-    let openContact = {
-      socket,
-      contact,
-    };
-    this.log('got contact', discoveryKey);
-    this.emit('contact.connected', openContact);
   }
 
   private _createClient(relay: string, documentIds: DocumentId[]): Client {

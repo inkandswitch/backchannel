@@ -6,7 +6,8 @@ import { Button } from './';
 import Backchannel from '../backend';
 import { color, fontSize } from './tokens';
 import { timestampToDate } from './util';
-import ArrowLeft from './icons/ArrowLeft.svg';
+import { ReactComponent as ArrowLeft } from './icons/ArrowLeft.svg';
+import { TopBar } from '../components';
 import { Link } from 'wouter';
 
 let backchannel = Backchannel();
@@ -89,30 +90,21 @@ export default function Mailbox(props: Props) {
         display: flex;
         flex-direction: column;
         text-align: left;
-        min-height: 100vh;
+        position: relative;
+        height: 100%;
       `}
     >
-      <div
-        css={css`
-          background: ${color.primary};
-          color: ${color.chatHeaderText};
-          text-align: center;
-          padding: 18px;
-          position: fixed;
-          width: 100%;
-          display: flex;
-          flex-direction: row;
-        `}
-      >
-        <Link href="/">
-          <img
-            alt="arrow left"
-            src={ArrowLeft}
-            css={css`
-              cursor: pointer;
-            `}
-          />
-        </Link>
+      <TopBar>
+        <div>
+          <Link href="/">
+            <ArrowLeft
+              css={css`
+                cursor: pointer;
+                padding: 0 18px;
+              `}
+            />
+          </Link>
+        </div>
         <div
           css={css`
             flex: 1 0 auto;
@@ -120,55 +112,60 @@ export default function Mailbox(props: Props) {
         >
           {contact ? contact.moniker : ''} {contact && connected ? '🤠' : '😪'}
         </div>
-      </div>
-      <ul
+      </TopBar>
+      <div
         css={css`
-          list-style: none;
-          margin: 0;
-          padding: 0;
-          padding-top: 60px;
-          flex: 1 0 auto;
+          margin-top: 60px;
+          overflow: auto; /* scroll messages only */
+          flex: 1 auto;
         `}
       >
-        {messages.map((message) => {
-          return (
-            <li
-              key={message.id}
-              css={css`
-                padding: ${PADDING_CHAT}px;
-                ${message.incoming
-                  ? `margin-right: ${PADDING_CHAT + 30}px`
-                  : `margin-left: ${PADDING_CHAT + 30}px`};
-              `}
-            >
-              <div
+        <ul
+          css={css`
+            list-style: none;
+            margin: 0;
+            padding: 0;
+          `}
+        >
+          {messages.map((message) => {
+            return (
+              <li
+                key={message.id}
                 css={css`
-                  background: ${message.incoming
-                    ? color.chatBackgroundIncoming
-                    : color.chatBackgroundYou};
-                  color: ${color.chatText};
-                  padding: 18px;
-                  border-radius: 1px;
+                  padding: ${PADDING_CHAT}px;
+                  ${message.incoming
+                    ? `margin-right: ${PADDING_CHAT + 30}px`
+                    : `margin-left: ${PADDING_CHAT + 30}px`};
                 `}
               >
-                <div></div>
-                {message.text}
-              </div>{' '}
-              <div
-                css={css`
-                  text-align: ${message.incoming ? 'left' : 'right'};
-                  color: ${color.chatTimestamp};
-                  font-size: ${fontSize[0]};
-                  margin-top: 6px;
-                `}
-              >
-                {timestampToDate(message.timestamp)}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-
+                <div
+                  css={css`
+                    background: ${message.incoming
+                      ? color.chatBackgroundIncoming
+                      : color.chatBackgroundYou};
+                    color: ${color.chatText};
+                    padding: 18px;
+                    border-radius: 1px;
+                  `}
+                >
+                  <div></div>
+                  {message.text}
+                </div>{' '}
+                <div
+                  css={css`
+                    text-align: ${message.incoming ? 'left' : 'right'};
+                    color: ${color.chatTimestamp};
+                    font-size: ${fontSize[0]}px;
+                    margin-top: 6px;
+                  `}
+                >
+                  {timestampToDate(message.timestamp)}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
       <form
         css={css`
           display: flex;
