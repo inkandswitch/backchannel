@@ -18,7 +18,7 @@
   "dependencies": {
     "@emotion/babel-plugin": "^11.3.0",
     "@emotion/react": "^11.1.5",
-    "@localfirst/relay-client": "^3.0.0",
+    "@localfirst/relay-client": "3.2",
     "automerge": "^1.0.1-preview.0",
     "buffer": "^6.0.3",
     "cat-names": "^3.0.0",
