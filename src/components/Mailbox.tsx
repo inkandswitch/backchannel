@@ -57,18 +57,18 @@ export default function Mailbox(props: Props) {
   }, [contactId]);
 
   useEffect(() => {
-    let onMessage = ({ docId, peerId }) => {
-      if (contact && peerId === contact.id) {
+    let onMessage = (docId) => {
+      if (contact && docId === contact.discoveryKey) {
         let messages = backchannel.getMessagesByContactId(contactId);
         setMessages(messages);
       }
     };
-    backchannel.on('sync', onMessage);
+    backchannel.db.on('patch', onMessage);
 
     return function cleanup() {
       backchannel.removeListener('message', onMessage);
     };
-  }, [contactId, contact, messages]);
+  }, [contactId, contact]);
 
   async function sendMessage(e) {
     e.preventDefault();

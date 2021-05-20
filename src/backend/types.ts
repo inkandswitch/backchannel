@@ -5,6 +5,7 @@ export type ContactId = string;
 export type Code = string;
 export type Key = string;
 export type DiscoveryKey = string;
+export type DocumentId = string;
 
 export interface IContact {
   id?: ContactId;

@@ -20,11 +20,6 @@ interface Peer {
   idle?: Boolean;
 }
 
-enum MESSAGE_TYPES {
-  DONE = '0',
-  HELLO = '1',
-}
-
 export default class AutomergeDiscovery extends EventEmitter {
   public doc: BackendState;
   public docId: string;
@@ -56,29 +51,18 @@ export default class AutomergeDiscovery extends EventEmitter {
   }
 
   addPeer(id: string, peer: Peer) {
-    peer.idle = false;
     peer.state = Backend.initSyncState();
     this.peers.set(id, peer);
 
     // HELLO!
+    this.log('sending hello')
     this._updatePeer(peer);
 
     return (msg) => {
       let peer = this.peers.get(id);
-      switch (msg) {
-        case MESSAGE_TYPES.DONE:
-          if (peer.idle) {
-            this.emit('sync', peer.id);
-            this.log('got done');
-          }
-          this._updatePeer(peer);
-          break;
-        default:
-          // RECEIVED
-          msg = new Uint8Array(msg);
-          this._receive(peer, msg);
-          this._updatePeer(peer);
-      }
+      msg = new Uint8Array(msg);
+      this._receive(peer, msg);
+      this._updatePeer(peer);
     };
   }
 
@@ -91,6 +75,7 @@ export default class AutomergeDiscovery extends EventEmitter {
     );
     this._sendToRenderer(patch);
     this.doc = newBackend;
+    this.updatePeers()
     return newChange;
   }
 
@@ -112,15 +97,12 @@ export default class AutomergeDiscovery extends EventEmitter {
       peer.state
     );
     peer.state = nextSyncState;
+    this.peers.set(peer.id, peer);
     if (msg) {
       this.log('sending', msg);
       peer.send(msg);
       return true;
     } else {
-      if (!peer.idle) {
-        peer.send(MESSAGE_TYPES.DONE);
-        peer.idle = true;
-      }
       return false;
     }
   }
@@ -132,6 +114,7 @@ export default class AutomergeDiscovery extends EventEmitter {
       syncMsg
     );
     this.doc = newDoc;
+    if (patch) this.log('PENDING CHANGES', patch.pendingChanges)
     peer.state = newSyncState;
     this.peers.set(peer.id, peer);
     if (patch) this._sendToRenderer(patch);

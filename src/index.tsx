@@ -11,8 +11,11 @@ declare global {
     spake2: any;
   }
 }
+
+localStorage.setItem('debug', 'bc:*')
+
 // TODO: Loading screen
-backchannel.on('open', async () => {
+backchannel.on('open', () => {
   render(
     <React.StrictMode>
       <App />

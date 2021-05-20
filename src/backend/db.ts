@@ -147,16 +147,27 @@ export class Database<T> extends EventEmitter {
     return this._addDocument(contact.discoveryKey, changeFn);
   }
 
+  storeSyncState (args) {
+    this._idb.storeSyncState.apply(this._idb, args)
+  }
+
+  getSyncStates (args) {
+    this._idb.getSyncStates.apply(this._idb, args)
+  }
+
   async _loadDocument(docId): Promise<string> {
     let doc = await this._idb.getDoc(docId);
     let state = doc.serializedDoc
       ? Backend.load(doc.serializedDoc)
       : Backend.init();
+
+    this.log('loading document', doc.changes)
     const [backend, patch] = Backend.applyChanges(state, doc.changes);
     let frontend: Automerge.Doc<T | System> = Automerge.Frontend.applyPatch(
       Frontend.init(),
       patch
     );
+    this.log('got doc', frontend, backend)
     return this._hyrateDocument(docId, frontend, backend);
   }
 
@@ -170,6 +181,7 @@ export class Database<T> extends EventEmitter {
       this.error(new Error('Document doesnt exist with id ' + docId));
     let change = syncer.change(changeData);
     const decodedChange = Automerge.decodeChange(change);
+    this.log('storing change', docId)
     await this._idb.storeChange(docId, (decodedChange as any).hash, change);
     syncer.updatePeers();
   }
@@ -192,6 +204,8 @@ export class Database<T> extends EventEmitter {
   ) {
     this._frontends.set(docId, frontend);
     let syncer = new AutomergeDiscovery(docId, backend);
+    this._syncers.set(docId, syncer);
+    let doc = this._frontends.get(docId)
 
     syncer.on('patch', ({ docId, patch, change }) => {
       let frontend = this._frontends.get(docId);
@@ -205,9 +219,7 @@ export class Database<T> extends EventEmitter {
       this.log('got patch', docId, 'updating frontend');
       this.emit('patch', docId);
     });
-
-    this._syncers.set(docId, syncer);
-    this.log('document hydrated', docId);
+    this.log('document hydrated', docId, doc)
     return docId;
   }
 
@@ -217,6 +229,7 @@ export class Database<T> extends EventEmitter {
    * @returns When the database has been opened
    */
   async open(): Promise<any[]> {
+    this.log('opening', this._opening)
     if (this._opening)
       return new Promise((resolve) => {
         this.once('open', resolve);
@@ -224,6 +237,7 @@ export class Database<T> extends EventEmitter {
     this._opening = true;
     if (this._opened) return;
     await this._loadDocument(SYSTEM_ID);
+    this.log('got contacts', this.root.contacts)
     if (this.root.contacts) {
       // LOAD EXISTING DOCUMENTS
       let c = 0;
@@ -318,7 +332,7 @@ export class Database<T> extends EventEmitter {
 
   async destroy() {
     this._opened = false;
-    this._idb.destroy();
+    return this._idb.destroy();
   }
 
   _syncer(docId) {

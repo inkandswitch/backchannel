@@ -159,7 +159,9 @@ export class Backchannel extends events.EventEmitter {
    * @returns An array of contacts
    */
   get contacts(): IContact[] {
-    return this.db.getContacts().filter((c) => c.device === 0);
+    let contacts = this.db.getContacts();
+    if (contacts) return contacts.filter((c) => c.device === 0);
+    else return []
   }
 
   listContacts() {
@@ -251,8 +253,19 @@ export class Backchannel extends events.EventEmitter {
         onmessage = this.db.onPeerConnect(docId, contact.id, send);
       }
 
-      socket.onmessage = (e) => {
+      let listener = (e) => {
+        this.log('got message', e.data)
         onmessage(e.data);
+      };
+      socket.addEventListener('message', listener)
+
+      // localfirst/relay-client also has a peer.disconnect event
+      // but it is somewhat unreliable. this is better.
+      socket.onclose = () => {
+        let documentId = contact.discoveryKey;
+        this.db.onDisconnect(documentId, contact.id);
+        socket.removeEventListener('message', listener)
+        this.emit('contact.disconnected', { contact });
       };
 
       this.log('connected', contact.discoveryKey);
@@ -261,14 +274,6 @@ export class Backchannel extends events.EventEmitter {
       this.emit('contact.error', err);
     }
 
-    // localfirst/relay-client also has a peer.disconnect event
-    // but it is somewhat unreliable. this is better.
-    socket.onclose = () => {
-      let documentId = contact.discoveryKey;
-      this.db.onDisconnect(documentId, contact.id);
-      this.log('disconnect!!!!');
-      this.emit('contact.disconnected', { contact });
-    };
 
     socket.onerror = (err) => {
       console.error('error', err);
@@ -318,7 +323,7 @@ export class Backchannel extends events.EventEmitter {
     let id = await this.db.addContact(key, moniker);
     let contact = this.db.getContactById(id);
     this.log('root dot created', contact.discoveryKey);
-    let docId = await this.db.addDocument(contact.id, (doc: Mailbox) => {
+    await this.db.addDocument(contact.id, (doc: Mailbox) => {
       doc.messages = [];
     });
     return id;
