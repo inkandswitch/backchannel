@@ -26,7 +26,7 @@
     "debug": "^4.3.1",
     "dexie": "^3.0.3",
     "enc-utils": "^3.0.0",
-    "magic-wormhole": "github:okdistribute/magic-wormhole-js#12614a60de3ec66109668940108468214c4b8877",
+    "magic-wormhole": "github:okdistribute/magic-wormhole-js#40ee600af23a6400394290d3eefb0f90b5d3e0a5",
     "react": "^17.0.2",
     "react-chat-elements": "^10.14.0",
     "react-dom": "^17.0.2",
