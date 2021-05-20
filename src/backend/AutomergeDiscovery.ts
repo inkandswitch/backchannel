@@ -42,6 +42,10 @@ export default class AutomergeDiscovery extends EventEmitter {
     return this.peers.has(id);
   }
 
+  getPeer(id): Peer {
+    return this.peers.get(id);
+  }
+
   idle() {
     for (let peerId in this.peers) {
       let p = this.peers.get(peerId);
@@ -55,7 +59,7 @@ export default class AutomergeDiscovery extends EventEmitter {
     this.peers.set(id, peer);
 
     // HELLO!
-    this.log('sending hello')
+    this.log('sending hello');
     this._updatePeer(peer);
 
     return (msg) => {
@@ -75,7 +79,7 @@ export default class AutomergeDiscovery extends EventEmitter {
     );
     this._sendToRenderer(patch);
     this.doc = newBackend;
-    this.updatePeers()
+    this.updatePeers();
     return newChange;
   }
 
@@ -114,7 +118,7 @@ export default class AutomergeDiscovery extends EventEmitter {
       syncMsg
     );
     this.doc = newDoc;
-    if (patch) this.log('PENDING CHANGES', patch.pendingChanges)
+    if (patch) this.log('PENDING CHANGES', patch.pendingChanges);
     peer.state = newSyncState;
     this.peers.set(peer.id, peer);
     if (patch) this._sendToRenderer(patch);

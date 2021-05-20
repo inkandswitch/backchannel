@@ -161,7 +161,7 @@ export class Backchannel extends events.EventEmitter {
   get contacts(): IContact[] {
     let contacts = this.db.getContacts();
     if (contacts) return contacts.filter((c) => c.device === 0);
-    else return []
+    else return [];
   }
 
   listContacts() {
@@ -237,7 +237,7 @@ export class Backchannel extends events.EventEmitter {
     await this.db.destroy();
   }
 
-  private _onPeerConnect(socket: WebSocket, discoveryKey: DiscoveryKey) {
+  private async _onPeerConnect(socket: WebSocket, discoveryKey: DiscoveryKey) {
     let contact = this.db.getContactByDiscoveryKey(discoveryKey);
     try {
       socket.binaryType = 'arraybuffer';
@@ -247,25 +247,26 @@ export class Backchannel extends events.EventEmitter {
 
       let onmessage;
       if (contact.device) {
-        onmessage = this.db.onDeviceConnect(contact.id, send);
+        onmessage = await this.db.onDeviceConnect(contact.id, send);
       } else {
         let docId = contact.discoveryKey;
-        onmessage = this.db.onPeerConnect(docId, contact.id, send);
+        onmessage = await this.db.onPeerConnect(docId, contact.id, send);
       }
 
       let listener = (e) => {
-        this.log('got message', e.data)
+        this.log('got message', e.data);
         onmessage(e.data);
       };
-      socket.addEventListener('message', listener)
+      socket.addEventListener('message', listener);
 
       // localfirst/relay-client also has a peer.disconnect event
       // but it is somewhat unreliable. this is better.
       socket.onclose = () => {
         let documentId = contact.discoveryKey;
-        this.db.onDisconnect(documentId, contact.id);
-        socket.removeEventListener('message', listener)
-        this.emit('contact.disconnected', { contact });
+        socket.removeEventListener('message', listener);
+        this.db.onDisconnect(documentId, contact.id).then(() => {
+          this.emit('contact.disconnected', { contact });
+        })
       };
 
       this.log('connected', contact.discoveryKey);
@@ -273,7 +274,6 @@ export class Backchannel extends events.EventEmitter {
       this.log('contact.error', err);
       this.emit('contact.error', err);
     }
-
 
     socket.onerror = (err) => {
       console.error('error', err);

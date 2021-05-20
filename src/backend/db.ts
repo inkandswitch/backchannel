@@ -76,31 +76,46 @@ export class Database<T> extends EventEmitter {
     return this.root.contacts.map((c) => this._hydrateContact(c));
   }
 
-  onDeviceConnect(peerId: string, send: Function): Function {
+  // FIXME this API is awkward yo
+  onDeviceConnect(peerId: string, send: Function): Promise<Function> {
     let syncer = this._syncer(SYSTEM_ID);
     return this._addPeer(syncer, peerId, send);
   }
 
-  private _addPeer(syncer: AutomergeDiscovery, peerId: string, send: Function) {
+  onPeerConnect(
+    docId: DocumentId,
+    peerId: string,
+    send: Function
+  ): Promise<Function> {
+    let doc = this._syncer(docId);
+    return this._addPeer(doc, peerId, send);
+  }
+
+  private async _addPeer(
+    syncer: AutomergeDiscovery,
+    peerId: string,
+    send: Function
+  ) {
     let contact = this.getContactById(peerId);
     this.log('adding peer', contact);
+    let docId = contact.discoveryKey;
+    let state = await this._idb.getSyncState(docId, peerId);
     let peer = {
       id: peerId,
       send,
+      state,
       key: Buffer.from(contact.key, 'hex'),
     };
     return syncer.addPeer(peerId, peer);
   }
 
-  onPeerConnect(docId: DocumentId, peerId: string, send: Function): Function {
+  async onDisconnect(docId, peerId): Promise<void> {
+    this.log('onDisconnect', docId)
     let doc = this._syncer(docId);
-    return this._addPeer(doc, peerId, send);
-  }
-
-  onDisconnect(docId, peerId) {
-    let doc = this._syncer(docId);
-    if (doc) doc.removePeer(peerId);
-    else this._syncer(SYSTEM_ID).removePeer(peerId);
+    if (!doc) doc = this._syncer(SYSTEM_ID)
+    let peer = doc.getPeer(peerId);
+    await this._idb.storeSyncState(docId, peerId, peer.state);
+    doc.removePeer(peerId);
   }
 
   getDocument(docId: DocumentId): Automerge.Doc<System | T> {
@@ -147,27 +162,19 @@ export class Database<T> extends EventEmitter {
     return this._addDocument(contact.discoveryKey, changeFn);
   }
 
-  storeSyncState (args) {
-    this._idb.storeSyncState.apply(this._idb, args)
-  }
-
-  getSyncStates (args) {
-    this._idb.getSyncStates.apply(this._idb, args)
-  }
-
   async _loadDocument(docId): Promise<string> {
     let doc = await this._idb.getDoc(docId);
     let state = doc.serializedDoc
       ? Backend.load(doc.serializedDoc)
       : Backend.init();
 
-    this.log('loading document', doc.changes)
+    this.log('loading document', doc.changes);
     const [backend, patch] = Backend.applyChanges(state, doc.changes);
     let frontend: Automerge.Doc<T | System> = Automerge.Frontend.applyPatch(
       Frontend.init(),
       patch
     );
-    this.log('got doc', frontend, backend)
+    this.log('got doc', frontend, backend);
     return this._hyrateDocument(docId, frontend, backend);
   }
 
@@ -181,7 +188,7 @@ export class Database<T> extends EventEmitter {
       this.error(new Error('Document doesnt exist with id ' + docId));
     let change = syncer.change(changeData);
     const decodedChange = Automerge.decodeChange(change);
-    this.log('storing change', docId)
+    this.log('storing change', docId);
     await this._idb.storeChange(docId, (decodedChange as any).hash, change);
     syncer.updatePeers();
   }
@@ -205,7 +212,7 @@ export class Database<T> extends EventEmitter {
     this._frontends.set(docId, frontend);
     let syncer = new AutomergeDiscovery(docId, backend);
     this._syncers.set(docId, syncer);
-    let doc = this._frontends.get(docId)
+    let doc = this._frontends.get(docId);
 
     syncer.on('patch', ({ docId, patch, change }) => {
       let frontend = this._frontends.get(docId);
@@ -219,7 +226,7 @@ export class Database<T> extends EventEmitter {
       this.log('got patch', docId, 'updating frontend');
       this.emit('patch', docId);
     });
-    this.log('document hydrated', docId, doc)
+    this.log('document hydrated', docId, doc);
     return docId;
   }
 
@@ -229,7 +236,7 @@ export class Database<T> extends EventEmitter {
    * @returns When the database has been opened
    */
   async open(): Promise<any[]> {
-    this.log('opening', this._opening)
+    this.log('opening', this._opening);
     if (this._opening)
       return new Promise((resolve) => {
         this.once('open', resolve);
@@ -237,7 +244,7 @@ export class Database<T> extends EventEmitter {
     this._opening = true;
     if (this._opened) return;
     await this._loadDocument(SYSTEM_ID);
-    this.log('got contacts', this.root.contacts)
+    this.log('got contacts', this.root.contacts);
     if (this.root.contacts) {
       // LOAD EXISTING DOCUMENTS
       let c = 0;

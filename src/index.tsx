@@ -12,11 +12,12 @@ declare global {
   }
 }
 
-localStorage.setItem('debug', 'bc:*')
+localStorage.setItem('debug', 'bc:*');
 
 // TODO: Loading screen
 backchannel.on('open', () => {
   render(
+    //@ts-ignore
     <React.StrictMode>
       <App />
     </React.StrictMode>,
