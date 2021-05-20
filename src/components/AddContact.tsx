@@ -69,7 +69,7 @@ export default function AddContact({ backchannel, view }: Props) {
       setLocation(`/contact/${cid}/add`);
     } catch (err) {
       onError(err);
-      setCode('')
+      setCode('');
     }
   }
 
@@ -88,7 +88,7 @@ export default function AddContact({ backchannel, view }: Props) {
       }
     } catch (err) {
       onError(err);
-      setCode('')
+      setCode('');
     }
   }
 

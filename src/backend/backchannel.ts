@@ -61,7 +61,7 @@ export class Backchannel extends events.EventEmitter {
       let documentIds = this.db.documents;
       this._emitOpen();
       this.log(`Joining ${documentIds.length} documentIds`);
-      documentIds.forEach(docId => this._client.join(docId))
+      documentIds.forEach((docId) => this._client.join(docId));
     });
 
     this.log = debug('bc:backchannel');
@@ -311,8 +311,8 @@ export class Backchannel extends events.EventEmitter {
     };
 
     socket.onerror = (err) => {
-      let code = ERROR.PEER
-      this.emit('error', err, code)
+      let code = ERROR.PEER;
+      this.emit('error', err, code);
       console.error('error', err);
       console.trace(err);
     };
@@ -327,7 +327,7 @@ export class Backchannel extends events.EventEmitter {
     client.on('error', (err) => {
       let error = {
         message: 'Relay unreachable',
-        delay: client.retryDelay
+        delay: client.retryDelay,
       };
       let code = ERROR.UNREACHABLE;
       this.emit('error', error, code);

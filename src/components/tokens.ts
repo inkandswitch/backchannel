@@ -11,7 +11,7 @@ const rawColor = {
   white: '#ffffff',
   lightPurple: '#9187EB',
   yellow: '#CC9900',
-  red: '#7C0A02'
+  red: '#7C0A02',
 };
 
 /*
