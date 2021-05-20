@@ -38,7 +38,7 @@ export class DB extends Dexie {
     this.version(2).stores({
       documents: 'id++,docId',
       changes: 'id++,docId',
-      states: 'id++, [docId+contactId], docId',
+      states: 'id++, [docId+contactId]', // compound index on docId and contactId
     });
     this.documents = this.table('documents');
     this.changes = this.table('changes');
@@ -69,11 +69,7 @@ export class DB extends Dexie {
     else return null;
   }
 
-  async storeChange(
-    docId: string,
-    hash: string,
-    change: Automerge.BinaryChange
-  ) {
+  async storeChange(docId: string, change: Automerge.BinaryChange) {
     return this.changes.add({ docId, change, timestamp: Date.now() });
   }
 
@@ -103,14 +99,14 @@ export class DB extends Dexie {
 
     const nextSerializedDoc = Automerge.save(doc);
 
-    let oldChanges = await this.changes.where({ docId });
+    let oldChanges = this.changes.where({ docId });
     let deletable = oldChanges.filter((c) => c.timestamp > lastChangeTime);
-    await this.changes.bulkDelete(await deletable.primaryKeys());
-
-    await this.documents.put({
+    let deleted = this.changes.bulkDelete(await deletable.primaryKeys());
+    let add = this.documents.put({
       serializedDoc: nextSerializedDoc,
       docId,
     });
+    return Promise.all([add, deleted]);
   }
 
   async destroy() {

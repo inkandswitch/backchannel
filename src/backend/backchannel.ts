@@ -238,7 +238,14 @@ export class Backchannel extends events.EventEmitter {
   }
 
   private async _onPeerConnect(socket: WebSocket, discoveryKey: DiscoveryKey) {
+    let onerror = (err) => {
+      console.error('error', err);
+      console.trace(err);
+    };
+    socket.addEventListener('error', onerror);
+
     let contact = this.db.getContactByDiscoveryKey(discoveryKey);
+
     try {
       socket.binaryType = 'arraybuffer';
       let send = (msg: Uint8Array) => {
@@ -261,24 +268,23 @@ export class Backchannel extends events.EventEmitter {
 
       // localfirst/relay-client also has a peer.disconnect event
       // but it is somewhat unreliable. this is better.
-      socket.onclose = () => {
+      let onclose = () => {
         let documentId = contact.discoveryKey;
         socket.removeEventListener('message', listener);
+        socket.removeEventListener('error', onerror);
+        socket.removeEventListener('close', onclose);
         this.db.onDisconnect(documentId, contact.id).then(() => {
           this.emit('contact.disconnected', { contact });
-        })
+        });
       };
+
+      socket.addEventListener('close', onclose);
 
       this.log('connected', contact.discoveryKey);
     } catch (err) {
       this.log('contact.error', err);
       this.emit('contact.error', err);
     }
-
-    socket.onerror = (err) => {
-      console.error('error', err);
-      console.trace(err);
-    };
 
     let openContact = {
       socket,
@@ -307,9 +313,11 @@ export class Backchannel extends events.EventEmitter {
 
   private async _addMessage(msg: string, contact: IContact) {
     let docId = contact.discoveryKey;
-    await this.db.change(docId, (doc: Mailbox) => {
+    let res = await this.db.change(docId, (doc: Mailbox) => {
       doc.messages.push(msg);
     });
+    this.db.save(docId);
+    return res;
   }
 
   /**
@@ -323,9 +331,10 @@ export class Backchannel extends events.EventEmitter {
     let id = await this.db.addContact(key, moniker);
     let contact = this.db.getContactById(id);
     this.log('root dot created', contact.discoveryKey);
-    await this.db.addDocument(contact.id, (doc: Mailbox) => {
+    let docId = await this.db.addDocument(contact.id, (doc: Mailbox) => {
       doc.messages = [];
     });
-    return id;
+    this.db.save(docId);
+    return contact.id;
   }
 }
