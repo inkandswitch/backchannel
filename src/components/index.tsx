@@ -23,7 +23,37 @@ export function TopBar(props) {
   );
 }
 
-export const Content = (props) => (
+export function BottomNav(props) {
+  return (
+    <div
+      css={css`
+        color: ${color.chatHeaderText};
+        text-align: center;
+        padding: 18px;
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-around;
+        align-items: center;
+      `}
+      {...props}
+    />
+  );
+}
+
+export const ContentWithBottomNav = (props) => (
+  <div
+    css={css`
+      padding-bottom: 100px;
+      flex: 1 0 auto;
+    `}
+    {...props}
+  />
+);
+
+export const ContentWithTopNav = (props) => (
   <div
     css={css`
       padding-top: 60px;

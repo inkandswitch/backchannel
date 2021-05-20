@@ -7,7 +7,7 @@ import Backchannel from '../backend';
 import { color, fontSize } from './tokens';
 import { timestampToDate } from './util';
 import { ReactComponent as ArrowLeft } from './icons/ArrowLeft.svg';
-import { Content, TopBar } from '../components';
+import { TopBar } from '../components';
 import { Link } from 'wouter';
 
 let backchannel = Backchannel();
@@ -109,7 +109,12 @@ export default function Mailbox(props: Props) {
           {contact ? contact.moniker : ''} {contact && connected ? '🤠' : '😪'}
         </div>
       </TopBar>
-      <Content>
+      <div
+        css={css`
+          flex: 1 0 auto;
+          padding-top: 60px;
+        `}
+      >
         <ul
           css={css`
             list-style: none;
@@ -145,7 +150,7 @@ export default function Mailbox(props: Props) {
                   css={css`
                     text-align: ${message.incoming ? 'left' : 'right'};
                     color: ${color.chatTimestamp};
-                    font-size: ${fontSize[0]};
+                    font-size: ${fontSize[0]}px;
                     margin-top: 6px;
                   `}
                 >
@@ -155,7 +160,7 @@ export default function Mailbox(props: Props) {
             );
           })}
         </ul>
-      </Content>
+      </div>
       <form
         css={css`
           display: flex;

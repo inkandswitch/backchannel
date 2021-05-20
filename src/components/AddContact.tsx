@@ -4,8 +4,10 @@ import { css } from '@emotion/react/macro';
 import { Link, useLocation } from 'wouter';
 
 import { copyToClipboard } from '../web';
-import { TopBar, Button } from '../components';
+import { A, TopBar, Button, ContentWithTopNav } from '../components';
+import { ReactComponent as ArrowLeft } from '../components/icons/ArrowLeft.svg';
 import { Code, ContactId } from '../backend/types';
+import { color, fontSize } from '../components/tokens';
 
 // Amount of time to show immediate user feedback
 let USER_FEEDBACK_TIMER = 5000;
@@ -85,57 +87,126 @@ export default ({ backchannel, view }: { backchannel; view: CodeViewMode }) => {
   }
 
   return (
-    <div>
+    <div
+      css={css`
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      `}
+    >
       <TopBar>
-        {view === 'add' && (
-          <React.Fragment>
-            <input
-              css={css`
-                font-size: inherit;
-                width: 10em;
-              `}
-              type="text"
-              onChange={handleChange}
-            ></input>
-            <Button onClick={onClickRedeem}>Redeem</Button>
-          </React.Fragment>
-        )}
-        {view === 'generate' && (
-          <React.Fragment>
-            <input
-              css={css`
-                font-size: inherit;
-                width: 10em;
-              `}
-              value={code}
-              readOnly
-            />
-            <Button onClick={onClickCopy}>Copy</Button>
-          </React.Fragment>
-        )}
-        <Link
-          href="/"
-          css={css`
-            color: white;
-            padding-left: 8px;
-            font-size: 0.8em;
-          `}
-        >
-          Cancel
+        <Link href="/">
+          <ArrowLeft
+            css={css`
+              cursor: pointer;
+            `}
+          />
         </Link>
-      </TopBar>
-      <div>{errorMsg}</div>
-      {message && (
         <div
           css={css`
-            display: inline-block;
-            margin: 16px 0;
-            word-break: break-word;
+            flex: 1 0 auto;
           `}
         >
-          {message}
+          <A href="generate">Generate codes</A>
+          <A href="add">Enter codes</A>
         </div>
-      )}
+      </TopBar>
+      <ContentWithTopNav
+        css={css`
+          background: ${color.codeShareBackground};
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+        `}
+      >
+        <div>{errorMsg}</div>
+        {view === 'generate' && (
+          <React.Fragment>
+            <Instructions>
+              Share this code with a correspondant you trust to open a
+              backchannel and add them as a contact:
+            </Instructions>
+            <CodeDisplayOrEntry>{code}</CodeDisplayOrEntry>
+            <BottomActions>
+              <div
+                css={css`
+                  margin: 16px 0;
+                  word-break: break-word;
+                  color: ${color.textBold};
+                  height: 18px;
+                `}
+              >
+                {message}
+              </div>
+              <Button onClick={onClickCopy}>Copy code</Button>
+            </BottomActions>
+          </React.Fragment>
+        )}
+        {view === 'add' && (
+          <React.Fragment>
+            <Instructions>
+              Enter the code your correspondant sent you to access the
+              backchannel:
+            </Instructions>
+            <CodeDisplayOrEntry>
+              <input
+                css={css`
+                  font-size: inherit;
+                  width: 100%;
+                  text-align: center;
+                `}
+                type="text"
+                placeholder="Enter the code"
+                onChange={handleChange}
+              ></input>
+            </CodeDisplayOrEntry>
+            <BottomActions>
+              <Button onClick={onClickRedeem}>Enter Backchannel</Button>
+            </BottomActions>
+          </React.Fragment>
+        )}
+      </ContentWithTopNav>
     </div>
   );
 };
+
+const Instructions = (props) => (
+  <div
+    css={css`
+      color: ${color.chatSecondaryText};
+      font-size: ${fontSize[1]}px;
+      margin: 18px 18px 0;
+      flex: 0 0 auto;
+    `}
+    {...props}
+  />
+);
+
+const CodeDisplayOrEntry = (props) => (
+  <div
+    css={css`
+      color: ${color.textBold};
+      font-size: ${fontSize[3]}px;
+      font-family: monospace;
+      flex: 1 0 auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      margin: 18px;
+    `}
+    {...props}
+  />
+);
+
+const BottomActions = (props) => (
+  <div
+    css={css`
+      align-self: center;
+      margin-bottom: 18px;
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+    `}
+    {...props}
+  />
+);
