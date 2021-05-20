@@ -87,6 +87,7 @@ export class DB extends Dexie {
     };
   }
 
+  // TODO: not fully tested.
   async saveSnapshot(docId) {
     const { serializedDoc, changes } = await this.getDoc(docId);
     // Bail out of saving snapshot if changes are under threshold
