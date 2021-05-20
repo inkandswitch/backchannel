@@ -115,5 +115,6 @@ export class DB extends Dexie {
   async destroy() {
     await this.documents.clear();
     await this.changes.clear();
+    await this.states.clear();
   }
 }
