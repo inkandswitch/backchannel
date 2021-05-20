@@ -19,6 +19,7 @@ css={css`
 */
 export const color = {
   primary: rawColor.blue,
+  text: rawColor.lightBlue,
   textBold: rawColor.white,
   textSecondary: rawColor.lightGray,
   indicatorOnline: rawColor.green,

@@ -1,20 +1,33 @@
 /** @jsxImportSource @emotion/react */
 import React, { useEffect, useState } from 'react';
 import { css } from '@emotion/react/macro';
-import { Link, useLocation } from 'wouter';
+import { useLocation } from 'wouter';
 
 import { copyToClipboard } from '../web';
-import { A, TopBar, Button, ContentWithTopNav } from '../components';
-import { ReactComponent as ArrowLeft } from '../components/icons/ArrowLeft.svg';
-import { Code, ContactId } from '../backend/types';
-import { color, fontSize } from '../components/tokens';
+import {
+  A,
+  TopBar,
+  Button,
+  ContentWithTopNav,
+  Instructions,
+  CodeDisplayOrInput,
+  BottomActions,
+  Message,
+  BackToHomeLink,
+} from '../components';
+import { Code, ContactId, Backchannel } from '../backend/types';
+import { color } from '../components/tokens';
 
 // Amount of time to show immediate user feedback
 let USER_FEEDBACK_TIMER = 5000;
 
 type CodeViewMode = 'add' | 'generate';
+type Props = {
+  view: CodeViewMode;
+  backchannel: Backchannel;
+};
 
-export default ({ backchannel, view }: { backchannel; view: CodeViewMode }) => {
+export default function AddContact({ backchannel, view }: Props) {
   let [code, setCode] = useState<Code>('');
   let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
@@ -50,12 +63,10 @@ export default ({ backchannel, view }: { backchannel; view: CodeViewMode }) => {
   }
 
   async function onClickRedeem() {
-    console.log('on click redeem', code);
     try {
       let cid: ContactId = await backchannel.accept(code);
-      console.log('opening mailbox', cid);
       setErrorMsg('');
-      setLocation(`/mailbox/${cid}`);
+      setLocation(`/contact/${cid}/add`);
     } catch (err) {
       onError(err);
     }
@@ -72,7 +83,7 @@ export default ({ backchannel, view }: { backchannel; view: CodeViewMode }) => {
 
         // This promise returns once the other party redeems the code
         let cid: ContactId = await backchannel.announce(code);
-        setLocation(`/mailbox/${cid}`);
+        setLocation(`/contact/${cid}/add`);
       }
     } catch (err) {
       onError(err);
@@ -91,17 +102,12 @@ export default ({ backchannel, view }: { backchannel; view: CodeViewMode }) => {
       css={css`
         display: flex;
         flex-direction: column;
-        height: 100vh;
+        height: 100%;
+        position: relative;
       `}
     >
       <TopBar>
-        <Link href="/">
-          <ArrowLeft
-            css={css`
-              cursor: pointer;
-            `}
-          />
-        </Link>
+        <BackToHomeLink />
         <div
           css={css`
             flex: 1 0 auto;
@@ -119,25 +125,15 @@ export default ({ backchannel, view }: { backchannel; view: CodeViewMode }) => {
           flex-direction: column;
         `}
       >
-        <div>{errorMsg}</div>
         {view === 'generate' && (
           <React.Fragment>
             <Instructions>
               Share this code with a correspondant you trust to open a
               backchannel and add them as a contact:
             </Instructions>
-            <CodeDisplayOrEntry>{code}</CodeDisplayOrEntry>
+            <CodeDisplayOrInput>{code}</CodeDisplayOrInput>
             <BottomActions>
-              <div
-                css={css`
-                  margin: 16px 0;
-                  word-break: break-word;
-                  color: ${color.textBold};
-                  height: 18px;
-                `}
-              >
-                {message}
-              </div>
+              <Message>{errorMsg || message}</Message>
               <Button onClick={onClickCopy}>Copy code</Button>
             </BottomActions>
           </React.Fragment>
@@ -148,7 +144,7 @@ export default ({ backchannel, view }: { backchannel; view: CodeViewMode }) => {
               Enter the code your correspondant sent you to access the
               backchannel:
             </Instructions>
-            <CodeDisplayOrEntry>
+            <CodeDisplayOrInput>
               <input
                 css={css`
                   font-size: inherit;
@@ -159,7 +155,7 @@ export default ({ backchannel, view }: { backchannel; view: CodeViewMode }) => {
                 placeholder="Enter the code"
                 onChange={handleChange}
               ></input>
-            </CodeDisplayOrEntry>
+            </CodeDisplayOrInput>
             <BottomActions>
               <Button onClick={onClickRedeem}>Enter Backchannel</Button>
             </BottomActions>
@@ -168,45 +164,4 @@ export default ({ backchannel, view }: { backchannel; view: CodeViewMode }) => {
       </ContentWithTopNav>
     </div>
   );
-};
-
-const Instructions = (props) => (
-  <div
-    css={css`
-      color: ${color.chatSecondaryText};
-      font-size: ${fontSize[1]}px;
-      margin: 18px 18px 0;
-      flex: 0 0 auto;
-    `}
-    {...props}
-  />
-);
-
-const CodeDisplayOrEntry = (props) => (
-  <div
-    css={css`
-      color: ${color.textBold};
-      font-size: ${fontSize[3]}px;
-      font-family: monospace;
-      flex: 1 0 auto;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      margin: 18px;
-    `}
-    {...props}
-  />
-);
-
-const BottomActions = (props) => (
-  <div
-    css={css`
-      align-self: center;
-      margin-bottom: 18px;
-      flex: 0 0 auto;
-      display: flex;
-      flex-direction: column;
-    `}
-    {...props}
-  />
-);
+}

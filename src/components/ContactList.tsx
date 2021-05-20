@@ -6,7 +6,7 @@ import Backchannel from '../backend';
 import { color, fontSize } from './tokens';
 import { IMessage } from '../backend/types';
 import { timestampToDate } from './util';
-import { BottomNav, Button } from '../components';
+import { BottomNav } from '../components';
 import { ReactComponent as EnterDoor } from './icons/EnterDoor.svg';
 
 let backchannel = Backchannel();
@@ -50,30 +50,20 @@ export default function ContactList(props) {
     });
   }, []);
 
-  function clearDb() {
-    backchannel
-      .destroy()
-      .then(() => {
-        console.log('cleared database! refresh.');
-      })
-      .catch((err) => {
-        console.error('error clearing db', err);
-      });
-  }
-
   return (
     <div
       css={css`
         display: flex;
         flex-direction: column;
-        height: 100vh;
+        height: 100%;
         background: ${color.contactListBackground};
-        overflow: scroll;
+        position: relative;
       `}
     >
       <div
         css={css`
-          padding-bottom: 100px;
+          margin-bottom: 100px;
+          overflow: auto; /* scroll contact list only */
         `}
       >
         <ul
@@ -166,18 +156,17 @@ export default function ContactList(props) {
         </ul>
       </div>
       <BottomNav>
-        <div
-          css={css`
-            border: 2px solid ${color.border};
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-          `}
-        ></div>
+        <Link href="/settings">
+          <div
+            css={css`
+              border: 2px solid ${color.border};
+              border-radius: 50%;
+              width: 50px;
+              height: 50px;
+              cursor: pointer;
+            `}
+          ></div>
+        </Link>
         <Link href="/generate">
           <div
             css={css`
@@ -194,7 +183,13 @@ export default function ContactList(props) {
             <EnterDoor />
           </div>
         </Link>
-        <Button onClick={clearDb}>ClearDB</Button>
+        <div
+          css={css`
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+          `}
+        ></div>
       </BottomNav>
     </div>
   );

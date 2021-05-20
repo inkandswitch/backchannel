@@ -6,6 +6,9 @@ export type Code = string;
 export type Key = string;
 export type DiscoveryKey = string;
 
+export type TODO = any;
+export type Backchannel = TODO;
+
 export interface IContact {
   id?: ContactId;
   moniker?: string;

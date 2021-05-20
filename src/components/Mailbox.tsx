@@ -90,17 +90,21 @@ export default function Mailbox(props: Props) {
         display: flex;
         flex-direction: column;
         text-align: left;
-        min-height: 100vh;
+        position: relative;
+        height: 100%;
       `}
     >
       <TopBar>
-        <Link href="/">
-          <ArrowLeft
-            css={css`
-              cursor: pointer;
-            `}
-          />
-        </Link>
+        <div>
+          <Link href="/">
+            <ArrowLeft
+              css={css`
+                cursor: pointer;
+                padding: 0 18px;
+              `}
+            />
+          </Link>
+        </div>
         <div
           css={css`
             flex: 1 0 auto;
@@ -111,8 +115,9 @@ export default function Mailbox(props: Props) {
       </TopBar>
       <div
         css={css`
-          flex: 1 0 auto;
-          padding-top: 60px;
+          margin-top: 60px;
+          overflow: auto; /* scroll messages only */
+          flex: 1 auto;
         `}
       >
         <ul
