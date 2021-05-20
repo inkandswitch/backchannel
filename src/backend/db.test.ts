@@ -19,16 +19,22 @@ afterEach(() => {
 });
 
 test('getContactById', async () => {
-  let id = db.addContact(crypto.randomBytes(32).toString(), 'bob');
+  let id = await db.addContact(crypto.randomBytes(32).toString('hex'), 'bob');
 
   let contact = db.getContactById(id);
   expect(contact.moniker).toBe('bob');
 });
 
 test('getContacts', async () => {
-  let bob_id = db.addContact(crypto.randomBytes(32).toString('hex'), 'bob');
+  let bob_id = await db.addContact(
+    crypto.randomBytes(32).toString('hex'),
+    'bob'
+  );
 
-  let alice_id = db.addContact(crypto.randomBytes(32).toString('hex'), 'alice');
+  let alice_id = await db.addContact(
+    crypto.randomBytes(32).toString('hex'),
+    'alice'
+  );
 
   expect(typeof bob_id).toBe('string');
   expect(typeof alice_id).toBe('string');
@@ -43,16 +49,22 @@ test('getContacts', async () => {
   expect(sorted[1]).toStrictEqual(alice);
 });
 
-test('getContactByDiscoveryKey', () => {
-  let bob_id = db.addContact(crypto.randomBytes(32).toString('hex'), 'bob');
+test('getContactByDiscoveryKey', async () => {
+  let bob_id = await db.addContact(
+    crypto.randomBytes(32).toString('hex'),
+    'bob'
+  );
 
   let bob = db.getContactById(bob_id);
   let maybe_bob = db.getContactByDiscoveryKey(bob.discoveryKey);
   expect(maybe_bob).toStrictEqual(bob);
 });
 
-test('getContactByDiscoveryKey', () => {
-  let bob_id = db.addContact(crypto.randomBytes(32).toString('hex'), 'bob');
+test('getContactByDiscoveryKey', async () => {
+  let bob_id = await db.addContact(
+    crypto.randomBytes(32).toString('hex'),
+    'bob'
+  );
 
   let bob = db.getContactById(bob_id);
 
@@ -60,8 +72,11 @@ test('getContactByDiscoveryKey', () => {
   expect(maybe_bob).toStrictEqual(bob);
 });
 
-test('editMoniker', () => {
-  let bob_id = db.addContact(crypto.randomBytes(32).toString('hex'), 'bob');
+test('editMoniker', async () => {
+  let bob_id = await db.addContact(
+    crypto.randomBytes(32).toString('hex'),
+    'bob'
+  );
 
   let bob = db.getContactById(bob_id);
   expect(bob.moniker).toBe('bob');
@@ -72,39 +87,36 @@ test('editMoniker', () => {
   expect(karen.moniker).toBe('karen');
 });
 
-test('save/load', (done) => {
-  let bob_id = db.addContact(crypto.randomBytes(32).toString('hex'), 'bob');
+test('save/load', async () => {
+  let bob_id = await db.addContact(
+    crypto.randomBytes(32).toString('hex'),
+    'bob'
+  );
 
   let bob = db.getContactById(bob_id);
   expect(bob.moniker).toBe('bob');
 
-  db.editMoniker(bob.id, 'karen');
+  await db.editMoniker(bob.id, 'karen');
   let karen = db.getContactById(bob_id);
   expect(bob.moniker).toBe('bob');
   expect(karen.moniker).toBe('karen');
 
-  let docId = crypto.randomBytes(32).toString('hex');
-  let doc = Automerge.change(Automerge.init(), (doc: Mailbox) => {
+  let docId = await db.addDocument(karen.id, (doc) => {
     doc.messages = ['hello friend'];
   });
-  db.addDocument(docId, doc).then(() => {
-    expect(db.documents).toStrictEqual([docId]);
-    let doc = db.getDocument(docId);
-    expect(doc.messages.length).toBe(1);
-    expect(doc.messages[0]).toBe('hello friend');
-    db.save().then(() => {
-      db = null;
 
-      db = new Database(dbname);
-      db.on('open', () => {
-        let maybe_karen = db.getContactById(bob_id);
-        expect(maybe_karen).toStrictEqual(karen);
-        let doc = db.getDocument(docId);
-        expect(db.documents).toStrictEqual([docId]);
-        expect(doc.messages.length).toBe(1);
-        expect(doc.messages[0]).toBe('hello friend');
-        done();
-      });
-    });
-  });
+  expect(db.documents).toStrictEqual([docId]);
+  let doc = db.getDocument(docId);
+  expect(doc.messages.length).toBe(1);
+  expect(doc.messages[0]).toBe('hello friend');
+  db = null;
+
+  db = new Database(dbname);
+  await db.open();
+  let maybe_karen = db.getContactById(bob_id);
+  expect(maybe_karen).toStrictEqual(karen);
+  doc = db.getDocument(docId);
+  expect(db.documents).toStrictEqual([docId]);
+  expect(doc.messages.length).toBe(1);
+  expect(doc.messages[0]).toBe('hello friend');
 });

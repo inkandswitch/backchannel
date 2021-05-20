@@ -6,7 +6,7 @@ import debug from 'debug';
 import Automerge from 'automerge';
 import { v4 as uuid } from 'uuid';
 
-import { createRootDoc, Database } from './db';
+import { Database } from './db';
 import {
   Key,
   Code,
@@ -47,11 +47,6 @@ export class Backchannel extends events.EventEmitter {
     super();
     this._wormhole = Wormhole();
     this.db = db;
-    this.db.on('sync', ({ docId, peerId }) => {
-      this.log('sync', { docId, peerId });
-      this.emit('sync', { docId, peerId });
-    });
-
     this.db.once('open', () => {
       let documentIds = this.db.documents;
       this.log(`Joining ${documentIds.length} documentIds`);
@@ -98,7 +93,6 @@ export class Backchannel extends events.EventEmitter {
         );
         let key = arrayToHex(connection.key);
         let id = await this._addContact(key);
-        await this.db.save();
         return resolve(id);
       } catch (err) {
         reject(new Error(`Failed to establish a secure connection.`));
@@ -132,7 +126,6 @@ export class Backchannel extends events.EventEmitter {
         );
         let key = arrayToHex(connection.key);
         let id = await this._addContact(key);
-        await this.db.save();
         return resolve(id);
       } catch (err) {
         reject(new Error(`Failed to establish a secure connection.`));
@@ -146,9 +139,8 @@ export class Backchannel extends events.EventEmitter {
    * @param {string} moniker The new moniker for this contact
    * @returns
    */
-  async editMoniker(contactId: ContactId, moniker: string): Promise<any[]> {
-    this.db.editMoniker(contactId, moniker);
-    return this.db.save();
+  async editMoniker(contactId: ContactId, moniker: string): Promise<void> {
+    return this.db.editMoniker(contactId, moniker);
   }
 
   /**
@@ -159,7 +151,7 @@ export class Backchannel extends events.EventEmitter {
    * @param {Buffer} key The encryption key for this device (optional)
    * @returns
    */
-  addDevice(description: string, key?: Buffer): ContactId {
+  async addDevice(description: string, key?: Buffer): Promise<ContactId> {
     let moniker = description || 'my device';
     return this.db.addDevice(key.toString('hex'), moniker);
   }
@@ -172,7 +164,10 @@ export class Backchannel extends events.EventEmitter {
   getMessagesByContactId(contactId: ContactId): IMessage[] {
     let contact = this.db.getContactById(contactId);
     try {
-      let doc = this.db.getDocument(contact.discoveryKey);
+      //@ts-ignore
+      let doc: Automerge.Doc<Mailbox> = this.db.getDocument(
+        contact.discoveryKey
+      );
       return doc.messages.map((msg) => {
         let decoded = IMessage.decode(msg, contact.key);
         decoded.incoming = decoded.target !== contactId;
@@ -188,8 +183,14 @@ export class Backchannel extends events.EventEmitter {
    * Returns a list of contacts.
    * @returns An array of contacts
    */
-  listContacts(): IContact[] {
-    return this.db.getContacts();
+  get contacts(): IContact[] {
+    let contacts = this.db.getContacts();
+    if (contacts) return contacts.filter((c) => c.device === 0);
+    else return [];
+  }
+
+  listContacts() {
+    return this.contacts;
   }
 
   /**
@@ -207,8 +208,7 @@ export class Backchannel extends events.EventEmitter {
     this.log('sending message', msg);
     let contact = this.db.getContactById(contactId);
     let encoded = IMessage.encode(msg, contact.key);
-    this._addMessage(encoded, contact);
-    await this.db.save();
+    await this._addMessage(encoded, contact);
     return msg;
   }
 
@@ -237,15 +237,14 @@ export class Backchannel extends events.EventEmitter {
    * connection for each contact which could be an expensive operation.
    */
   connectToAllContacts() {
-    let contacts = this.listContacts();
-    contacts.forEach((contact) => {
+    this.contacts.forEach((contact) => {
       this.connectToContact(contact);
     });
   }
 
   /**
    * Leave a document and disconnect from peers.
-   * @param {DocumentId} documentId
+   * @param {IContact} contact The contact object
    */
   disconnectFromContact(contact: IContact) {
     if (!contact || !contact.discoveryKey)
@@ -263,15 +262,15 @@ export class Backchannel extends events.EventEmitter {
     await this.db.destroy();
   }
 
-  private _onPeerDisconnect(discoveryKey: DiscoveryKey) {
-    let contact = this.db.getContactByDiscoveryKey(discoveryKey);
-    this.db.onDisconnect(discoveryKey, contact.id);
-    this.log('onPeerDisconnect');
-    this.emit('contact.disconnected', { contact });
-  }
+  private async _onPeerConnect(socket: WebSocket, discoveryKey: DiscoveryKey) {
+    let onerror = (err) => {
+      console.error('error', err);
+      console.trace(err);
+    };
+    socket.addEventListener('error', onerror);
 
-  private _onPeerConnect(socket: WebSocket, discoveryKey: DiscoveryKey) {
     let contact = this.db.getContactByDiscoveryKey(discoveryKey);
+
     try {
       socket.binaryType = 'arraybuffer';
       let send = (msg: Uint8Array) => {
@@ -280,15 +279,31 @@ export class Backchannel extends events.EventEmitter {
 
       let onmessage;
       if (contact.device) {
-        onmessage = this.db.onDeviceConnect(contact.id, send);
+        onmessage = await this.db.onDeviceConnect(contact.id, send);
       } else {
         let docId = contact.discoveryKey;
-        onmessage = this.db.onPeerConnect(docId, contact.id, send);
+        onmessage = await this.db.onPeerConnect(docId, contact.id, send);
       }
 
-      socket.onmessage = (e) => {
+      let listener = (e) => {
+        this.log('got message', e.data);
         onmessage(e.data);
       };
+      socket.addEventListener('message', listener);
+
+      // localfirst/relay-client also has a peer.disconnect event
+      // but it is somewhat unreliable. this is better.
+      let onclose = () => {
+        let documentId = contact.discoveryKey;
+        socket.removeEventListener('message', listener);
+        socket.removeEventListener('error', onerror);
+        socket.removeEventListener('close', onclose);
+        this.db.onDisconnect(documentId, contact.id).then(() => {
+          this.emit('contact.disconnected', { contact });
+        });
+      };
+
+      socket.addEventListener('close', onclose);
 
       contact.isConnected = this.db.isConnected(contact);
       this.log('contact.connected', contact);
@@ -302,14 +317,6 @@ export class Backchannel extends events.EventEmitter {
       this.emit('contact.error', err);
     }
 
-    socket.onclose = () => {
-      this._onPeerDisconnect(discoveryKey);
-    };
-
-    socket.onerror = (err) => {
-      console.error('error', err);
-      console.trace(err);
-    };
   }
 
   private _createClient(relay: string, documentIds: DocumentId[]): Client {
@@ -322,22 +329,20 @@ export class Backchannel extends events.EventEmitter {
       this.emit('server.disconnect');
     });
 
-    client
-      .on('peer.disconnect', ({ documentId }) =>
-        this._onPeerDisconnect(documentId)
-      )
-      .on('peer.connect', ({ socket, documentId }) => {
-        this._onPeerConnect(socket, documentId);
-      });
+    client.on('peer.connect', ({ socket, documentId }) =>
+      this._onPeerConnect(socket, documentId)
+    );
 
     return client;
   }
 
-  private _addMessage(msg: string, contact: IContact) {
+  private async _addMessage(msg: string, contact: IContact) {
     let docId = contact.discoveryKey;
-    this.db.change(docId, (doc: Mailbox) => {
+    let res = await this.db.change(docId, (doc: Mailbox) => {
       doc.messages.push(msg);
     });
+    this.db.save(docId);
+    return res;
   }
 
   /**
@@ -348,14 +353,13 @@ export class Backchannel extends events.EventEmitter {
    */
   private async _addContact(key: Key): Promise<ContactId> {
     let moniker = catnames.random();
-    let id = this.db.addContact(key, moniker);
+    let id = await this.db.addContact(key, moniker);
     let contact = this.db.getContactById(id);
-    let docId = contact.discoveryKey;
-    let doc = createRootDoc<Mailbox>((doc: Mailbox) => {
+    this.log('root dot created', contact.discoveryKey);
+    let docId = await this.db.addDocument(contact.id, (doc: Mailbox) => {
       doc.messages = [];
     });
-    this.log('root dot created', contact.discoveryKey);
-    await this.db.addDocument(docId, doc);
-    return id;
+    this.db.save(docId);
+    return contact.id;
   }
 }
