@@ -86,7 +86,7 @@ function Settings(props) {
     backchannel
       .destroy()
       .then(() => {
-        console.log('cleared database! refresh.');
+        window.location.href = '/';
       })
       .catch((err) => {
         console.error('error clearing db', err);
