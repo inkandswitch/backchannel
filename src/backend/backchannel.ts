@@ -114,9 +114,7 @@ export class Backchannel extends events.EventEmitter {
   async announce(code: Code): Promise<ContactId> {
     return new Promise(async (resolve, reject) => {
       try {
-        let array = await this._wormhole.announce(
-          code.trim()
-        );
+        let array = await this._wormhole.announce(code.trim());
         let key = arrayToHex(array);
         let id = await this._addContact(key);
         return resolve(id);
@@ -147,9 +145,7 @@ export class Backchannel extends events.EventEmitter {
         );
       }, TWENTY_SECONDS);
       try {
-        let array = await this._wormhole.accept(
-          code.trim()
-        );
+        let array = await this._wormhole.accept(code.trim());
         let key = arrayToHex(array);
         let id = await this._addContact(key);
         return resolve(id);
@@ -291,7 +287,7 @@ export class Backchannel extends events.EventEmitter {
   }
 
   private async _onPeerConnect(socket: WebSocket, discoveryKey: DiscoveryKey) {
-    if (discoveryKey.startsWith('backchannel')) return  // this is handled by wormhole.ts 
+    if (discoveryKey.startsWith('backchannel')) return; // this is handled by wormhole.ts
     let onerror = (err) => {
       let code = ERROR.PEER;
       this.emit('error', err, code);
