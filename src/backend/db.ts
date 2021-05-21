@@ -162,7 +162,7 @@ export class Database<T> extends EventEmitter {
     syncer.updatePeers();
   }
 
-  addDevice(key: string, description: string): Promise<ContactId> {
+  addDevice(key: CryptoKey, description: string): Promise<ContactId> {
     return this.addContact(key, description, 1);
   }
 
@@ -170,12 +170,12 @@ export class Database<T> extends EventEmitter {
    * Add a contact.
    */
   async addContact(
-    key: string,
+    key: CryptoKey,
     moniker: string,
     device?: number
   ): Promise<ContactId> {
     let id = uuid();
-    let discoveryKey = crypto.computeDiscoveryKey(Buffer.from(key, 'hex'));
+    let discoveryKey = await crypto.computeDiscoveryKey(key)
     let contact: IContact = {
       id,
       key,
@@ -359,8 +359,7 @@ export class Database<T> extends EventEmitter {
     let peer = {
       id: peerId,
       send,
-      state,
-      key: Buffer.from(contact.key, 'hex'),
+      state
     };
     return syncer.addPeer(peerId, peer);
   }

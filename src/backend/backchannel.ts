@@ -274,7 +274,7 @@ export class Backchannel extends events.EventEmitter {
     socket.addEventListener('error', onerror);
 
     let contact = this.db.getContactByDiscoveryKey(discoveryKey);
-    let encryptionKey = Buffer.from(contact.key, 'hex')
+    let encryptionKey = contact.key
 
     try {
       socket.binaryType = 'arraybuffer'
@@ -298,9 +298,10 @@ export class Backchannel extends events.EventEmitter {
 
       let listener = (e) => {
         let decoded = deserialize(e.data) as EncryptedProtocolMessage
-        let plainText = symmetric.decrypt(encryptionKey, decoded)
-        const syncMsg = Uint8Array.from(Buffer.from(plainText, 'hex'));
-        onmessage(syncMsg);
+        symmetric.decrypt(encryptionKey, decoded).then(plainText => {
+          const syncMsg = Uint8Array.from(Buffer.from(plainText, 'hex'));
+          onmessage(syncMsg);
+        })
       };
       socket.addEventListener('message', listener);
 

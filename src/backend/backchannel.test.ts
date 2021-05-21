@@ -1,8 +1,9 @@
 import { Mailbox, Backchannel } from './backchannel';
 import { Database } from './db';
-import crypto from 'crypto';
 import { getPortPromise as getAvailablePort } from 'portfinder';
 import { Server } from '@localfirst/relay';
+import { generateKey } from './crypto';
+import { randomBytes } from 'crypto';
 
 let doc,
   petbob_id,
@@ -16,7 +17,7 @@ let server,
   port = 3001;
 
 function createDevice(name): Backchannel {
-  let dbname = crypto.randomBytes(16);
+  let dbname = randomBytes(16);
   let db_a = new Database<Mailbox>(dbname + name);
   return new Backchannel(db_a, `ws://localhost:${port}`);
 }
@@ -26,7 +27,7 @@ beforeEach((done) => {
   devices.alice = createDevice('a');
   devices.bob = createDevice('b');
 
-  doc = crypto.randomBytes(32).toString('hex');
+  doc = generateKey()
   // OK, so now I create a petname for bob on alice's device..
 
   async function create() {
@@ -146,7 +147,7 @@ test('presence', (done) => {
 test('adds and syncs contacts with another device', (done) => {
   devices.android = createDevice('p');
   devices.android.on('open', () => {
-    let key = crypto.randomBytes(32).toString('hex');
+    let key = generateKey()
 
     let called = 0;
 

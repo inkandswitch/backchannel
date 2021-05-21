@@ -13,7 +13,7 @@ export interface IContact {
   id?: ContactId;
   moniker?: string;
   discoveryKey?: DiscoveryKey; // -> hash of code
-  key: Key; // -> shared secret key I've accepted with them
+  key: CryptoKey; // -> shared secret key I've accepted with them
   device: number;
   isConnected?: boolean;
 }

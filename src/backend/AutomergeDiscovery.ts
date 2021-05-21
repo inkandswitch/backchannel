@@ -15,7 +15,6 @@ type PeerId = string;
 interface Peer {
   id: string;
   send: Function;
-  key?: Buffer;
   state?: SyncState;
   idle?: Boolean;
 }
