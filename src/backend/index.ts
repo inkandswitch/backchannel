@@ -1,5 +1,5 @@
 import { Mailbox, Backchannel } from './backchannel';
-import config from './config.json';
+import config from './config';
 import { Database } from './db';
 
 let instance = null;
