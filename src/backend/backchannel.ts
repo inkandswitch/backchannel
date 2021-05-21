@@ -18,7 +18,7 @@ import {
 } from './types';
 import Wormhole from './wormhole';
 import type { SecureWormhole, MagicWormhole } from './wormhole';
-import { symmetric, EncryptedProtocolMessage } from './crypto';
+import { importKey, symmetric, EncryptedProtocolMessage } from './crypto';
 
 type DocumentId = string;
 
@@ -96,8 +96,7 @@ export class Backchannel extends events.EventEmitter {
         let connection: SecureWormhole = await this._wormhole.announce(
           code.trim()
         );
-        let key = arrayToHex(connection.key);
-        let id = await this._addContact(key);
+        let id = await this._addContact(connection.key);
         return resolve(id);
       } catch (err) {
         reject(new Error(`Failed to establish a secure connection.`));
@@ -129,8 +128,7 @@ export class Backchannel extends events.EventEmitter {
         let connection: SecureWormhole = await this._wormhole.accept(
           code.trim()
         );
-        let key = arrayToHex(connection.key);
-        let id = await this._addContact(key);
+        let id = await this._addContact(connection.key);
         return resolve(id);
       } catch (err) {
         reject(new Error(`Failed to establish a secure connection.`));
@@ -152,13 +150,13 @@ export class Backchannel extends events.EventEmitter {
    * Add a device, which is a special type of contact that has privileged access
    * to syncronize the contact list. Add a key to encrypt the contact list over
    * the wire using symmetric encryption.
-   * @param {Buffer} key The encryption key for this device 
+   * @param {Key} key The encryption key for this device 
    * @param {string} description The description for this device (e.g., "bob's laptop")
    * @returns
    */
-  async addDevice(key: Buffer, description?: string): Promise<ContactId> {
+  async addDevice(key: Key, description?: string): Promise<ContactId> {
     let moniker = description || 'my device';
-    return this.db.addDevice(key.toString('hex'), moniker);
+    return this.db.addDevice(key, moniker);
   }
 
   /**
@@ -274,11 +272,13 @@ export class Backchannel extends events.EventEmitter {
     socket.addEventListener('error', onerror);
 
     let contact = this.db.getContactByDiscoveryKey(discoveryKey);
-    let encryptionKey = contact.key
+    this.log('onPeerConnect', discoveryKey, contact)
+    let encryptionKey = await importKey(contact.key)
 
     try {
       socket.binaryType = 'arraybuffer'
       let send = (msg: Uint8Array) => {
+        this.log('got encryption key', encryptionKey)
         let encoded = serialize(
           symmetric.encrypt(
             encryptionKey,
@@ -297,7 +297,8 @@ export class Backchannel extends events.EventEmitter {
       }
 
       let listener = (e) => {
-        let decoded = deserialize(e.data) as EncryptedProtocolMessage
+        let decoded = deserialize(Buffer.from(e.data)) as EncryptedProtocolMessage
+        console.log(decoded)
         symmetric.decrypt(encryptionKey, decoded).then(plainText => {
           const syncMsg = Uint8Array.from(Buffer.from(plainText, 'hex'));
           onmessage(syncMsg);
@@ -376,7 +377,7 @@ export class Backchannel extends events.EventEmitter {
   /**
    * Create a new contact in the database
    *
-   * @param {IContact} contact - The contact to add to the database
+   * @param {Key} key - The key add to the database
    * @returns {ContactId} id - The local id number for this contact
    */
   private async _addContact(key: Key): Promise<ContactId> {

@@ -27,23 +27,27 @@ beforeEach((done) => {
   devices.alice = createDevice('a');
   devices.bob = createDevice('b');
 
-  doc = generateKey()
-  // OK, so now I create a petname for bob on alice's device..
+  generateKey().then(_doc => {
+    // OK, so now I create a petname for bob on alice's device..
+    doc = _doc
 
-  async function create() {
-    petbob_id = await devices.alice._addContact(doc);
-    devices.alice.editMoniker(petbob_id, 'bob');
+    async function create() {
+      petbob_id = await devices.alice._addContact(doc);
+      devices.alice.editMoniker(petbob_id, 'bob');
 
-    petalice_id = await devices.bob._addContact(doc);
-    devices.bob.editMoniker(petalice_id, 'alice');
-  }
+      petalice_id = await devices.bob._addContact(doc);
+      devices.bob.editMoniker(petalice_id, 'alice');
+    }
 
-  devices.alice.once('open', () => {
-    devices.bob.once('open', () => {
-      create().then(done);
-      jest.useFakeTimers();
+    devices.alice.once('open', () => {
+      devices.bob.once('open', () => {
+        create().then(() => {
+          jest.useFakeTimers();
+          done();
+        })
+      });
     });
-  });
+  })
 });
 
 afterEach(async () => {
@@ -67,7 +71,7 @@ test('getMessagesByContactId', async () => {
   expect(messages.length).toBe(msgs.length);
 });
 
-test('integration send a message', (done) => {
+test.only('integration send a message', (done) => {
   // OK, now let's send bob a message 'hello'
   let outgoing = {
     contact: petbob_id,
@@ -146,8 +150,8 @@ test('presence', (done) => {
 
 test('adds and syncs contacts with another device', (done) => {
   devices.android = createDevice('p');
-  devices.android.on('open', () => {
-    let key = generateKey()
+  devices.android.on('open', async () => {
+    let key = await generateKey()
 
     let called = 0;
 

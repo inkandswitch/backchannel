@@ -1,19 +1,30 @@
-import { arrayToHex } from 'enc-utils';
-import { DiscoveryKey } from './types';
+import { Key, DiscoveryKey } from './types';
 
 export type EncryptedProtocolMessage = {
-  cipher: Buffer;
-  nonce: Buffer;
+  cipher: ArrayBuffer;
+  nonce: ArrayBuffer;
 };
 
-export function generateKey () : Promise<CryptoKey> {
-  return window.crypto.subtle.generateKey(
+export async function generateKey () : Promise<Key> {
+  let rawKey = await window.crypto.subtle.generateKey(
     {
       name: "AES-GCM",
       length: 256
     },
     true,
     ["encrypt", "decrypt"]
+  )
+  let exported = await window.crypto.subtle.exportKey('raw', rawKey);
+  return Buffer.from(exported).toString('hex');
+}
+
+export function importKey(key: Key): Promise<CryptoKey> {
+  return window.crypto.subtle.importKey(
+    'raw',
+    Buffer.from(key, 'hex'),
+    "AES-GCM",
+    true,
+    ['encrypt', 'decrypt']
   );
 }
 
@@ -32,8 +43,8 @@ export const symmetric = {
     );
 
     return {
-      cipher: Buffer.from(ciphertext),
-      nonce: Buffer.from(iv)
+      cipher: ciphertext,
+      nonce: iv
     };
   },
   decrypt: async function (key: CryptoKey, msg: EncryptedProtocolMessage): Promise<string> {
@@ -51,8 +62,9 @@ export const symmetric = {
   },
 };
 
-export async function computeDiscoveryKey(key: CryptoKey): Promise<DiscoveryKey> {
-  let buf = await window.crypto.subtle.exportKey('raw', key)
+export async function computeDiscoveryKey(key: Key): Promise<DiscoveryKey> {
+  let buf = Buffer.from(key, 'hex')
   let hash = await window.crypto.subtle.digest('SHA-256', buf)
-  return Buffer.from(hash).toString('hex')
+  let disco = Buffer.from(hash).toString('hex')
+  return disco;
 }
