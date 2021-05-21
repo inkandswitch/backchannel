@@ -5,7 +5,7 @@
   "main": "src/index.tsx",
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "cd node_modules/automerge && npm i && npm run build && cd ../.. && react-scripts build",
     "test": "react-scripts test",
     "deploy": "npm run build && npm run build:docs",
     "relay": "DEBUG=* PORT=3001 node ./node_modules/@localfirst/relay/dist/start.js",
@@ -19,7 +19,7 @@
     "@emotion/babel-plugin": "^11.3.0",
     "@emotion/react": "^11.1.5",
     "@localfirst/relay-client": "3.2",
-    "automerge": "^1.0.1-preview.0",
+    "automerge": "github:automerge/automerge",
     "buffer": "^6.0.3",
     "cat-names": "^3.0.0",
     "crypto-browserify": "^3.12.0",
