@@ -279,13 +279,14 @@ export class Backchannel extends events.EventEmitter {
       socket.binaryType = 'arraybuffer'
       let send = (msg: Uint8Array) => {
         this.log('got encryption key', encryptionKey)
-        let encoded = serialize(
-          symmetric.encrypt(
-            encryptionKey,
-            Buffer.from(msg).toString('hex')
-          )
-        )
-        socket.send(encoded);
+
+        symmetric.encrypt(
+          encryptionKey,
+          Buffer.from(msg).toString('hex')
+        ).then(cipher => {
+          let encoded = serialize(cipher)
+          socket.send(encoded);
+        })
       };
 
       let onmessage;
@@ -297,8 +298,7 @@ export class Backchannel extends events.EventEmitter {
       }
 
       let listener = (e) => {
-        let decoded = deserialize(Buffer.from(e.data)) as EncryptedProtocolMessage
-        console.log(decoded)
+        let decoded = deserialize(e.data) as EncryptedProtocolMessage
         symmetric.decrypt(encryptionKey, decoded).then(plainText => {
           const syncMsg = Uint8Array.from(Buffer.from(plainText, 'hex'));
           onmessage(syncMsg);

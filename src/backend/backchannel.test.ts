@@ -71,7 +71,7 @@ test('getMessagesByContactId', async () => {
   expect(messages.length).toBe(msgs.length);
 });
 
-test.only('integration send a message', (done) => {
+test('integration send a message', (done) => {
   // OK, now let's send bob a message 'hello'
   let outgoing = {
     contact: petbob_id,

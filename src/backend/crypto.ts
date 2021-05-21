@@ -1,8 +1,8 @@
 import { Key, DiscoveryKey } from './types';
 
 export type EncryptedProtocolMessage = {
-  cipher: ArrayBuffer;
-  nonce: ArrayBuffer;
+  cipher: string;
+  nonce: string;
 };
 
 export async function generateKey () : Promise<Key> {
@@ -43,18 +43,18 @@ export const symmetric = {
     );
 
     return {
-      cipher: ciphertext,
-      nonce: iv
+      cipher: Buffer.from(ciphertext).toString('hex'),
+      nonce: Buffer.from(iv).toString('hex')
     };
   },
   decrypt: async function (key: CryptoKey, msg: EncryptedProtocolMessage): Promise<string> {
     let decrypted = await window.crypto.subtle.decrypt(
       {
         name: "AES-GCM",
-        iv: msg.nonce 
+        iv: Buffer.from(msg.nonce, 'hex')
       },
       key,
-      msg.cipher 
+      Buffer.from(msg.cipher, 'hex')
     );
 
     let dec = new TextDecoder();
