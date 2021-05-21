@@ -93,10 +93,13 @@ export function Button({ children, ...props }) {
       css={css`
         display: inline-block;
         background: white;
-        color: black;
-        padding: 2px 8px;
-        border-radius: 5px;
-        font-size: inherit;
+        color: ${color.primary};
+        padding: 6px 16px;
+        border-radius: 3px;
+        font-size: ${fontSize[2]}px;
+        border: none;
+        box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+        font-weight: 500;
       `}
       {...props}
     >

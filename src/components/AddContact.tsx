@@ -5,7 +5,6 @@ import { Link, useLocation } from 'wouter';
 
 import { copyToClipboard } from '../web';
 import {
-  A,
   TopBar,
   Button,
   ContentWithTopNav,
