@@ -103,6 +103,7 @@ export class Database<T> extends EventEmitter {
     let doc = this._syncer(docId);
     if (!doc) doc = this._syncer(SYSTEM_ID);
     let peer = doc.getPeer(peerId);
+    if (!peer) return
     await this._idb.storeSyncState(docId, peerId, peer.state);
     doc.removePeer(peerId);
   }
