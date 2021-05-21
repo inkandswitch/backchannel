@@ -7,7 +7,7 @@ import Backchannel from '../backend';
 import { color, fontSize } from './tokens';
 import { timestampToDate } from './util';
 import { ReactComponent as ArrowLeft } from './icons/ArrowLeft.svg';
-import { TopBar } from '../components';
+import { TopBar, Instructions } from '../components';
 import { Link } from 'wouter';
 
 let backchannel = Backchannel();
@@ -120,6 +120,10 @@ export default function Mailbox(props: Props) {
           flex: 1 auto;
         `}
       >
+        <Instructions>
+          Encrypted backchannel opened. From now on all exchanges with this
+          contact will be displayed here.
+        </Instructions>
         <ul
           css={css`
             list-style: none;
