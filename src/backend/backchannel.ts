@@ -16,8 +16,7 @@ import {
   IMessage,
   DiscoveryKey,
 } from './types';
-import Wormhole from './wormhole';
-import type { SecureWormhole, MagicWormhole } from './wormhole';
+import { Wormhole } from './wormhole';
 
 export enum ERROR {
   UNREACHABLE = 404,
@@ -39,7 +38,7 @@ export interface Mailbox {
 export class Backchannel extends events.EventEmitter {
   public db: Database<Mailbox>;
   private _settings: BackchannelSettings;
-  private _wormhole: MagicWormhole;
+  private _wormhole: Wormhole;
   private _client: Client;
   private _open = true || false;
   private log = debug;
@@ -54,13 +53,13 @@ export class Backchannel extends events.EventEmitter {
    */
   constructor(db: Database<Mailbox>, _settings: BackchannelSettings) {
     super();
-    this._wormhole = Wormhole();
     this.db = db;
     this.db.once('open', () => {
       let documentIds = this.db.documents;
       let relay = this.db.settings.relay || _settings.relay;
       this.log('Connecting to relay', relay);
       this._client = this._createClient(relay);
+      this._wormhole = new Wormhole(this._client);
       this._emitOpen();
       this.log(`Joining ${documentIds.length} documentIds`);
       documentIds.forEach((docId) => this._client.join(docId));
@@ -74,6 +73,7 @@ export class Backchannel extends events.EventEmitter {
     const documentIds = this.db.documents;
     if (newSettings.relay !== this.db.settings.relay) {
       this._client = this._createClient(newSettings.relay, documentIds);
+      this._wormhole = new Wormhole(this._client);
     }
     let ready = { ...this.db.root.settings, ...newSettings };
     console.log('changing to', ready);
@@ -98,8 +98,8 @@ export class Backchannel extends events.EventEmitter {
    * Create a one-time code for a new backchannel contact.
    * @returns {Code} code The code to use in announce
    */
-  async getCode(): Promise<Code> {
-    let code = await this._wormhole.getCode();
+  getCode(): Code {
+    let code = this._wormhole.getCode();
     return code;
   }
 
@@ -114,10 +114,10 @@ export class Backchannel extends events.EventEmitter {
   async announce(code: Code): Promise<ContactId> {
     return new Promise(async (resolve, reject) => {
       try {
-        let connection: SecureWormhole = await this._wormhole.announce(
+        let array = await this._wormhole.announce(
           code.trim()
         );
-        let key = arrayToHex(connection.key);
+        let key = arrayToHex(array);
         let id = await this._addContact(key);
         return resolve(id);
       } catch (err) {
@@ -147,10 +147,10 @@ export class Backchannel extends events.EventEmitter {
         );
       }, TWENTY_SECONDS);
       try {
-        let connection: SecureWormhole = await this._wormhole.accept(
+        let array = await this._wormhole.accept(
           code.trim()
         );
-        let key = arrayToHex(connection.key);
+        let key = arrayToHex(array);
         let id = await this._addContact(key);
         return resolve(id);
       } catch (err) {
@@ -291,6 +291,7 @@ export class Backchannel extends events.EventEmitter {
   }
 
   private async _onPeerConnect(socket: WebSocket, discoveryKey: DiscoveryKey) {
+    if (discoveryKey.startsWith('backchannel')) return  // this is handled by wormhole.ts 
     let onerror = (err) => {
       let code = ERROR.PEER;
       this.emit('error', err, code);

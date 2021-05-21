@@ -77,7 +77,7 @@ export default function AddContact({ backchannel, view }: Props) {
     setErrorMsg('');
 
     try {
-      const code: Code = await backchannel.getCode();
+      const code: Code = backchannel.getCode();
 
       if (code) {
         setCode(code);
