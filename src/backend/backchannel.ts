@@ -71,11 +71,15 @@ export class Backchannel extends events.EventEmitter {
     this.log = debug('bc:backchannel');
   }
 
-  get settings() {
+  set settings(newSettings: BackchannelSettings) {
+    this._settings = newSettings
+    const documentIds = this.db.documents;
+    this._client = this._createClient(this._settings.relay, documentIds)
     // TODO: persist settings
-    return {
-      relay: this._settings.relay
-    }
+  }
+
+  get settings() {
+    return this._settings
   }
 
   private _emitOpen() {
