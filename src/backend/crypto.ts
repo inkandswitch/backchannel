@@ -5,15 +5,15 @@ export type EncryptedProtocolMessage = {
   nonce: string;
 };
 
-export async function generateKey () : Promise<Key> {
+export async function generateKey(): Promise<Key> {
   let rawKey = await window.crypto.subtle.generateKey(
     {
-      name: "AES-GCM",
-      length: 256
+      name: 'AES-GCM',
+      length: 256,
     },
     true,
-    ["encrypt", "decrypt"]
-  )
+    ['encrypt', 'decrypt']
+  );
   let exported = await window.crypto.subtle.exportKey('raw', rawKey);
   return Buffer.from(exported).toString('hex');
 }
@@ -22,21 +22,24 @@ export function importKey(key: Key): Promise<CryptoKey> {
   return window.crypto.subtle.importKey(
     'raw',
     Buffer.from(key, 'hex'),
-    "AES-GCM",
+    'AES-GCM',
     true,
     ['encrypt', 'decrypt']
   );
 }
 
 export const symmetric = {
-  encrypt: async function (key: CryptoKey, msg: string): Promise<EncryptedProtocolMessage> {
+  encrypt: async function (
+    key: CryptoKey,
+    msg: string
+  ): Promise<EncryptedProtocolMessage> {
     let enc = new TextEncoder();
     let plainText = enc.encode(msg);
     let iv = window.crypto.getRandomValues(new Uint8Array(12));
     let ciphertext = await window.crypto.subtle.encrypt(
       {
-        name: "AES-GCM",
-        iv: iv
+        name: 'AES-GCM',
+        iv: iv,
       },
       key,
       plainText
@@ -44,14 +47,17 @@ export const symmetric = {
 
     return {
       cipher: Buffer.from(ciphertext).toString('hex'),
-      nonce: Buffer.from(iv).toString('hex')
+      nonce: Buffer.from(iv).toString('hex'),
     };
   },
-  decrypt: async function (key: CryptoKey, msg: EncryptedProtocolMessage): Promise<string> {
+  decrypt: async function (
+    key: CryptoKey,
+    msg: EncryptedProtocolMessage
+  ): Promise<string> {
     let decrypted = await window.crypto.subtle.decrypt(
       {
-        name: "AES-GCM",
-        iv: Buffer.from(msg.nonce, 'hex')
+        name: 'AES-GCM',
+        iv: Buffer.from(msg.nonce, 'hex'),
       },
       key,
       Buffer.from(msg.cipher, 'hex')
@@ -63,8 +69,8 @@ export const symmetric = {
 };
 
 export async function computeDiscoveryKey(key: Key): Promise<DiscoveryKey> {
-  let buf = Buffer.from(key, 'hex')
-  let hash = await window.crypto.subtle.digest('SHA-256', buf)
-  let disco = Buffer.from(hash).toString('hex')
+  let buf = Buffer.from(key, 'hex');
+  let hash = await window.crypto.subtle.digest('SHA-256', buf);
+  let disco = Buffer.from(hash).toString('hex');
   return disco;
 }

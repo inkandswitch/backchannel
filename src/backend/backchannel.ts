@@ -150,7 +150,7 @@ export class Backchannel extends events.EventEmitter {
    * Add a device, which is a special type of contact that has privileged access
    * to syncronize the contact list. Add a key to encrypt the contact list over
    * the wire using symmetric encryption.
-   * @param {Key} key The encryption key for this device 
+   * @param {Key} key The encryption key for this device
    * @param {string} description The description for this device (e.g., "bob's laptop")
    * @returns
    */
@@ -171,7 +171,7 @@ export class Backchannel extends events.EventEmitter {
       let doc: Automerge.Doc<Mailbox> = this.db.getDocument(
         contact.discoveryKey
       );
-      return doc.messages
+      return doc.messages;
     } catch (err) {
       console.error('error', err);
       return [];
@@ -272,21 +272,20 @@ export class Backchannel extends events.EventEmitter {
     socket.addEventListener('error', onerror);
 
     let contact = this.db.getContactByDiscoveryKey(discoveryKey);
-    this.log('onPeerConnect', discoveryKey, contact)
-    let encryptionKey = await importKey(contact.key)
+    this.log('onPeerConnect', discoveryKey, contact);
+    let encryptionKey = await importKey(contact.key);
 
     try {
-      socket.binaryType = 'arraybuffer'
+      socket.binaryType = 'arraybuffer';
       let send = (msg: Uint8Array) => {
-        this.log('got encryption key', encryptionKey)
+        this.log('got encryption key', encryptionKey);
 
-        symmetric.encrypt(
-          encryptionKey,
-          Buffer.from(msg).toString('hex')
-        ).then(cipher => {
-          let encoded = serialize(cipher)
-          socket.send(encoded);
-        })
+        symmetric
+          .encrypt(encryptionKey, Buffer.from(msg).toString('hex'))
+          .then((cipher) => {
+            let encoded = serialize(cipher);
+            socket.send(encoded);
+          });
       };
 
       let onmessage;
@@ -298,11 +297,11 @@ export class Backchannel extends events.EventEmitter {
       }
 
       let listener = (e) => {
-        let decoded = deserialize(e.data) as EncryptedProtocolMessage
-        symmetric.decrypt(encryptionKey, decoded).then(plainText => {
+        let decoded = deserialize(e.data) as EncryptedProtocolMessage;
+        symmetric.decrypt(encryptionKey, decoded).then((plainText) => {
           const syncMsg = Uint8Array.from(Buffer.from(plainText, 'hex'));
           onmessage(syncMsg);
-        })
+        });
       };
       socket.addEventListener('message', listener);
 

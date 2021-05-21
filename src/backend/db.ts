@@ -176,7 +176,7 @@ export class Database<T> extends EventEmitter {
     device?: number
   ): Promise<ContactId> {
     let id = uuid();
-    let discoveryKey = await crypto.computeDiscoveryKey(key)
+    let discoveryKey = await crypto.computeDiscoveryKey(key);
     let contact: IContact = {
       id,
       key,
@@ -297,7 +297,7 @@ export class Database<T> extends EventEmitter {
   ): Promise<DocumentId> {
     let doc = Automerge.change(Automerge.init('0000'), { time: 0 }, changeFn);
     let change = Automerge.Frontend.getLastLocalChange(doc);
-    this.log('addDocument', docId)
+    this.log('addDocument', docId);
     await this._idb.storeChange(docId, change);
     return this._loadDocument(docId);
   }
@@ -329,7 +329,7 @@ export class Database<T> extends EventEmitter {
   }
 
   private async _loadDocument(docId: DocumentId): Promise<DocumentId> {
-    this.log('loadDocument', docId)
+    this.log('loadDocument', docId);
     let doc = await this._idb.getDoc(docId);
     let state = doc.serializedDoc
       ? Backend.load(doc.serializedDoc)
@@ -362,7 +362,7 @@ export class Database<T> extends EventEmitter {
     let peer = {
       id: peerId,
       send,
-      state
+      state,
     };
     return syncer.addPeer(peerId, peer);
   }

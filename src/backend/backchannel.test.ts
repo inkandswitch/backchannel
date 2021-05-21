@@ -27,9 +27,9 @@ beforeEach((done) => {
   devices.alice = createDevice('a');
   devices.bob = createDevice('b');
 
-  generateKey().then(_doc => {
+  generateKey().then((_doc) => {
     // OK, so now I create a petname for bob on alice's device..
-    doc = _doc
+    doc = _doc;
 
     async function create() {
       petbob_id = await devices.alice._addContact(doc);
@@ -44,10 +44,10 @@ beforeEach((done) => {
         create().then(() => {
           jest.useFakeTimers();
           done();
-        })
+        });
       });
     });
-  })
+  });
 });
 
 afterEach(async () => {
@@ -151,7 +151,7 @@ test('presence', (done) => {
 test('adds and syncs contacts with another device', (done) => {
   devices.android = createDevice('p');
   devices.android.on('open', async () => {
-    let key = await generateKey()
+    let key = await generateKey();
 
     let called = 0;
 
@@ -219,9 +219,9 @@ test('integration send multiple messages', (done) => {
     let messages = devices.alice.getMessagesByContactId(petbob_id);
     expect(messages[0].text).toBe(outgoing.text);
     expect(messages[1].text).toBe(response.text);
-    let alices = devices.alice.getMessagesByContactId(petbob_id)
+    let alices = devices.alice.getMessagesByContactId(petbob_id);
     jest.runOnlyPendingTimers();
-    let bobs = devices.bob.getMessagesByContactId(petalice_id)
+    let bobs = devices.bob.getMessagesByContactId(petalice_id);
     jest.runOnlyPendingTimers();
     expect(alices).toStrictEqual(bobs);
     done();
