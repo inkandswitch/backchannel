@@ -6,8 +6,9 @@ import debug from 'debug';
 import Automerge from 'automerge';
 import { v4 as uuid } from 'uuid';
 
-import { Database } from './db';
+import { System, Database } from './db';
 import {
+  DocumentId,
   Key,
   Code,
   ContactId,
@@ -18,16 +19,14 @@ import {
 import Wormhole from './wormhole';
 import type { SecureWormhole, MagicWormhole } from './wormhole';
 
-type DocumentId = string;
-
 export enum ERROR {
   UNREACHABLE = 404,
   PEER = 500,
 }
 
 export type BackchannelSettings = {
-  relay: string
-}
+  relay: string;
+};
 
 export interface Mailbox {
   messages: Automerge.List<string>;
@@ -50,19 +49,18 @@ export class Backchannel extends events.EventEmitter {
    * the backchannel app on their device. There is one Mailbox per contact which
    * is identified by the contact's discoveryKey.
    * @constructor
-   * @param db Database<Mailbox> Use a database of type Mailbox, the only document supported currently
-   * @param relay string The URL of the relay
+   * @param {Database<Mailbox>} db  Use a database of type Mailbox, the only document supported currently
+   * @param defaultRelay The default URL of the relay
    */
-  constructor(db: Database<Mailbox>, relay: string) {
+  constructor(db: Database<Mailbox>, _settings: BackchannelSettings) {
     super();
     this._wormhole = Wormhole();
     this.db = db;
-    this._settings = {
-      relay
-    }
-    this._client = this._createClient(relay);
     this.db.once('open', () => {
       let documentIds = this.db.documents;
+      let relay = this.db.settings.relay || _settings.relay;
+      this.log('Connecting to relay', relay);
+      this._client = this._createClient(relay);
       this._emitOpen();
       this.log(`Joining ${documentIds.length} documentIds`);
       documentIds.forEach((docId) => this._client.join(docId));
@@ -71,15 +69,21 @@ export class Backchannel extends events.EventEmitter {
     this.log = debug('bc:backchannel');
   }
 
-  set settings(newSettings: BackchannelSettings) {
-    this._settings = newSettings
+  async updateSettings(newSettings: BackchannelSettings) {
+    console.log('got new settings', newSettings);
     const documentIds = this.db.documents;
-    this._client = this._createClient(this._settings.relay, documentIds)
-    // TODO: persist settings
+    if (newSettings.relay !== this.db.settings.relay) {
+      this._client = this._createClient(newSettings.relay, documentIds);
+    }
+    let ready = { ...this.db.root.settings, ...newSettings };
+    console.log('changing to', ready);
+    return this.db.changeRoot((doc: System) => {
+      doc.settings = ready;
+    });
   }
 
   get settings() {
-    return this._settings
+    return this.db.settings;
   }
 
   private _emitOpen() {

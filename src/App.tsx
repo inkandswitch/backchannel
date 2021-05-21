@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import React from 'react';
+import React, { useState } from 'react';
 import { Route } from 'wouter';
 import { css } from '@emotion/react/macro';
 
@@ -9,8 +9,9 @@ import Mailbox from './components/Mailbox';
 import ContactList from './components/ContactList';
 import Contact from './components/Contact';
 import AddContact from './components/AddContact';
-import Backchannel from './backend';
 import NetworkError from './components/Error';
+import Backchannel from './backend';
+import config from './backend/config';
 
 let backchannel = Backchannel();
 
@@ -52,6 +53,35 @@ export default function App() {
 
 /* placeholder */
 function Settings(props) {
+  let [settings, setSettings] = useState(backchannel.settings);
+
+  console.log('got settings', settings);
+  function updateSettings(e) {
+    e.preventDefault();
+    console.log(e);
+    let old = backchannel.settings;
+    backchannel
+      .updateSettings({ ...old, ...settings })
+      .then((_) => {
+        console.log('SUCCESS');
+      })
+      .catch((err) => {
+        backchannel.updateSettings(old);
+        console.error();
+      });
+  }
+
+  function updateValues(e) {
+    let name = e.target.name;
+    let val = e.target.value;
+    setSettings({ [name]: val });
+  }
+
+  function restoreDefault(e) {
+    e.preventDefault();
+    backchannel.updateSettings(config);
+  }
+
   function clearDb() {
     backchannel
       .destroy()
@@ -62,6 +92,7 @@ function Settings(props) {
         console.error('error clearing db', err);
       });
   }
+
   return (
     <div
       css={css`
@@ -70,8 +101,23 @@ function Settings(props) {
         padding-top: 18px;
       `}
     >
-      <p>Settings page will be here :D</p>
-      <Button onClick={clearDb}>ClearDB</Button>
+      <form onSubmit={updateSettings}>
+        <div>
+          <input
+            name="relay"
+            onChange={updateValues}
+            type="text"
+            defaultValue={settings.relay}
+          ></input>
+        </div>
+        <div>
+          <Button onClick={clearDb}>ClearDB</Button>
+          <br />
+          <Button type="submit">Save</Button>
+          <br />
+          <Button onClick={restoreDefault}>Restore Defaults</Button>
+        </div>
+      </form>
     </div>
   );
 }

@@ -18,7 +18,7 @@ let server,
 function createDevice(name): Backchannel {
   let dbname = crypto.randomBytes(16);
   let db_a = new Database<Mailbox>(dbname + name);
-  return new Backchannel(db_a, `ws://localhost:${port}`);
+  return new Backchannel(db_a, { relay: `ws://localhost:${port}` });
 }
 
 beforeEach((done) => {

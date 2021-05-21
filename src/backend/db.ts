@@ -1,7 +1,7 @@
 import { ContactId, IContact } from './types';
 import AutomergeDiscovery from './AutomergeDiscovery';
 import { DB } from './automerge-db';
-import Automerge, { Doc, Frontend } from 'automerge';
+import Automerge, { Frontend } from 'automerge';
 import { EventEmitter } from 'events';
 import debug from 'debug';
 import { v4 as uuid } from 'uuid';
@@ -10,8 +10,9 @@ import { Backend } from 'automerge';
 
 type DocumentId = string;
 
-interface System {
+export interface System {
   contacts: Automerge.List<IContact>;
+  settings: any;
 }
 
 const SYSTEM_ID = 'BACKCHANNEL_ROOT_DOCUMENT';
@@ -52,6 +53,14 @@ export class Database<T> extends EventEmitter {
    */
   get documents(): string[] {
     return Array.from(this._syncers.keys()).filter((d) => d !== SYSTEM_ID);
+  }
+
+  get settings(): any {
+    return this.root.settings;
+  }
+
+  async changeRoot(changeFn: Automerge.ChangeFn<System>) {
+    await this.change(SYSTEM_ID, changeFn);
   }
 
   error(err) {
@@ -103,7 +112,7 @@ export class Database<T> extends EventEmitter {
     let doc = this._syncer(docId);
     if (!doc) doc = this._syncer(SYSTEM_ID);
     let peer = doc.getPeer(peerId);
-    if (!peer) return
+    if (!peer) return;
     await this._idb.storeSyncState(docId, peerId, peer.state);
     doc.removePeer(peerId);
   }
@@ -234,6 +243,7 @@ export class Database<T> extends EventEmitter {
       //@ts-ignore
       await this._addDocument(SYSTEM_ID, (doc: System) => {
         doc.contacts = [];
+        doc.settings = {};
       });
       return;
     }
