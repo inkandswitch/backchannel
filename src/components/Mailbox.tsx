@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { css } from '@emotion/react/macro';
 import { ContactId } from '../backend/types';
-import { Button } from './';
+import { Button, UnderlineInput } from './';
 import Backchannel from '../backend';
 import { color, fontSize } from './tokens';
 import { timestampToDate } from './util';
@@ -175,14 +175,22 @@ export default function Mailbox(props: Props) {
         css={css`
           display: flex;
           margin-block-end: 0;
+          background: white;
+          align-items: center;
         `}
         onSubmit={sendMessage}
       >
-        <input
+        <UnderlineInput
           css={css`
-            flex: 1 0 auto;
+            color: ${color.chatText};
+            text-align: unset;
+            flex: 1;
+            margin: 10px;
+
+            &:focus {
+              border-bottom: 2px solid ${color.border};
+            }
           `}
-          type="text"
           value={messageText}
           onChange={handleChange}
         />
