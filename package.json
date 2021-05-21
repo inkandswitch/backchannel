@@ -20,6 +20,7 @@
     "@emotion/react": "^11.1.5",
     "@localfirst/relay-client": "3.2",
     "automerge": "github:automerge/automerge",
+    "bson": "^4.4.0",
     "buffer": "^6.0.3",
     "cat-names": "^3.0.0",
     "crypto-browserify": "^3.12.0",

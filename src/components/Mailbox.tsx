@@ -128,6 +128,7 @@ export default function Mailbox(props: Props) {
           `}
         >
           {messages.map((message) => {
+            message.incoming = contactId !== message.target
             return (
               <li
                 key={message.id}

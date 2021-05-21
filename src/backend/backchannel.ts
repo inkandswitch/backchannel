@@ -5,6 +5,7 @@ import catnames from 'cat-names';
 import debug from 'debug';
 import Automerge from 'automerge';
 import { v4 as uuid } from 'uuid';
+import { serialize, deserialize } from 'bson';
 
 import { Database } from './db';
 import {
@@ -17,6 +18,7 @@ import {
 } from './types';
 import Wormhole from './wormhole';
 import type { SecureWormhole, MagicWormhole } from './wormhole';
+import { symmetric, EncryptedProtocolMessage } from './crypto';
 
 type DocumentId = string;
 
@@ -26,7 +28,7 @@ export enum ERROR {
 }
 
 export interface Mailbox {
-  messages: Automerge.List<string>;
+  messages: Automerge.List<IMessage>;
 }
 /**
  * The backchannel class manages the database and wormholes.
@@ -150,11 +152,11 @@ export class Backchannel extends events.EventEmitter {
    * Add a device, which is a special type of contact that has privileged access
    * to syncronize the contact list. Add a key to encrypt the contact list over
    * the wire using symmetric encryption.
+   * @param {Buffer} key The encryption key for this device 
    * @param {string} description The description for this device (e.g., "bob's laptop")
-   * @param {Buffer} key The encryption key for this device (optional)
    * @returns
    */
-  async addDevice(description: string, key?: Buffer): Promise<ContactId> {
+  async addDevice(key: Buffer, description?: string): Promise<ContactId> {
     let moniker = description || 'my device';
     return this.db.addDevice(key.toString('hex'), moniker);
   }
@@ -171,11 +173,7 @@ export class Backchannel extends events.EventEmitter {
       let doc: Automerge.Doc<Mailbox> = this.db.getDocument(
         contact.discoveryKey
       );
-      return doc.messages.map((msg) => {
-        let decoded = IMessage.decode(msg, contact.key);
-        decoded.incoming = decoded.target !== contactId;
-        return decoded;
-      });
+      return doc.messages
     } catch (err) {
       console.error('error', err);
       return [];
@@ -210,8 +208,7 @@ export class Backchannel extends events.EventEmitter {
     };
     this.log('sending message', msg);
     let contact = this.db.getContactById(contactId);
-    let encoded = IMessage.encode(msg, contact.key);
-    await this._addMessage(encoded, contact);
+    await this._addMessage(msg, contact);
     return msg;
   }
 
@@ -277,11 +274,18 @@ export class Backchannel extends events.EventEmitter {
     socket.addEventListener('error', onerror);
 
     let contact = this.db.getContactByDiscoveryKey(discoveryKey);
+    let encryptionKey = Buffer.from(contact.key, 'hex')
 
     try {
-      socket.binaryType = 'arraybuffer';
+      socket.binaryType = 'arraybuffer'
       let send = (msg: Uint8Array) => {
-        socket.send(msg);
+        let encoded = serialize(
+          symmetric.encrypt(
+            encryptionKey,
+            Buffer.from(msg).toString('hex')
+          )
+        )
+        socket.send(encoded);
       };
 
       let onmessage;
@@ -293,8 +297,10 @@ export class Backchannel extends events.EventEmitter {
       }
 
       let listener = (e) => {
-        this.log('got message', e.data);
-        onmessage(e.data);
+        let decoded = deserialize(e.data) as EncryptedProtocolMessage
+        let plainText = symmetric.decrypt(encryptionKey, decoded)
+        const syncMsg = Uint8Array.from(Buffer.from(plainText, 'hex'));
+        onmessage(syncMsg);
       };
       socket.addEventListener('message', listener);
 
@@ -357,7 +363,7 @@ export class Backchannel extends events.EventEmitter {
     return client;
   }
 
-  private async _addMessage(msg: string, contact: IContact) {
+  private async _addMessage(msg: IMessage, contact: IContact) {
     let docId = contact.discoveryKey;
     let res = await this.db.change(docId, (doc: Mailbox) => {
       doc.messages.push(msg);

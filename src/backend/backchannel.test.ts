@@ -214,15 +214,9 @@ test('integration send multiple messages', (done) => {
     let messages = devices.alice.getMessagesByContactId(petbob_id);
     expect(messages[0].text).toBe(outgoing.text);
     expect(messages[1].text).toBe(response.text);
-    expect(messages[0].incoming).toBe(false);
-    expect(messages[1].incoming).toBe(true);
-    let alices = devices.alice
-      .getMessagesByContactId(petbob_id)
-      .forEach((m) => (m.incoming = undefined));
+    let alices = devices.alice.getMessagesByContactId(petbob_id)
     jest.runOnlyPendingTimers();
-    let bobs = devices.bob
-      .getMessagesByContactId(petalice_id)
-      .forEach((m) => (m.incoming = undefined));
+    let bobs = devices.bob.getMessagesByContactId(petalice_id)
     jest.runOnlyPendingTimers();
     expect(alices).toStrictEqual(bobs);
     done();
