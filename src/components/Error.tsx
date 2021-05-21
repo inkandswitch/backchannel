@@ -16,13 +16,13 @@ export default function NetworkError() {
     function onError(err, code: ERROR) {
       switch (code) {
         case ERROR.UNREACHABLE:
-          let ms = err.delay % 1000;
-          let s = (err.delay - ms) / 1000;
-          var secs = s % 60;
+          const ms = err.delay % 1000;
+          const s = (err.delay - ms) / 1000;
+          const secs = s % 60;
           let rest = 'Retrying...';
           if (secs > 1)
             rest = `Retrying in ${secs} seconds. (${retries} attempts)`;
-          let message = `Failed to connect to anyone. ${rest}`;
+          const message = `Failed to connect to anyone. ${rest}`;
           setRelayError(message);
           setRetries(retries + 1);
           break;
