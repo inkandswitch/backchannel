@@ -15,7 +15,7 @@ declare global {
 localStorage.setItem('debug', 'bc:*');
 
 // TODO: Loading screen
-backchannel.on('open', () => {
+backchannel.once('open', async () => {
   render(
     //@ts-ignore
     <React.StrictMode>
@@ -24,4 +24,5 @@ backchannel.on('open', () => {
     document.getElementById('root')
   );
 });
+
 reportWebVitals();

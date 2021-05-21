@@ -10,6 +10,7 @@ import ContactList from './components/ContactList';
 import Contact from './components/Contact';
 import AddContact from './components/AddContact';
 import Backchannel from './backend';
+import NetworkError from './components/Error';
 
 let backchannel = Backchannel();
 
@@ -44,6 +45,7 @@ export default function App() {
       <Route path="/">
         <ContactList />
       </Route>
+      <NetworkError />
     </div>
   );
 }
