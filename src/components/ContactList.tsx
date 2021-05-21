@@ -8,6 +8,7 @@ import { IMessage } from '../backend/types';
 import { timestampToDate } from './util';
 import { BottomNav } from '../components';
 import { ReactComponent as EnterDoor } from './icons/EnterDoor.svg';
+import { ReactComponent as Settings } from './icons/Settings.svg';
 
 let backchannel = Backchannel();
 
@@ -172,13 +173,13 @@ export default function ContactList(props) {
         <Link href="/settings">
           <div
             css={css`
-              border: 2px solid ${color.border};
-              border-radius: 50%;
               width: 50px;
               height: 50px;
               cursor: pointer;
             `}
-          ></div>
+          >
+            <Settings />
+          </div>
         </Link>
         <Link href="/generate">
           <div
