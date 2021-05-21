@@ -6,12 +6,7 @@ import Backchannel from '../backend';
 import { color, fontSize } from './tokens';
 import { IMessage } from '../backend/types';
 import { timestampToDate } from './util';
-import {
-  BottomNav,
-  Button,
-  ContentWithBottomNav,
-  Instructions,
-} from '../components';
+import { BottomNav, Button, Instructions } from '../components';
 import { ReactComponent as EnterDoor } from './icons/EnterDoor.svg';
 import { ReactComponent as Settings } from './icons/Settings.svg';
 import { ReactComponent as Checkmark } from './icons/Checkmark.svg';
