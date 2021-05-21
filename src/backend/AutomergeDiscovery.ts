@@ -1,4 +1,12 @@
-import Automerge from 'automerge';
+import {
+  BinaryChange,
+  BinarySyncMessage,
+  Patch,
+  Change,
+  Backend,
+  BackendState,
+  SyncState,
+} from 'automerge';
 import debug from 'debug';
 import { EventEmitter } from 'events';
 
@@ -8,22 +16,20 @@ interface Peer {
   id: string;
   send: Function;
   key?: Buffer;
-  state?: Automerge.SyncState;
+  state?: SyncState;
   idle?: Boolean;
 }
 
-enum MESSAGE_TYPES {
-  DONE = '0',
-}
-
-export default class AutomergeDiscovery<T> extends EventEmitter {
-  public doc: Automerge.Doc<T>;
+export default class AutomergeDiscovery extends EventEmitter {
+  public doc: BackendState;
+  public docId: string;
   private peers: Map<PeerId, Peer>;
   private log: debug;
 
-  constructor(doc: Automerge.Doc<T>) {
+  constructor(docId: string, backend?: BackendState) {
     super();
-    this.doc = doc;
+    this.doc = backend || Backend.init();
+    this.docId = docId;
     this.peers = new Map<PeerId, Peer>();
     this.log = debug('bc:AutomergePeers');
   }
@@ -36,6 +42,10 @@ export default class AutomergeDiscovery<T> extends EventEmitter {
     return this.peers.has(id);
   }
 
+  getPeer(id): Peer {
+    return this.peers.get(id);
+  }
+
   idle() {
     for (let peerId in this.peers) {
       let p = this.peers.get(peerId);
@@ -45,64 +55,73 @@ export default class AutomergeDiscovery<T> extends EventEmitter {
   }
 
   addPeer(id: string, peer: Peer) {
-    peer.idle = false;
-    peer.state = Automerge.initSyncState();
+    peer.state = Backend.initSyncState();
     this.peers.set(id, peer);
 
-    this._sendSyncMsg(peer);
+    // HELLO!
+    this.log('sending hello');
+    this._updatePeer(peer);
+
     return (msg) => {
       let peer = this.peers.get(id);
-      switch (msg) {
-        case MESSAGE_TYPES.DONE:
-          if (peer.idle) this.emit('sync', peer.id);
-          else this._sendSyncMsg(peer);
-          break;
-        default:
-          msg = new Uint8Array(msg);
-          this._receive(peer, msg);
-          this._sendSyncMsg(peer);
-      }
+      msg = new Uint8Array(msg);
+      this._receive(peer, msg);
+      this._updatePeer(peer);
     };
   }
 
-  change(changeFn: Automerge.ChangeFn<T>) {
+  change(change: Change): BinaryChange {
+    // LOCAL CHANGE
     this.log('in change function');
-    this.doc = Automerge.change(this.doc, changeFn);
+    const [newBackend, patch, newChange] = Backend.applyLocalChange(
+      this.doc,
+      change
+    );
+    this._sendToRenderer(patch);
+    this.doc = newBackend;
+    this.updatePeers();
+    return newChange;
+  }
+
+  updatePeers() {
     this.peers.forEach((peer) => {
       peer.idle = false;
-      this._sendSyncMsg(peer);
+      this._updatePeer(peer);
     });
   }
 
-  _sendSyncMsg(peer) {
-    let [nextSyncState, msg] = Automerge.generateSyncMessage(
+  _sendToRenderer(patch: Patch) {
+    this.log('emitting patch', this.docId);
+    this.emit('patch', { docId: this.docId, patch });
+  }
+
+  _updatePeer(peer) {
+    let [nextSyncState, msg] = Backend.generateSyncMessage(
       this.doc,
       peer.state
     );
     peer.state = nextSyncState;
-    if (msg === null) {
-      this.log('sending done');
-      peer.idle = true;
-      this.peers.set(peer.id, peer);
-      peer.send(MESSAGE_TYPES.DONE);
-      return false;
-    } else {
+    this.peers.set(peer.id, peer);
+    if (msg) {
       this.log('sending', msg);
       peer.send(msg);
+      return true;
+    } else {
+      return false;
     }
-    return true;
   }
 
-  _receive(peer, syncMsg: Automerge.BinarySyncMessage): Automerge.Patch {
-    let [newDoc, s2, patch] = Automerge.receiveSyncMessage(
+  _receive(peer, syncMsg: BinarySyncMessage): Patch {
+    let [newDoc, newSyncState, patch] = Backend.receiveSyncMessage(
       this.doc,
       peer.state,
       syncMsg
     );
     this.doc = newDoc;
-    peer.state = s2;
-    this.log('got new sync state', s2);
-    if (patch) this.emit('patch', patch);
+    if (patch) this.log('PENDING CHANGES', patch.pendingChanges);
+    peer.state = newSyncState;
+    this.peers.set(peer.id, peer);
+    if (patch) this._sendToRenderer(patch);
     return patch;
   }
 }

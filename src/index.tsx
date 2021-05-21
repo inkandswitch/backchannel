@@ -11,17 +11,13 @@ declare global {
     spake2: any;
   }
 }
-window.addEventListener('beforeunload', function (event) {
-  if (backchannel.opened()) {
-    backchannel.db.save().then(() => {
-      console.log('SAVED DB');
-    });
-  }
-});
+
+localStorage.setItem('debug', 'bc:*');
 
 // TODO: Loading screen
 backchannel.once('open', async () => {
   render(
+    //@ts-ignore
     <React.StrictMode>
       <App />
     </React.StrictMode>,
