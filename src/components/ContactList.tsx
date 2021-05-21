@@ -41,13 +41,16 @@ const IndicatorDot = ({
 
 export default function ContactList(props) {
   let [contacts, setContacts] = useState([]);
-  let [acknowledged, setAcknowledged] = useState(undefined);
+  let [acknowledged, setAcknowledged] = useState(true);
   let [latestMessages, setLatestMessages] = useState([]);
 
   useEffect(() => {
     function refreshContactList() {
       let contacts = backchannel.listContacts();
       setContacts(contacts);
+      if (contacts.length === 0) {
+        setAcknowledged(false);
+      }
       contacts.forEach((contact) => {
         let messages = backchannel.getMessagesByContactId(contact.id);
         const lastMessage: IMessage = messages.pop();
@@ -69,13 +72,6 @@ export default function ContactList(props) {
       backchannel.removeListener('sync', refreshContactList);
     };
   }, []);
-
-  useEffect(() => {
-    // TODO maybe not use undefined?
-    if (contacts.length === 0 && acknowledged !== undefined) {
-      setAcknowledged(false);
-    }
-  }, [contacts.length]);
 
   let handleAcknowledge = () => {
     setAcknowledged(true);
