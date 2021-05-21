@@ -1,4 +1,3 @@
-import { arrayToHex } from 'enc-utils';
 import { Client } from '@localfirst/relay-client';
 import events from 'events';
 import catnames from 'cat-names';
@@ -96,9 +95,11 @@ export class Backchannel extends events.EventEmitter {
         let connection: SecureWormhole = await this._wormhole.announce(
           code.trim()
         );
-        let id = await this._addContact(connection.key);
+        let key: Uint8Array = connection.key;
+        let id = await this._addContact(Buffer.from(key).toString('hex'));
         return resolve(id);
       } catch (err) {
+        console.error(err);
         reject(new Error(`Failed to establish a secure connection.`));
       }
     });
@@ -128,9 +129,11 @@ export class Backchannel extends events.EventEmitter {
         let connection: SecureWormhole = await this._wormhole.accept(
           code.trim()
         );
-        let id = await this._addContact(connection.key);
+        let key: Uint8Array = connection.key;
+        let id = await this._addContact(Buffer.from(key).toString('hex'));
         return resolve(id);
       } catch (err) {
+        console.error(err);
         reject(new Error(`Failed to establish a secure connection.`));
       }
     });

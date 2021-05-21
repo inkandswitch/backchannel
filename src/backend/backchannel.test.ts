@@ -4,6 +4,7 @@ import { getPortPromise as getAvailablePort } from 'portfinder';
 import { Server } from '@localfirst/relay';
 import { generateKey } from './crypto';
 import { randomBytes } from 'crypto';
+import { check } from 'prettier';
 
 let doc,
   petbob_id,
