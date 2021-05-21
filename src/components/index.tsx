@@ -15,10 +15,11 @@ export function TopBar(props) {
         text-align: center;
         padding: 18px 0;
         position: absolute;
+        top: 0;
         display: flex;
         flex-direction: row;
-        align-items: flex-end;
-        top: 0;
+        align-items: center;
+        justify-content: space-between;
         width: 100%;
       `}
       {...props}
@@ -59,7 +60,7 @@ export const ContentWithBottomNav = (props) => (
 export const ContentWithTopNav = (props) => (
   <div
     css={css`
-      padding-top: 60px;
+      padding-top: 75px;
       flex: 1 0 auto;
     `}
     {...props}
@@ -155,6 +156,7 @@ export const Message = (props) => (
     {...props}
   />
 );
+
 export const BackToHomeLink = (props) => (
   <div {...props}>
     <Link href="/">
@@ -166,4 +168,32 @@ export const BackToHomeLink = (props) => (
       />
     </Link>
   </div>
+);
+
+export const UnderlineInput = (props) => (
+  <input
+    css={css`
+      font-size: inherit;
+      width: 100%;
+      text-align: center;
+      background: none;
+      box-sizing: border-box;
+      border: 0;
+      border-bottom: 2px solid ${color.border};
+      color: white;
+      font-family: monospace;
+      padding: 2px 0;
+
+      &:focus {
+        outline: 0;
+        border-bottom: 2px solid ${color.codeShareText};
+        transition: 0.2s;
+      }
+      &::placeholder {
+        font-style: italic;
+      }
+    `}
+    type="text"
+    {...props}
+  />
 );

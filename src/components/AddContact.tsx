@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import React, { useEffect, useState } from 'react';
 import { css } from '@emotion/react/macro';
-import { useLocation } from 'wouter';
+import { Link, useLocation } from 'wouter';
 
 import { copyToClipboard } from '../web';
 import {
@@ -14,6 +14,7 @@ import {
   BottomActions,
   Message,
   BackToHomeLink,
+  UnderlineInput,
 } from '../components';
 import { Code, ContactId, Backchannel } from '../backend/types';
 import { color } from '../components/tokens';
@@ -68,7 +69,7 @@ export default function AddContact({ backchannel, view }: Props) {
       setErrorMsg('');
       setLocation(`/contact/${cid}/add`);
     } catch (err) {
-      console.log('got error', err)
+      console.log('got error', err);
       onError(err);
       setCode('');
     }
@@ -113,12 +114,24 @@ export default function AddContact({ backchannel, view }: Props) {
         <BackToHomeLink />
         <div
           css={css`
-            flex: 1 0 auto;
+            flex: 0 1 auto;
+            background: ${color.codeShareToggleBackground};
+            padding: 4px 0;
+            border-radius: 24px;
           `}
         >
-          <A href="generate">Generate codes</A>
-          <A href="add">Enter codes</A>
+          <Toggle href="generate" isActive={view === 'generate'}>
+            Generate code
+          </Toggle>
+          <Toggle href="add" isActive={view === 'add'}>
+            Enter code
+          </Toggle>
         </div>
+        <div
+          css={css`
+            width: 50px;
+          `}
+        />
       </TopBar>
       <ContentWithTopNav
         css={css`
@@ -148,17 +161,16 @@ export default function AddContact({ backchannel, view }: Props) {
               backchannel:
             </Instructions>
             <CodeDisplayOrInput>
-              <input
+              <UnderlineInput
                 value={code}
                 css={css`
                   font-size: inherit;
                   width: 100%;
                   text-align: center;
                 `}
-                type="text"
                 placeholder="Enter the code"
                 onChange={handleChange}
-              ></input>
+              />
             </CodeDisplayOrInput>
             <BottomActions>
               <Message>{errorMsg || message}</Message>
@@ -168,5 +180,33 @@ export default function AddContact({ backchannel, view }: Props) {
         )}
       </ContentWithTopNav>
     </div>
+  );
+}
+
+type ToggleProps = {
+  isActive: boolean;
+} & React.ComponentProps<typeof Link>;
+
+function Toggle({ isActive = false, ...props }: ToggleProps) {
+  return (
+    <Link
+      css={css`
+        display: inline-block;
+        margin: 0 6px;
+        text-decoration: none;
+        padding: 8px 14px;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 600;
+        color: ${
+          isActive ? color.codeShareToggleTextActive : color.codeShareToggleText
+        };
+        background: ${
+          isActive ? color.codeShareToggleBackgroundActive : 'none'
+        };
+        }
+      `}
+      {...props}
+    />
   );
 }
