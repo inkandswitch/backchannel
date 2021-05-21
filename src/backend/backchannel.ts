@@ -25,6 +25,10 @@ export enum ERROR {
   PEER = 500,
 }
 
+export type BackchannelSettings = {
+  relay: string
+}
+
 export interface Mailbox {
   messages: Automerge.List<string>;
 }
@@ -35,6 +39,7 @@ export interface Mailbox {
  */
 export class Backchannel extends events.EventEmitter {
   public db: Database<Mailbox>;
+  private _settings: BackchannelSettings;
   private _wormhole: MagicWormhole;
   private _client: Client;
   private _open = true || false;
@@ -52,6 +57,9 @@ export class Backchannel extends events.EventEmitter {
     super();
     this._wormhole = Wormhole();
     this.db = db;
+    this._settings = {
+      relay
+    }
     this._client = this._createClient(relay);
     this.db.once('open', () => {
       let documentIds = this.db.documents;
@@ -61,6 +69,13 @@ export class Backchannel extends events.EventEmitter {
     });
 
     this.log = debug('bc:backchannel');
+  }
+
+  get settings() {
+    // TODO: persist settings
+    return {
+      relay: this._settings.relay
+    }
   }
 
   private _emitOpen() {
