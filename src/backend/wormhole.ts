@@ -27,7 +27,7 @@ export class Wormhole {
     let nameplate = parts.shift();
     let password = parts.join('-');
     return new Promise((resolve, reject) => {
-      let _docId = `backchannel/wormhole-${nameplate}`;
+      let _docId = `wormhole-${nameplate}`;
       this.log('joining', _docId);
       this.client.join(_docId).on('peer.connect', onPeerConnect.bind(this));
 
