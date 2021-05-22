@@ -161,20 +161,23 @@ test('adds and syncs contacts with another device', (done) => {
       done();
     }
 
-    let prom2 = devices.alice.addDevice(key, 'my android');
-    let prom1 = devices.android.addDevice(key, 'my windows laptop');
-    jest.runOnlyPendingTimers();
-    jest.runOnlyPendingTimers();
+    devices.android.on('server.connect', () => {
+      let prom2 = devices.alice.addDevice(key, 'my android');
+      jest.runOnlyPendingTimers();
+      let prom1 = devices.android.addDevice(key, 'my windows laptop');
+      jest.runOnlyPendingTimers();
+      jest.runOnlyPendingTimers();
 
-    Promise.all([prom1, prom2]).then(([alice_id, android_id]) => {
-      devices.alice.connectToContactId(android_id);
-      jest.runOnlyPendingTimers();
-      devices.android.connectToContactId(alice_id);
-      jest.runOnlyPendingTimers();
-      devices.android.db.on('patch', onSync);
+      Promise.all([prom1, prom2]).then(([alice_id, android_id]) => {
+        devices.alice.connectToContactId(android_id);
+        jest.runOnlyPendingTimers();
+        devices.android.connectToContactId(alice_id);
+        jest.runOnlyPendingTimers();
+        devices.android.db.on('patch', onSync);
+        jest.runOnlyPendingTimers();
+      });
       jest.runOnlyPendingTimers();
     });
-    jest.runOnlyPendingTimers();
   });
 });
 

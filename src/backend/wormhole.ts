@@ -27,7 +27,7 @@ export class Wormhole {
     let nameplate = parts.shift();
     let password = parts.join('-');
     return new Promise((resolve, reject) => {
-      let _docId = `backchannel-${nameplate}`;
+      let _docId = `backchannel/wormhole-${nameplate}`;
       this.log('joining', _docId);
       this.client.join(_docId).on('peer.connect', onPeerConnect.bind(this));
 
@@ -40,16 +40,12 @@ export class Wormhole {
           socket.send(outboundString);
 
           socket.binaryType = 'arraybuffer';
-          socket.onmessage = (e) => {
+          socket.addEventListener('message', (e) => {
             let msg = e.data;
             let inbound = Buffer.from(msg, 'hex');
             let key: Uint8Array = window.spake2.finish(spake2State, inbound);
             resolve(key);
-            socket.close();
-          };
-          socket.onclose = (e) => {
-            this.client.leave(_docId);
-          };
+          });
         }
       }
     });

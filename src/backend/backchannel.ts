@@ -69,14 +69,12 @@ export class Backchannel extends events.EventEmitter {
   }
 
   async updateSettings(newSettings: BackchannelSettings) {
-    console.log('got new settings', newSettings);
     const documentIds = this.db.documents;
     if (newSettings.relay !== this.db.settings.relay) {
       this._client = this._createClient(newSettings.relay, documentIds);
       this._wormhole = new Wormhole(this._client);
     }
     let ready = { ...this.db.root.settings, ...newSettings };
-    console.log('changing to', ready);
     return this.db.changeRoot((doc: System) => {
       doc.settings = ready;
     });
@@ -240,6 +238,7 @@ export class Backchannel extends events.EventEmitter {
    */
   connectToContact(contact: IContact) {
     if (!this._open) return;
+    this.log('joining', contact.discoveryKey);
     if (!contact || !contact.discoveryKey)
       throw new Error('contact.discoveryKey required');
     this._client.join(contact.discoveryKey);
@@ -287,7 +286,8 @@ export class Backchannel extends events.EventEmitter {
   }
 
   private async _onPeerConnect(socket: WebSocket, discoveryKey: DiscoveryKey) {
-    if (discoveryKey.startsWith('backchannel')) return; // this is handled by wormhole.ts
+    if (discoveryKey.startsWith('backchannel/wormhole'))
+      return this.log('got connection to ', discoveryKey); // this is handled by wormhole.ts
     let onerror = (err) => {
       let code = ERROR.PEER;
       this.emit('error', err, code);
@@ -304,25 +304,29 @@ export class Backchannel extends events.EventEmitter {
         socket.send(msg);
       };
 
-      let onmessage;
+      let gotAutomergeSyncMsg;
       if (contact.device) {
-        onmessage = await this.db.onDeviceConnect(contact.id, send);
+        gotAutomergeSyncMsg = await this.db.onDeviceConnect(contact.id, send);
       } else {
         let docId = contact.discoveryKey;
-        onmessage = await this.db.onPeerConnect(docId, contact.id, send);
+        gotAutomergeSyncMsg = await this.db.onPeerConnect(
+          docId,
+          contact.id,
+          send
+        );
       }
 
-      let listener = (e) => {
+      let onmessage = (e) => {
         this.log('got message', e.data);
-        onmessage(e.data);
+        gotAutomergeSyncMsg(e.data);
       };
-      socket.addEventListener('message', listener);
+      socket.addEventListener('message', onmessage);
 
       // localfirst/relay-client also has a peer.disconnect event
       // but it is somewhat unreliable. this is better.
       let onclose = () => {
         let documentId = contact.discoveryKey;
-        socket.removeEventListener('message', listener);
+        socket.removeEventListener('message', onmessage);
         socket.removeEventListener('error', onerror);
         socket.removeEventListener('close', onclose);
         this.db.onDisconnect(documentId, contact.id).then(() => {
@@ -362,17 +366,20 @@ export class Backchannel extends events.EventEmitter {
 
     client.on('server.connect', () => {
       this.emit('server.connect');
+      this.log('on server connect');
       this._open = true;
     });
 
     client.on('server.disconnect', () => {
+      this.log('on server disconnect');
       this.emit('server.disconnect');
       this._open = false;
     });
 
-    client.on('peer.connect', ({ socket, documentId }) =>
-      this._onPeerConnect(socket, documentId)
-    );
+    client.on('peer.connect', ({ socket, documentId }) => {
+      this.log('on peer connect');
+      this._onPeerConnect(socket, documentId);
+    });
 
     return client;
   }
