@@ -286,9 +286,6 @@ export class Backchannel extends events.EventEmitter {
   }
 
   private async _onPeerConnect(socket: WebSocket, discoveryKey: DiscoveryKey) {
-    if (discoveryKey.startsWith('wormhole')) {
-      return this.log('got connection to ', discoveryKey); // this is handled by wormhole.ts
-    }
     let onerror = (err) => {
       let code = ERROR.PEER;
       this.emit('error', err, code);
@@ -297,6 +294,9 @@ export class Backchannel extends events.EventEmitter {
     };
     socket.addEventListener('error', onerror);
 
+    if (discoveryKey.startsWith('wormhole')) {
+      return this.log('got connection to ', discoveryKey); // this is handled by wormhole.ts
+    }
     let contact = this.db.getContactByDiscoveryKey(discoveryKey);
 
     try {
