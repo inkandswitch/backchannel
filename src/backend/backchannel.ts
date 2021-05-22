@@ -117,7 +117,7 @@ export class Backchannel extends events.EventEmitter {
         let id = await this._addContact(key);
         return resolve(id);
       } catch (err) {
-        reject(new Error(`Failed to establish a secure connection.`));
+        reject(new Error('Secure connection failed. Did they type the code correctly? Try again.'))
       }
     });
   }
@@ -138,7 +138,7 @@ export class Backchannel extends events.EventEmitter {
       setTimeout(() => {
         reject(
           new Error(
-            `It took more than 20 seconds to find any backchannels with code ${code}. Try again with a different code?`
+            `It took more than 20 seconds to find ${code}. Try again with a different code.`
           )
         );
       }, TWENTY_SECONDS);
@@ -148,7 +148,7 @@ export class Backchannel extends events.EventEmitter {
         let id = await this._addContact(key);
         return resolve(id);
       } catch (err) {
-        reject(new Error(`Failed to establish a secure connection.`));
+        reject(new Error('Secure connection failed. Did you type the code correctly? Try again.'))
       }
     });
   }

@@ -49,24 +49,28 @@ export class Wormhole {
             let msg = e.data
             if (!key) {
               let inbound = Buffer.from(msg, 'hex');
-              key: Uint8Array = window.spake2.finish(spake2State, inbound);
+              key = window.spake2.finish(spake2State, inbound);
               let encryptedMessage = symmetric.encrypt(
                 key, JSON.stringify({ 'version': VERSION })
               )
               socket.send(serialize(encryptedMessage))
             } else {
+              this.log('got msg', msg)
               let decoded = deserialize(msg) as EncryptedProtocolMessage
               try {
-                let versionStr = JSON.parse(symmetric.decrypt(key, decoded))
-                if (versionStr !== VERSION) {
+                this.log('decrypt', key, decoded)
+                let json = JSON.parse(symmetric.decrypt(key, decoded))
+                this.log('got version', json.version)
+                if (json.version !== VERSION) {
                   reject(new Error('Secure connection established, but you or your contact are using an outdated version of Backchannel and need to upgrade.'))
+                } else {
+                  resolve(key);
                 }
-                resolve(key);
               } catch (err) {
                 this.log('error', err)
-                reject(new Error('Secure connection failed. Did you type the code in correctly? Try again.'))
+                reject(err)
               } finally {
-                socket.removeAllListeners()
+                socket.removeEventListener('onmessage', onmessage)
                 this.client.leave(discoveryKey)
                 socket.close()
               }
