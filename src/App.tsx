@@ -13,6 +13,8 @@ import NetworkError from './components/Error';
 import Backchannel from './backend';
 import config from './backend/config';
 
+import * as storage from './components/storage';
+
 let backchannel = Backchannel();
 
 export default function App() {
@@ -83,6 +85,11 @@ function Settings(props) {
   }
 
   function clearDb() {
+    // clean local storage state
+    for (let key in storage.keys) {
+      storage.remove(key);
+    }
+
     backchannel
       .destroy()
       .then(() => {
