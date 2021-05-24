@@ -279,7 +279,7 @@ export class Backchannel extends events.EventEmitter {
     let encryptionKey = await importKey(contact.key);
 
     try {
-      socket.binaryType = 'arraybuffer';
+      socket.binaryType = 'arraybuffer'
       let send = (msg: Uint8Array) => {
         this.log('got encryption key', encryptionKey);
 
