@@ -1,8 +1,10 @@
 import { Mailbox, Backchannel } from './backchannel';
 import { Database } from './db';
-import crypto from 'crypto';
 import { getPortPromise as getAvailablePort } from 'portfinder';
 import { Server } from '@localfirst/relay';
+import { generateKey } from './crypto';
+import { randomBytes } from 'crypto';
+import { check } from 'prettier';
 
 let doc,
   petbob_id,
@@ -16,7 +18,7 @@ let server,
   port = 3001;
 
 function createDevice(name): Backchannel {
-  let dbname = crypto.randomBytes(16);
+  let dbname = randomBytes(16);
   let db_a = new Database<Mailbox>(dbname + name);
   return new Backchannel(db_a, `ws://localhost:${port}`);
 }
@@ -26,21 +28,25 @@ beforeEach((done) => {
   devices.alice = createDevice('a');
   devices.bob = createDevice('b');
 
-  doc = crypto.randomBytes(32).toString('hex');
-  // OK, so now I create a petname for bob on alice's device..
+  generateKey().then((_doc) => {
+    // OK, so now I create a petname for bob on alice's device..
+    doc = _doc;
 
-  async function create() {
-    petbob_id = await devices.alice._addContact(doc);
-    devices.alice.editMoniker(petbob_id, 'bob');
+    async function create() {
+      petbob_id = await devices.alice._addContact(doc);
+      devices.alice.editMoniker(petbob_id, 'bob');
 
-    petalice_id = await devices.bob._addContact(doc);
-    devices.bob.editMoniker(petalice_id, 'alice');
-  }
+      petalice_id = await devices.bob._addContact(doc);
+      devices.bob.editMoniker(petalice_id, 'alice');
+    }
 
-  devices.alice.once('open', () => {
-    devices.bob.once('open', () => {
-      create().then(done);
-      jest.useFakeTimers();
+    devices.alice.once('open', () => {
+      devices.bob.once('open', () => {
+        create().then(() => {
+          jest.useFakeTimers();
+          done();
+        });
+      });
     });
   });
 });
@@ -145,8 +151,8 @@ test('presence', (done) => {
 
 test('adds and syncs contacts with another device', (done) => {
   devices.android = createDevice('p');
-  devices.android.on('open', () => {
-    let key = crypto.randomBytes(32).toString('hex');
+  devices.android.on('open', async () => {
+    let key = await generateKey();
 
     let called = 0;
 
@@ -214,15 +220,9 @@ test('integration send multiple messages', (done) => {
     let messages = devices.alice.getMessagesByContactId(petbob_id);
     expect(messages[0].text).toBe(outgoing.text);
     expect(messages[1].text).toBe(response.text);
-    expect(messages[0].incoming).toBe(false);
-    expect(messages[1].incoming).toBe(true);
-    let alices = devices.alice
-      .getMessagesByContactId(petbob_id)
-      .forEach((m) => (m.incoming = undefined));
+    let alices = devices.alice.getMessagesByContactId(petbob_id);
     jest.runOnlyPendingTimers();
-    let bobs = devices.bob
-      .getMessagesByContactId(petalice_id)
-      .forEach((m) => (m.incoming = undefined));
+    let bobs = devices.bob.getMessagesByContactId(petalice_id);
     jest.runOnlyPendingTimers();
     expect(alices).toStrictEqual(bobs);
     done();
