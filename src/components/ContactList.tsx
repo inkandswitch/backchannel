@@ -13,6 +13,8 @@ import { ReactComponent as Checkmark } from './icons/Checkmark.svg';
 import * as storage from './storage';
 
 let backchannel = Backchannel();
+const APP_INITIATION_ANIMATION_MS = 2300;
+const LOADING_SCREEN_DELAY_MS = 800;
 
 enum StatusType {
   DISCONNECTED = 'disconnected',
@@ -39,15 +41,31 @@ export default function ContactList(props) {
   let [contacts, setContacts] = useState([]);
   let [isLoaded, setIsLoaded] = useState(false);
   let [canShowLoading, setCanShowLoading] = useState(false);
+  let [showInitiationAnimation, setShowInitiationAnimation] = useState(false);
   let [acknowledged, setAcknowledged] = useState(true);
   let [latestMessages, setLatestMessages] = useState([]);
 
   useEffect(() => {
     // wait a second before showing loading screen, so that the loading screen is less likely to flash for a couple milliseconds before content is ready
-    setTimeout(() => {
-      setCanShowLoading(true);
-    }, 1000);
+    if (showInitiationAnimation) {
+      const timeout = setTimeout(() => {
+        setCanShowLoading(true);
+      }, LOADING_SCREEN_DELAY_MS);
+
+      return () => clearTimeout(timeout);
+    }
   }, [canShowLoading]);
+
+  // Timer for showing app first-time initiation animation
+  useEffect(() => {
+    if (showInitiationAnimation) {
+      const timeout = setTimeout(() => {
+        setShowInitiationAnimation(false);
+      }, APP_INITIATION_ANIMATION_MS);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [showInitiationAnimation]);
 
   useEffect(() => {
     function refreshContactList() {
@@ -60,6 +78,10 @@ export default function ContactList(props) {
         const dismissedWelcome: boolean = storage.get(
           storage.keys.dismissed_welcome_message
         );
+        if (!dismissedWelcome) {
+          // Start the initial animation if user hasn't seen the welcome screen before
+          setShowInitiationAnimation(true);
+        }
         setAcknowledged(dismissedWelcome);
       }
       contacts.forEach((contact) => {
@@ -120,12 +142,14 @@ export default function ContactList(props) {
             margin: 2em 0;
           `}
         >
-          <Checkmark
+          {showInitiationAnimation ? <Spinner /> : <Checkmark />}
+          <span
             css={css`
-              margin-right: 12px;
+              margin-left: 12px;
             `}
-          />{' '}
-          Creating the key
+          >
+            Creating the key
+          </span>
         </div>
         <Instructions>Your device is set up and ready to go.</Instructions>
         <Button
