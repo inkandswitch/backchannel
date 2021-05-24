@@ -47,13 +47,11 @@ export default function ContactList(props) {
 
   useEffect(() => {
     // wait a second before showing loading screen, so that the loading screen is less likely to flash for a couple milliseconds before content is ready
-    if (showInitiationAnimation) {
-      const timeout = setTimeout(() => {
-        setCanShowLoading(true);
-      }, LOADING_SCREEN_DELAY_MS);
+    const timeout = setTimeout(() => {
+      setCanShowLoading(true);
+    }, LOADING_SCREEN_DELAY_MS);
 
-      return () => clearTimeout(timeout);
-    }
+    return () => clearTimeout(timeout);
   }, [canShowLoading]);
 
   // Timer for showing app first-time initiation animation
