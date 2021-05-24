@@ -26,16 +26,4 @@ export class IMessage {
   text?: string;
   filename?: string;
   mime_type?: string;
-
-  static encode(msg: IMessage, key: Key): string {
-    let buf_key = Buffer.from(key, 'hex');
-    let encoded = symmetric.encrypt(buf_key, JSON.stringify(msg));
-    return JSON.stringify(encoded);
-  }
-
-  static decode(json: string, key: Key): IMessage {
-    let buf_key = Buffer.from(key, 'hex');
-    let decoded: EncryptedProtocolMessage = JSON.parse(json);
-    return JSON.parse(symmetric.decrypt(buf_key, decoded));
-  }
 }

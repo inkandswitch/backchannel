@@ -1,12 +1,13 @@
-import { ContactId, IContact } from './types';
-import AutomergeDiscovery from './AutomergeDiscovery';
-import { DB } from './automerge-db';
-import Automerge, { Frontend } from 'automerge';
+import Automerge from 'automerge';
 import { EventEmitter } from 'events';
 import debug from 'debug';
 import { v4 as uuid } from 'uuid';
-import * as crypto from './crypto';
 import { Backend } from 'automerge';
+
+import * as crypto from './crypto';
+import { Key, ContactId, IContact } from './types';
+import AutomergeDiscovery from './AutomergeDiscovery';
+import { DB } from './automerge-db';
 
 type DocumentId = string;
 
@@ -172,7 +173,7 @@ export class Database<T> extends EventEmitter {
     syncer.updatePeers();
   }
 
-  addDevice(key: string, description: string): Promise<ContactId> {
+  addDevice(key: Key, description: string): Promise<ContactId> {
     return this.addContact(key, description, 1);
   }
 
@@ -180,12 +181,12 @@ export class Database<T> extends EventEmitter {
    * Add a contact.
    */
   async addContact(
-    key: string,
+    key: Key,
     moniker: string,
     device?: number
   ): Promise<ContactId> {
     let id = uuid();
-    let discoveryKey = crypto.computeDiscoveryKey(Buffer.from(key, 'hex'));
+    let discoveryKey = await crypto.computeDiscoveryKey(key);
     let contact: IContact = {
       id,
       key,
@@ -307,6 +308,7 @@ export class Database<T> extends EventEmitter {
   ): Promise<DocumentId> {
     let doc = Automerge.change(Automerge.init('0000'), { time: 0 }, changeFn);
     let change = Automerge.Frontend.getLastLocalChange(doc);
+    this.log('addDocument', docId);
     await this._idb.storeChange(docId, change);
     return this._loadDocument(docId);
   }
@@ -337,7 +339,8 @@ export class Database<T> extends EventEmitter {
     return docId;
   }
 
-  private async _loadDocument(docId): Promise<DocumentId> {
+  private async _loadDocument(docId: DocumentId): Promise<DocumentId> {
+    this.log('loadDocument', docId);
     let doc = await this._idb.getDoc(docId);
     let state = doc.serializedDoc
       ? Backend.load(doc.serializedDoc)
@@ -346,7 +349,7 @@ export class Database<T> extends EventEmitter {
     this.log('loading document', doc.changes);
     const [backend, patch] = Backend.applyChanges(state, doc.changes);
     let frontend: Automerge.Doc<T | System> = Automerge.Frontend.applyPatch(
-      Frontend.init(),
+      Automerge.Frontend.init(),
       patch
     );
     this.log('got doc', frontend, backend);
@@ -371,7 +374,6 @@ export class Database<T> extends EventEmitter {
       id: peerId,
       send,
       state,
-      key: Buffer.from(contact.key, 'hex'),
     };
     return syncer.addPeer(peerId, peer);
   }

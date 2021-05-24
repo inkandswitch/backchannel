@@ -1,41 +1,86 @@
-import sodium from 'sodium-universal';
-import crypto from 'crypto';
-import { DiscoveryKey } from './types';
+import { Key, DiscoveryKey } from './types';
 
 export type EncryptedProtocolMessage = {
   cipher: string;
   nonce: string;
 };
 
+export async function generateKey(): Promise<Key> {
+  let rawKey = await window.crypto.subtle.generateKey(
+    {
+      name: 'AES-GCM',
+      length: 256,
+    },
+    true,
+    ['encrypt', 'decrypt']
+  );
+  return exportKey(rawKey)
+}
+
+export async function exportKey(key: CryptoKey): Promise<Key> {
+  let raw: ArrayBuffer = await window.crypto.subtle.exportKey(
+    'raw',
+    key
+  );
+  return Buffer.from(raw).toString('hex')
+}
+
+export function importKey(key: Key | Buffer): Promise<CryptoKey> {
+  if (typeof key === 'string') key = Buffer.from(key, 'hex')
+  return window.crypto.subtle.importKey(
+    'raw',
+    key,
+    'AES-GCM',
+    true,
+    ['encrypt', 'decrypt']
+  );
+}
+
 export const symmetric = {
-  encrypt: function (key: Buffer, msg: string): EncryptedProtocolMessage {
-    const nonce = Buffer.alloc(sodium.crypto_secretbox_NONCEBYTES);
-    sodium.randombytes_buf(nonce);
-    let message = Buffer.from(msg, 'utf-8');
-    const cipher = Buffer.alloc(
-      message.byteLength + sodium.crypto_secretbox_MACBYTES
+  encrypt: async function (
+    key: Key,
+    msg: string
+  ): Promise<EncryptedProtocolMessage> {
+    let cryptoKey = await importKey(key)
+    let enc = new TextEncoder();
+    let plainText = enc.encode(msg);
+    let iv = window.crypto.getRandomValues(new Uint8Array(12));
+    let ciphertext = await window.crypto.subtle.encrypt(
+      {
+        name: 'AES-GCM',
+        iv: iv,
+      },
+      cryptoKey,
+      plainText
     );
-    sodium.crypto_secretbox_easy(cipher, message, nonce, key);
+
     return {
-      cipher: cipher.toString('hex'),
-      nonce: nonce.toString('hex'),
+      cipher: Buffer.from(ciphertext).toString('hex'),
+      nonce: Buffer.from(iv).toString('hex'),
     };
   },
-  decrypt: function (key: Buffer, msg: EncryptedProtocolMessage): string {
-    let nonce = Buffer.from(msg.nonce, 'hex');
-    let cipher = Buffer.from(msg.cipher, 'hex');
-    const plainText = Buffer.alloc(
-      cipher.byteLength - sodium.crypto_secretbox_MACBYTES
+  decrypt: async function (
+    key: Key,
+    msg: EncryptedProtocolMessage
+  ): Promise<string> {
+    let cryptoKey = await importKey(key)
+    let decrypted = await window.crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: Buffer.from(msg.nonce, 'hex'),
+      },
+      cryptoKey,
+      Buffer.from(msg.cipher, 'hex')
     );
 
-    sodium.crypto_secretbox_open_easy(plainText, cipher, nonce, key);
-
-    return plainText.toString('utf-8');
+    let dec = new TextDecoder();
+    return dec.decode(decrypted);
   },
 };
 
-export function computeDiscoveryKey(key: Buffer): DiscoveryKey {
-  let hash = crypto.createHash('sha256');
-  hash.update(key);
-  return hash.digest('hex');
+export async function computeDiscoveryKey(key: Key): Promise<DiscoveryKey> {
+  let buf = Buffer.from(key, 'hex');
+  let hash = await window.crypto.subtle.digest('SHA-256', buf);
+  let disco = Buffer.from(hash).toString('hex');
+  return disco;
 }

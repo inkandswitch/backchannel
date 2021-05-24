@@ -15,7 +15,6 @@ type PeerId = string;
 interface Peer {
   id: string;
   send: Function;
-  key?: Buffer;
   state?: SyncState;
   idle?: Boolean;
 }
@@ -112,13 +111,13 @@ export default class AutomergeDiscovery extends EventEmitter {
   }
 
   _receive(peer, syncMsg: BinarySyncMessage): Patch {
+    this.log('got', syncMsg);
     let [newDoc, newSyncState, patch] = Backend.receiveSyncMessage(
       this.doc,
       peer.state,
       syncMsg
     );
     this.doc = newDoc;
-    if (patch) this.log('PENDING CHANGES', patch.pendingChanges);
     peer.state = newSyncState;
     this.peers.set(peer.id, peer);
     if (patch) this._sendToRenderer(patch);
