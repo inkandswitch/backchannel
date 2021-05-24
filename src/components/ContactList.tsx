@@ -10,6 +10,7 @@ import { BottomNav, Button, Instructions, Spinner } from '../components';
 import { ReactComponent as EnterDoor } from './icons/EnterDoor.svg';
 import { ReactComponent as Settings } from './icons/Settings.svg';
 import { ReactComponent as Checkmark } from './icons/Checkmark.svg';
+import * as storage from './storage';
 
 let backchannel = Backchannel();
 
@@ -53,8 +54,13 @@ export default function ContactList(props) {
       let contacts = backchannel.listContacts();
       setIsLoaded(true);
       setContacts(contacts);
+
       if (contacts.length === 0) {
-        setAcknowledged(false);
+        // Check if user has gone through the initial welcome message
+        const dismissedWelcome: boolean = storage.get(
+          storage.keys.dismissed_welcome_message
+        );
+        setAcknowledged(dismissedWelcome);
       }
       contacts.forEach((contact) => {
         let messages = backchannel.getMessagesByContactId(contact.id);
@@ -79,6 +85,7 @@ export default function ContactList(props) {
   }, []);
 
   let handleAcknowledge = () => {
+    storage.set(storage.keys.dismissed_welcome_message, true);
     setAcknowledged(true);
   };
 
