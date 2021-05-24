@@ -3,6 +3,7 @@ import React from 'react';
 import { css } from '@emotion/react/macro';
 import { Link } from 'wouter';
 import { ReactComponent as ArrowLeft } from '../components/icons/ArrowLeft.svg';
+import { ReactComponent as Ellipse } from '../components/icons/Ellipse.svg';
 
 import { color, fontSize } from './tokens';
 
@@ -171,6 +172,24 @@ export const BackToHomeLink = (props) => (
       />
     </Link>
   </div>
+);
+
+export const Spinner = (props) => (
+  <Ellipse
+    css={css`
+      animation: spin 1200ms infinite;
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    `}
+    {...props}
+  />
 );
 
 export const UnderlineInput = (props) => (
