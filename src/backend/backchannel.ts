@@ -6,8 +6,9 @@ import Automerge from 'automerge';
 import { v4 as uuid } from 'uuid';
 import { serialize, deserialize } from 'bson';
 
-import { Database } from './db';
+import { System, Database } from './db';
 import {
+  DocumentId,
   Key,
   Code,
   ContactId,
@@ -15,16 +16,17 @@ import {
   IMessage,
   DiscoveryKey,
 } from './types';
-import Wormhole from './wormhole';
-import type { SecureWormhole, MagicWormhole } from './wormhole';
-import { importKey, symmetric, EncryptedProtocolMessage } from './crypto';
-
-type DocumentId = string;
+import { Wormhole } from './wormhole';
+import { symmetric, EncryptedProtocolMessage } from './crypto';
 
 export enum ERROR {
   UNREACHABLE = 404,
   PEER = 500,
 }
+
+export type BackchannelSettings = {
+  relay: string;
+};
 
 export interface Mailbox {
   messages: Automerge.List<IMessage>;
@@ -36,7 +38,7 @@ export interface Mailbox {
  */
 export class Backchannel extends events.EventEmitter {
   public db: Database<Mailbox>;
-  private _wormhole: MagicWormhole;
+  private _wormhole: Wormhole;
   private _client: Client;
   private _open = true || false;
   private log = debug;
@@ -46,22 +48,40 @@ export class Backchannel extends events.EventEmitter {
    * the backchannel app on their device. There is one Mailbox per contact which
    * is identified by the contact's discoveryKey.
    * @constructor
-   * @param db Database<Mailbox> Use a database of type Mailbox, the only document supported currently
-   * @param relay string The URL of the relay
+   * @param {Database<Mailbox>} db  Use a database of type Mailbox, the only document supported currently
+   * @param defaultRelay The default URL of the relay
    */
-  constructor(db: Database<Mailbox>, relay: string) {
+  constructor(db: Database<Mailbox>, _settings: BackchannelSettings) {
     super();
-    this._wormhole = Wormhole();
     this.db = db;
-    this._client = this._createClient(relay);
     this.db.once('open', () => {
       let documentIds = this.db.documents;
+      let relay = (this.db.settings && this.db.settings.relay) || _settings.relay;
+      this.log('Connecting to relay', relay);
+      this._client = this._createClient(relay);
+      this._wormhole = new Wormhole(this._client);
       this._emitOpen();
       this.log(`Joining ${documentIds.length} documentIds`);
       documentIds.forEach((docId) => this._client.join(docId));
     });
 
     this.log = debug('bc:backchannel');
+  }
+
+  async updateSettings(newSettings: BackchannelSettings) {
+    const documentIds = this.db.documents;
+    if (newSettings.relay !== this.db.settings.relay) {
+      this._client = this._createClient(newSettings.relay, documentIds);
+      this._wormhole = new Wormhole(this._client);
+    }
+    let ready = { ...this.db.root.settings, ...newSettings };
+    return this.db.changeRoot((doc: System) => {
+      doc.settings = ready;
+    });
+  }
+
+  get settings() {
+    return this.db.settings;
   }
 
   private _emitOpen() {
@@ -76,8 +96,8 @@ export class Backchannel extends events.EventEmitter {
    * Create a one-time code for a new backchannel contact.
    * @returns {Code} code The code to use in announce
    */
-  async getCode(): Promise<Code> {
-    let code = await this._wormhole.getCode();
+  getCode(): Code {
+    let code = this._wormhole.getCode();
     return code;
   }
 
@@ -92,15 +112,11 @@ export class Backchannel extends events.EventEmitter {
   async announce(code: Code): Promise<ContactId> {
     return new Promise(async (resolve, reject) => {
       try {
-        let connection: SecureWormhole = await this._wormhole.announce(
-          code.trim()
-        );
-        let key: Uint8Array = connection.key;
-        let id = await this._addContact(Buffer.from(key).toString('hex'));
+        let key = await this._wormhole.announce(code.trim());
+        let id = await this._addContact(key);
         return resolve(id);
       } catch (err) {
-        console.error(err);
-        reject(new Error(`Failed to establish a secure connection.`));
+        reject(new Error('Secure connection failed. Did they type the code correctly? Try again.'))
       }
     });
   }
@@ -121,20 +137,16 @@ export class Backchannel extends events.EventEmitter {
       setTimeout(() => {
         reject(
           new Error(
-            `It took more than 20 seconds to find any backchannels with code ${code}. Try again with a different code?`
+            `It took more than 20 seconds to find ${code}. Try again with a different code.`
           )
         );
       }, TWENTY_SECONDS);
       try {
-        let connection: SecureWormhole = await this._wormhole.accept(
-          code.trim()
-        );
-        let key: Uint8Array = connection.key;
-        let id = await this._addContact(Buffer.from(key).toString('hex'));
+        let key : Key = await this._wormhole.accept(code.trim());
+        let id = await this._addContact(key);
         return resolve(id);
       } catch (err) {
-        console.error(err);
-        reject(new Error(`Failed to establish a secure connection.`));
+        reject(new Error('Secure connection failed. Did you type the code correctly? Try again.'))
       }
     });
   }
@@ -219,6 +231,7 @@ export class Backchannel extends events.EventEmitter {
    */
   connectToContact(contact: IContact) {
     if (!this._open) return;
+    this.log('joining', contact.discoveryKey);
     if (!contact || !contact.discoveryKey)
       throw new Error('contact.discoveryKey required');
     this._client.join(contact.discoveryKey);
@@ -274,9 +287,12 @@ export class Backchannel extends events.EventEmitter {
     };
     socket.addEventListener('error', onerror);
 
+    if (discoveryKey.startsWith('wormhole')) {
+      return this.log('got connection to ', discoveryKey); // this is handled by wormhole.ts
+    }
     let contact = this.db.getContactByDiscoveryKey(discoveryKey);
     this.log('onPeerConnect', discoveryKey, contact);
-    let encryptionKey = await importKey(contact.key);
+    let encryptionKey = contact.key;
 
     try {
       socket.binaryType = 'arraybuffer'
@@ -291,28 +307,32 @@ export class Backchannel extends events.EventEmitter {
           });
       };
 
-      let onmessage;
+      let gotAutomergeSyncMsg;
       if (contact.device) {
-        onmessage = await this.db.onDeviceConnect(contact.id, send);
+        gotAutomergeSyncMsg = await this.db.onDeviceConnect(contact.id, send);
       } else {
         let docId = contact.discoveryKey;
-        onmessage = await this.db.onPeerConnect(docId, contact.id, send);
+        gotAutomergeSyncMsg = await this.db.onPeerConnect(
+          docId,
+          contact.id,
+          send
+        );
       }
 
-      let listener = (e) => {
+      let onmessage = (e) => {
         let decoded = deserialize(e.data) as EncryptedProtocolMessage;
         symmetric.decrypt(encryptionKey, decoded).then((plainText) => {
           const syncMsg = Uint8Array.from(Buffer.from(plainText, 'hex'));
-          onmessage(syncMsg);
+          gotAutomergeSyncMsg(syncMsg);
         });
       };
-      socket.addEventListener('message', listener);
+      socket.addEventListener('message', onmessage);
 
       // localfirst/relay-client also has a peer.disconnect event
       // but it is somewhat unreliable. this is better.
       let onclose = () => {
         let documentId = contact.discoveryKey;
-        socket.removeEventListener('message', listener);
+        socket.removeEventListener('message', onmessage);
         socket.removeEventListener('error', onerror);
         socket.removeEventListener('close', onclose);
         this.db.onDisconnect(documentId, contact.id).then(() => {
@@ -352,17 +372,20 @@ export class Backchannel extends events.EventEmitter {
 
     client.on('server.connect', () => {
       this.emit('server.connect');
+      this.log('on server connect');
       this._open = true;
     });
 
     client.on('server.disconnect', () => {
+      this.log('on server disconnect');
       this.emit('server.disconnect');
       this._open = false;
     });
 
-    client.on('peer.connect', ({ socket, documentId }) =>
-      this._onPeerConnect(socket, documentId)
-    );
+    client.on('peer.connect', ({ socket, documentId }) => {
+      this.log('on peer connect');
+      this._onPeerConnect(socket, documentId);
+    });
 
     return client;
   }

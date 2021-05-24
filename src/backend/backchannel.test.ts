@@ -1,10 +1,7 @@
 import { Mailbox, Backchannel } from './backchannel';
 import { Database } from './db';
-import { getPortPromise as getAvailablePort } from 'portfinder';
-import { Server } from '@localfirst/relay';
 import { generateKey } from './crypto';
 import { randomBytes } from 'crypto';
-import { check } from 'prettier';
 
 let doc,
   petbob_id,
@@ -20,7 +17,7 @@ let server,
 function createDevice(name): Backchannel {
   let dbname = randomBytes(16);
   let db_a = new Database<Mailbox>(dbname + name);
-  return new Backchannel(db_a, `ws://localhost:${port}`);
+  return new Backchannel(db_a, { relay: `ws://localhost:${port}` });
 }
 
 beforeEach((done) => {
@@ -167,20 +164,23 @@ test('adds and syncs contacts with another device', (done) => {
       done();
     }
 
-    let prom2 = devices.alice.addDevice(key, 'my android');
-    let prom1 = devices.android.addDevice(key, 'my windows laptop');
-    jest.runOnlyPendingTimers();
-    jest.runOnlyPendingTimers();
+    devices.android.on('server.connect', () => {
+      let prom2 = devices.alice.addDevice(key, 'my android');
+      jest.runOnlyPendingTimers();
+      let prom1 = devices.android.addDevice(key, 'my windows laptop');
+      jest.runOnlyPendingTimers();
+      jest.runOnlyPendingTimers();
 
-    Promise.all([prom1, prom2]).then(([alice_id, android_id]) => {
-      devices.alice.connectToContactId(android_id);
-      jest.runOnlyPendingTimers();
-      devices.android.connectToContactId(alice_id);
-      jest.runOnlyPendingTimers();
-      devices.android.db.on('patch', onSync);
+      Promise.all([prom1, prom2]).then(([alice_id, android_id]) => {
+        devices.alice.connectToContactId(android_id);
+        jest.runOnlyPendingTimers();
+        devices.android.connectToContactId(alice_id);
+        jest.runOnlyPendingTimers();
+        devices.android.db.on('patch', onSync);
+        jest.runOnlyPendingTimers();
+      });
       jest.runOnlyPendingTimers();
     });
-    jest.runOnlyPendingTimers();
   });
 });
 

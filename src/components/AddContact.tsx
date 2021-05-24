@@ -68,27 +68,28 @@ export default function AddContact({ backchannel, view }: Props) {
       setErrorMsg('');
       setLocation(`/contact/${cid}/add`);
     } catch (err) {
+      console.log('got error', err)
       onError(err);
       setCode('');
     }
   }
 
   async function onClickGenerate() {
-    setErrorMsg('');
-
     try {
-      const code: Code = await backchannel.getCode();
+      const code: Code = backchannel.getCode();
 
       if (code) {
         setCode(code);
 
         // This promise returns once the other party redeems the code
         let cid: ContactId = await backchannel.announce(code);
+        setErrorMsg('');
         setLocation(`/contact/${cid}/add`);
       }
     } catch (err) {
       onError(err);
       setCode('');
+      onClickGenerate();
     }
   }
 
@@ -148,6 +149,7 @@ export default function AddContact({ backchannel, view }: Props) {
             </Instructions>
             <CodeDisplayOrInput>
               <input
+                value={code}
                 css={css`
                   font-size: inherit;
                   width: 100%;
@@ -159,6 +161,7 @@ export default function AddContact({ backchannel, view }: Props) {
               ></input>
             </CodeDisplayOrInput>
             <BottomActions>
+              <Message>{errorMsg || message}</Message>
               <Button onClick={onClickRedeem}>Enter Backchannel</Button>
             </BottomActions>
           </React.Fragment>

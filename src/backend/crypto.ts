@@ -14,14 +14,22 @@ export async function generateKey(): Promise<Key> {
     true,
     ['encrypt', 'decrypt']
   );
-  let exported = await window.crypto.subtle.exportKey('raw', rawKey);
-  return Buffer.from(exported).toString('hex');
+  return exportKey(rawKey)
 }
 
-export function importKey(key: Key): Promise<CryptoKey> {
+export async function exportKey(key: CryptoKey): Promise<Key> {
+  let raw: ArrayBuffer = await window.crypto.subtle.exportKey(
+    'raw',
+    key
+  );
+  return Buffer.from(raw).toString('hex')
+}
+
+export function importKey(key: Key | Buffer): Promise<CryptoKey> {
+  if (typeof key === 'string') key = Buffer.from(key, 'hex')
   return window.crypto.subtle.importKey(
     'raw',
-    Buffer.from(key, 'hex'),
+    key,
     'AES-GCM',
     true,
     ['encrypt', 'decrypt']
@@ -30,9 +38,10 @@ export function importKey(key: Key): Promise<CryptoKey> {
 
 export const symmetric = {
   encrypt: async function (
-    key: CryptoKey,
+    key: Key,
     msg: string
   ): Promise<EncryptedProtocolMessage> {
+    let cryptoKey = await importKey(key)
     let enc = new TextEncoder();
     let plainText = enc.encode(msg);
     let iv = window.crypto.getRandomValues(new Uint8Array(12));
@@ -41,7 +50,7 @@ export const symmetric = {
         name: 'AES-GCM',
         iv: iv,
       },
-      key,
+      cryptoKey,
       plainText
     );
 
@@ -51,15 +60,16 @@ export const symmetric = {
     };
   },
   decrypt: async function (
-    key: CryptoKey,
+    key: Key,
     msg: EncryptedProtocolMessage
   ): Promise<string> {
+    let cryptoKey = await importKey(key)
     let decrypted = await window.crypto.subtle.decrypt(
       {
         name: 'AES-GCM',
         iv: Buffer.from(msg.nonce, 'hex'),
       },
-      key,
+      cryptoKey,
       Buffer.from(msg.cipher, 'hex')
     );
 
