@@ -18,9 +18,15 @@ export class Wormhole {
     this.log = debug('bc:wormhole');
   }
 
-  getCode(lang?: string) {
-    if (lang) bip.setDefaultWordlist(lang);
-    let passwordPieces = bip.entropyToMnemonic(randomBytes(32)).split(' ');
+  async getCode(lang?: string) {
+    let english
+    if (lang) {
+      bip.setDefaultWordlist(lang)
+    } else {
+      let vl: string = await (await fetch('/lib/wordlist_en.txt')).text()
+      english = vl.split('\n')
+    }
+    let passwordPieces = bip.entropyToMnemonic(randomBytes(32), english).split(' ')
     let password = passwordPieces.filter((p) => p !== '').slice(0, 3);
     if (password.length < 3) return this.getCode(lang);
     else return password.join('-');
