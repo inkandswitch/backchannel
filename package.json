@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@babel/plugin-transform-modules-commonjs": "^7.14.0",
-    "@localfirst/relay": "^3.0.0",
+    "@localfirst/relay": "^3.2.0",
     "@peculiar/webcrypto": "^1.1.7",
     "@testing-library/jest-dom": "^5.11.4",
     "@testing-library/react": "^11.1.0",

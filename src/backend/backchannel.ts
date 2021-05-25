@@ -282,7 +282,7 @@ export class Backchannel extends events.EventEmitter {
    */
   async destroy() {
     this._open = false;
-    if (this.opened()) await this._client.disconnectServer();
+    await this._client.disconnectServer();
     await this.db.destroy();
   }
 
