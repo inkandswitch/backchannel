@@ -15,19 +15,21 @@ import {
   BackToHomeLink,
   UnderlineInput,
 } from '../components';
-import { Code, ContactId, Backchannel } from '../backend/types';
+import { Code, ContactId } from '../backend/types';
 import { color } from '../components/tokens';
+import Backchannel from '../backend';
 
 // Amount of time to show immediate user feedback
 let USER_FEEDBACK_TIMER = 5000;
 
+let backchannel = Backchannel();
+
 type CodeViewMode = 'add' | 'generate';
 type Props = {
   view: CodeViewMode;
-  backchannel: Backchannel;
 };
 
-export default function AddContact({ backchannel, view }: Props) {
+export default function AddContact({ view }: Props) {
   let [code, setCode] = useState<Code>('');
   let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
