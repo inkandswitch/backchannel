@@ -56,7 +56,8 @@ export class Backchannel extends events.EventEmitter {
     this.db = db;
     this.db.once('open', () => {
       let documentIds = this.db.documents;
-      let relay = (this.db.settings && this.db.settings.relay) || _settings.relay;
+      let relay =
+        (this.db.settings && this.db.settings.relay) || _settings.relay;
       this.log('Connecting to relay', relay);
       this._client = this._createClient(relay);
       this._wormhole = new Wormhole(this._client);
@@ -115,7 +116,11 @@ export class Backchannel extends events.EventEmitter {
         let id = await this._addContact(key);
         return resolve(id);
       } catch (err) {
-        reject(new Error('Secure connection failed. Did they type the code correctly? Try again.'))
+        reject(
+          new Error(
+            'Secure connection failed. Did they type the code correctly? Try again.'
+          )
+        );
       }
     });
   }
@@ -141,11 +146,15 @@ export class Backchannel extends events.EventEmitter {
         );
       }, TWENTY_SECONDS);
       try {
-        let key : Key = await this._wormhole.accept(code.trim());
+        let key: Key = await this._wormhole.accept(code.trim());
         let id = await this._addContact(key);
         return resolve(id);
       } catch (err) {
-        reject(new Error('Secure connection failed. Did you type the code correctly? Try again.'))
+        reject(
+          new Error(
+            'Secure connection failed. Did you type the code correctly? Try again.'
+          )
+        );
       }
     });
   }
@@ -294,7 +303,7 @@ export class Backchannel extends events.EventEmitter {
     let encryptionKey = contact.key;
 
     try {
-      socket.binaryType = 'arraybuffer'
+      socket.binaryType = 'arraybuffer';
       let send = (msg: Uint8Array) => {
         this.log('got encryption key', encryptionKey);
 
