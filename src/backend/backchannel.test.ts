@@ -166,15 +166,23 @@ test('adds and syncs contacts with another device', (done) => {
       expect(messages).toStrictEqual([])
 
       let msgText = 'hey alice'
+      let pending = 2
       android.db.on('patch', () => {
-        console.log('got patch')
+        pending--
+        if (pending === 0) check()
+      })
+
+      alice.db.on('patch', () => {
+        pending--
+        if (pending === 0) check()
+      })
+
+      let check = function () {
         let msgs = android.getMessagesByContactId(alices_bob.id)
         let og = alice.getMessagesByContactId(alices_bob.id)
-        if (msgs.length > 0) {
-          expect(msgs).toStrictEqual(og)
-          done();
-        }
-      })
+        expect(msgs).toStrictEqual(og)
+        done();
+      }
       jest.runOnlyPendingTimers();
       // Bob comes online and sends a message to alice
       alice.connectToAllContacts()
