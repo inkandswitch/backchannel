@@ -101,6 +101,12 @@ export function Button({ children, ...props }) {
         border: none;
         box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
         font-weight: 500;
+        cursor: pointer;
+
+        &:disabled {
+          opacity: 70%;
+          cursor: not-allowed;
+        }
       `}
       {...props}
     >

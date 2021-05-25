@@ -155,6 +155,7 @@ export default function ContactList(props) {
             margin-top: 12px;
           `}
           onClick={handleAcknowledge}
+          disabled={showInitiationAnimation}
         >
           Get Started
         </Button>
