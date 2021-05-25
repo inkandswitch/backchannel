@@ -4,10 +4,11 @@ import { Route } from 'wouter';
 import { css } from '@emotion/react/macro';
 
 import { color } from './components/tokens';
-import { Button } from './components';
+import { A, Button } from './components';
 import Mailbox from './components/Mailbox';
 import ContactList from './components/ContactList';
 import Contact from './components/Contact';
+import Devices from './components/Devices';
 import AddContact from './components/AddContact';
 import NetworkError from './components/Error';
 import Backchannel from './backend';
@@ -28,14 +29,17 @@ export default function App() {
         margin: auto;
       `}
     >
-      <Route path="/add">
-        <AddContact view={'add'} backchannel={backchannel} />
+      <Route path="/:object/add">
+        {params => <AddContact view={'add'} backchannel={backchannel} object={params.object} />}
       </Route>
-      <Route path="/generate">
-        <AddContact view={'generate'} backchannel={backchannel} />
+      <Route path="/:object/generate">
+        {params => <AddContact view={'generate'} backchannel={backchannel} object={params.object} />}
       </Route>
       <Route path="/settings">
         <Settings />
+      </Route>
+      <Route path="/device/:did">
+        {(params) => <Devices deviceId={params.did} />}
       </Route>
       <Route path="/mailbox/:cid">
         {(params) => <Mailbox contactId={params.cid} />}
@@ -118,6 +122,7 @@ function Settings(props) {
           ></input>
         </div>
         <div>
+          <A href="/device/generate">Add Device</A>
           <Button onClick={clearDb}>ClearDB</Button>
           <br />
           <Button type="submit">Save</Button>

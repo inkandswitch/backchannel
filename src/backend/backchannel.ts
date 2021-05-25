@@ -113,8 +113,7 @@ export class Backchannel extends events.EventEmitter {
     return new Promise(async (resolve, reject) => {
       try {
         let key = await this._wormhole.announce(code.trim());
-        let id = await this._addContact(key);
-        return resolve(id);
+        return resolve(key);
       } catch (err) {
         reject(
           new Error(
@@ -147,8 +146,7 @@ export class Backchannel extends events.EventEmitter {
       }, TWENTY_SECONDS);
       try {
         let key: Key = await this._wormhole.accept(code.trim());
-        let id = await this._addContact(key);
-        return resolve(id);
+        return resolve(key);
       } catch (err) {
         reject(
           new Error(
@@ -167,6 +165,24 @@ export class Backchannel extends events.EventEmitter {
    */
   async editMoniker(contactId: ContactId, moniker: string): Promise<void> {
     return this.db.editMoniker(contactId, moniker);
+  }
+
+  /**
+   * Create a new contact in the database
+   *
+   * @param {Key} key - The key add to the database
+   * @returns {ContactId} id - The local id number for this contact
+   */
+  async addContact(key: Key): Promise<ContactId> {
+    let moniker = catnames.random();
+    let id = await this.db.addContact(key, moniker);
+    let contact = this.db.getContactById(id);
+    this.log('root dot created', contact.discoveryKey);
+    let docId = await this.db.addDocument(contact.id, (doc: Mailbox) => {
+      doc.messages = [];
+    });
+    this.db.save(docId);
+    return contact.id;
   }
 
   /**
@@ -407,21 +423,4 @@ export class Backchannel extends events.EventEmitter {
     return res;
   }
 
-  /**
-   * Create a new contact in the database
-   *
-   * @param {Key} key - The key add to the database
-   * @returns {ContactId} id - The local id number for this contact
-   */
-  private async _addContact(key: Key): Promise<ContactId> {
-    let moniker = catnames.random();
-    let id = await this.db.addContact(key, moniker);
-    let contact = this.db.getContactById(id);
-    this.log('root dot created', contact.discoveryKey);
-    let docId = await this.db.addDocument(contact.id, (doc: Mailbox) => {
-      doc.messages = [];
-    });
-    this.db.save(docId);
-    return contact.id;
-  }
 }

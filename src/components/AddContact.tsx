@@ -15,7 +15,7 @@ import {
   BackToHomeLink,
   UnderlineInput,
 } from '../components';
-import { Code, ContactId, Backchannel } from '../backend/types';
+import { Key, Code, ContactId, Backchannel } from '../backend/types';
 import { color } from '../components/tokens';
 
 // Amount of time to show immediate user feedback
@@ -25,9 +25,10 @@ type CodeViewMode = 'add' | 'generate';
 type Props = {
   view: CodeViewMode;
   backchannel: Backchannel;
+  object: string;
 };
 
-export default function AddContact({ backchannel, view }: Props) {
+export default function AddContact({ backchannel, view, object }: Props) {
   let [code, setCode] = useState<Code>('');
   let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
@@ -64,9 +65,16 @@ export default function AddContact({ backchannel, view }: Props) {
 
   async function onClickRedeem() {
     try {
-      let cid: ContactId = await backchannel.accept(code);
-      setErrorMsg('');
-      setLocation(`/contact/${cid}/add`);
+      let key: Key = await backchannel.accept(code);
+      if (object === 'device') {
+        let deviceId: ContactId = await backchannel.addDevice(key);
+        setErrorMsg('');
+        setLocation(`/device/${deviceId}`);
+      } else {
+        let cid: ContactId = await backchannel.addContact(key);
+        setErrorMsg('');
+        setLocation(`/contact/${cid}/add`);
+      }
     } catch (err) {
       console.log('got error', err);
       onError(err);
@@ -82,9 +90,16 @@ export default function AddContact({ backchannel, view }: Props) {
         setCode(code);
 
         // This promise returns once the other party redeems the code
-        let cid: ContactId = await backchannel.announce(code);
-        setErrorMsg('');
-        setLocation(`/contact/${cid}/add`);
+        let key: Key = await backchannel.announce(code);
+        if (object === 'device') {
+          let deviceId: ContactId = await backchannel.addDevice(key);
+          setErrorMsg('');
+          setLocation(`/device/${deviceId}`);
+        } else {
+          let cid: ContactId = await backchannel.addContact(key);
+          setErrorMsg('');
+          setLocation(`/contact/${cid}/add`);
+        }
       }
     } catch (err) {
       onError(err);
