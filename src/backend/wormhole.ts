@@ -23,8 +23,12 @@ export class Wormhole {
     if (lang) {
       bip.setDefaultWordlist(lang)
     } else {
-      let vl: string = await (await fetch('/lib/wordlist_en.txt')).text()
-      english = vl.split('\n')
+      try {
+        let vl: string = await (await fetch('/lib/wordlist_en.txt')).text()
+        english = vl.split('\n')
+      } catch (err) {
+        console.log('Could not get nicks shorter wordlist. Defaulting to the BIP list.')
+      }
     }
     let passwordPieces = bip.entropyToMnemonic(randomBytes(32), english).split(' ')
     let password = passwordPieces.filter((p) => p !== '').slice(0, 3);
