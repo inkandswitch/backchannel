@@ -81,26 +81,20 @@ export class Database<T> extends EventEmitter {
     return this.root.contacts.map((c) => this._hydrateContact(c));
   }
 
-  // FIXME this API is awkward yo
-  onDeviceConnect(peerId: string, send: Function): Promise<Function> {
-    let syncer = this._syncer(SYSTEM_ID);
-    return this._addPeer(syncer, peerId, send);
-  }
-
   /**
    * When a peer connects, call this function
-   * @param docId A unique identifier for the document
-   * @param peerId A unique identifier for the peer.
+   * @param contact The contact that connected
    * @param send A function for sending data
    * @returns A function to call when messages come in
    */
   onPeerConnect(
-    docId: DocumentId,
-    peerId: string,
+    contact: IContact,
     send: Function
   ): Promise<Function> {
+    let docId: string = this.getDocumentId(contact)
     let doc = this._syncer(docId);
-    return this._addPeer(doc, peerId, send);
+    if (!doc) throw new Error('No syncer exists for this peer, this should never happen.')
+    return this._addPeer(doc, contact.id, send);
   }
 
   /**
@@ -132,26 +126,18 @@ export class Database<T> extends EventEmitter {
    * @return {boolean} If the contact is currently connected
    */
   isConnected(contact: IContact): boolean {
-    let docId;
-    if (contact.device) {
-      docId = SYSTEM_ID;
-    } else {
-      docId = contact.discoveryKey;
-    }
+    let docId = this.getDocumentId(contact)
     let doc = this._syncers.get(docId);
     if (!doc) return false;
     return doc.hasPeer(contact.id);
   }
 
-  /**
-   * Get the document for this contact.
-   * @param {ContactId} contactId
-   * @returns Automerge document
-   */
-  getDocumentByContactId(contactId: ContactId): Automerge.Doc<System | T> {
-    let contact = this.getContactById(contactId);
-    let docId = contact.discoveryKey;
-    return this.getDocument(docId);
+  getDocumentId(contact: IContact): string {
+    if (contact.device) {
+      return SYSTEM_ID
+    } else {
+      return contact.discoveryKey
+    }
   }
 
   /**
@@ -173,10 +159,6 @@ export class Database<T> extends EventEmitter {
     syncer.updatePeers();
   }
 
-  addDevice(key: Key, description: string): Promise<ContactId> {
-    return this.addContact(key, description, 1);
-  }
-
   /**
    * Add a contact.
    */
@@ -194,7 +176,7 @@ export class Database<T> extends EventEmitter {
       discoveryKey,
       device: device ? 1 : 0,
     };
-    this.log('addContact', key, moniker);
+    this.log('addContact', key, moniker, device);
     await this.change(SYSTEM_ID, (doc: System) => {
       doc.contacts.push(contact);
     });
@@ -333,13 +315,9 @@ export class Database<T> extends EventEmitter {
       let newFrontend = Automerge.Frontend.applyPatch(frontend, patch);
       this._frontends.set(docId, newFrontend);
       this.log('got patch', docId, 'updating frontend');
-      this.emit('patch', docId);
+      this.emit('patch', { docId, patch });
     });
-
-    syncer.on('sync', ({ peerId }) => {
-      this.emit('sync', { contactId: peerId, docId: syncer.docId })
-    });
-    this.log('document hydrated', docId, doc);
+    this.log('Document hydrated', doc);
     return docId;
   }
 
@@ -350,13 +328,11 @@ export class Database<T> extends EventEmitter {
       ? Backend.load(doc.serializedDoc)
       : Backend.init();
 
-    this.log('loading document', doc.changes);
     const [backend, patch] = Backend.applyChanges(state, doc.changes);
     let frontend: Automerge.Doc<T | System> = Automerge.Frontend.applyPatch(
       Automerge.Frontend.init(),
       patch
     );
-    this.log('got doc', frontend, backend);
     return this._hyrateDocument(docId, frontend, backend);
   }
 

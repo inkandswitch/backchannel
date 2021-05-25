@@ -15,11 +15,11 @@ export default function Devices ({ deviceId } : Props) {
   let [ loading , setLoading ] = useState(true)
 
   useEffect(() => {
-    backchannel.db.on('sync', ({ docId, contactId }) => {
+    backchannel.on('CONTACT_LIST_SYNC', ({ docId, contactId }) => {
       if (contactId === deviceId) {
         setLoading(false)
-        console.log('UPDATED. NOW HAVE', backchannel.contacts.length, ' CONTACTS')
       }
+      console.log('UPDATED. NOW HAVE', backchannel.contacts.length, ' CONTACTS')
 
     })
     console.log('FETCHING NEW CONTACTS. NOW HAVE', backchannel.contacts.length, ' CONTACTS')

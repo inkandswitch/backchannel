@@ -30,7 +30,7 @@ export default class AutomergeDiscovery extends EventEmitter {
     this.doc = backend || Backend.init();
     this.docId = docId;
     this.peers = new Map<PeerId, Peer>();
-    this.log = debug('bc:AutomergePeers');
+    this.log = debug('bc:AutomergePeers:' + this.docId);
   }
 
   removePeer(id): boolean {
@@ -83,6 +83,7 @@ export default class AutomergeDiscovery extends EventEmitter {
   }
 
   updatePeers() {
+    this.log('updating peers', this.docId, this.peers)
     this.peers.forEach((peer) => {
       peer.idle = false;
       this._updatePeer(peer);
@@ -90,11 +91,12 @@ export default class AutomergeDiscovery extends EventEmitter {
   }
 
   _sendToRenderer(patch: Patch) {
-    this.log('emitting patch', this.docId);
+    this.log('emitting patch');
     this.emit('patch', { docId: this.docId, patch });
   }
 
   _updatePeer(peer) {
+    this.log('updating peer', peer)
     let [nextSyncState, msg] = Backend.generateSyncMessage(
       this.doc,
       peer.state
@@ -106,7 +108,6 @@ export default class AutomergeDiscovery extends EventEmitter {
       peer.send(msg);
       return true;
     } else {
-      this.emit('sync', { peerId: peer.id })
       return false;
     }
   }

@@ -66,6 +66,20 @@ export class Backchannel extends events.EventEmitter {
       documentIds.forEach((docId) => this._client.join(docId));
     });
 
+    this.db.on('patch', ({ patch } ) => {
+      if (patch?.diffs?.props?.contacts) {
+        let tasks = []
+        this.contacts.forEach(c => {
+          tasks.push(this._addContactDocument(c))
+        })
+
+        Promise.all(tasks).then(() => {
+          this.emit('CONTACT_LIST_SYNC')
+        })
+      }
+
+    })
+
     this.log = debug('bc:backchannel');
   }
 
@@ -178,11 +192,17 @@ export class Backchannel extends events.EventEmitter {
     let id = await this.db.addContact(key, moniker);
     let contact = this.db.getContactById(id);
     this.log('root dot created', contact.discoveryKey);
+    await this._addContactDocument(contact)
+    return contact.id;
+  }
+
+  async _addContactDocument(contact: IContact) : Promise<Automerge.Doc<Mailbox>>{
     let docId = await this.db.addDocument(contact.id, (doc: Mailbox) => {
       doc.messages = [];
     });
-    this.db.save(docId);
-    return contact.id;
+    await this.db.save(docId);
+    //@ts-ignore
+    return this.db.getDocument(docId)
   }
 
   /**
@@ -195,7 +215,7 @@ export class Backchannel extends events.EventEmitter {
    */
   async addDevice(key: Key, description?: string): Promise<ContactId> {
     let moniker = description || 'my device';
-    return this.db.addDevice(key, moniker);
+    return this.db.addContact(key, moniker, 1);
   }
 
   /**
@@ -212,8 +232,7 @@ export class Backchannel extends events.EventEmitter {
       );
       return doc.messages;
     } catch (err) {
-      console.error('error', err);
-      return [];
+      throw new Error('Error getting messages, this should never happen.')
     }
   }
 
@@ -222,9 +241,7 @@ export class Backchannel extends events.EventEmitter {
    * @returns An array of contacts
    */
   get contacts(): IContact[] {
-    let contacts = this.db.getContacts();
-    if (contacts) return contacts.filter((c) => c.device === 0);
-    else return [];
+    return this.db.getContacts();
   }
 
   listContacts() {
@@ -276,7 +293,7 @@ export class Backchannel extends events.EventEmitter {
    * connection for each contact which could be an expensive operation.
    */
   connectToAllContacts() {
-    let contacts = this.listContacts();
+    let contacts = this.contacts;
     contacts.forEach((contact) => {
       this.connectToContact(contact);
     });
@@ -315,13 +332,12 @@ export class Backchannel extends events.EventEmitter {
       return this.log('got connection to ', discoveryKey); // this is handled by wormhole.ts
     }
     let contact = this.db.getContactByDiscoveryKey(discoveryKey);
-    this.log('onPeerConnect', discoveryKey, contact);
+    this.log('onPeerConnect', contact);
     let encryptionKey = contact.key;
 
     try {
       socket.binaryType = 'arraybuffer';
       let send = (msg: Uint8Array) => {
-        this.log('got encryption key', encryptionKey);
 
         symmetric
           .encrypt(encryptionKey, Buffer.from(msg).toString('hex'))
@@ -331,17 +347,10 @@ export class Backchannel extends events.EventEmitter {
           });
       };
 
-      let gotAutomergeSyncMsg;
-      if (contact.device) {
-        gotAutomergeSyncMsg = await this.db.onDeviceConnect(contact.id, send);
-      } else {
-        let docId = contact.discoveryKey;
-        gotAutomergeSyncMsg = await this.db.onPeerConnect(
-          docId,
-          contact.id,
-          send
-        );
-      }
+      let gotAutomergeSyncMsg = await this.db.onPeerConnect(
+        contact,
+        send
+      );
 
       let onmessage = (e) => {
         let decoded = deserialize(e.data) as EncryptedProtocolMessage;
@@ -407,7 +416,6 @@ export class Backchannel extends events.EventEmitter {
     });
 
     client.on('peer.connect', ({ socket, documentId }) => {
-      this.log('on peer connect');
       this._onPeerConnect(socket, documentId);
     });
 
