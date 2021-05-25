@@ -96,9 +96,8 @@ export class Backchannel extends events.EventEmitter {
    * Create a one-time code for a new backchannel contact.
    * @returns {Code} code The code to use in announce
    */
-  getCode(): Code {
-    let code = this._wormhole.getCode();
-    return code;
+  getCode(): Promise<Code> {
+    return this._wormhole.getCode();
   }
 
   /**

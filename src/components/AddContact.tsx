@@ -76,7 +76,7 @@ export default function AddContact({ backchannel, view }: Props) {
 
   async function onClickGenerate() {
     try {
-      const code: Code = backchannel.getCode();
+      const code: Code = await backchannel.getCode();
 
       if (code) {
         setCode(code);
