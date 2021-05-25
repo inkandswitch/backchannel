@@ -68,7 +68,7 @@ export default function AddContact({ backchannel, view }: Props) {
       setErrorMsg('');
       setLocation(`/contact/${cid}/add`);
     } catch (err) {
-      console.log('got error', err)
+      console.log('got error', err);
       onError(err);
       setCode('');
     }
