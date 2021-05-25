@@ -184,10 +184,9 @@ export class Database<T> extends EventEmitter {
   }
 
   addDocument(
-    contactId: ContactId,
+    contact: IContact,
     changeFn: Automerge.ChangeFn<T>
   ): Promise<DocumentId> {
-    let contact = this.getContactById(contactId);
     return this._addDocument(contact.discoveryKey, changeFn);
   }
 

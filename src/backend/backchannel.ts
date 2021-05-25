@@ -196,13 +196,18 @@ export class Backchannel extends events.EventEmitter {
     return contact.id;
   }
 
-  async _addContactDocument(contact: IContact) : Promise<Automerge.Doc<Mailbox>>{
-    let docId = await this.db.addDocument(contact.id, (doc: Mailbox) => {
-      doc.messages = [];
-    });
-    await this.db.save(docId);
-    //@ts-ignore
-    return this.db.getDocument(docId)
+  async _addContactDocument(contact: IContact) {
+    if (contact.device) return Promise.resolve()
+    try {
+      return this.db.getDocument(contact.discoveryKey)
+    } catch (err) {
+      let docId = await this.db.addDocument(contact, (doc: Mailbox) => {
+        doc.messages = [];
+      });
+      await this.db.save(docId);
+      //@ts-ignore
+      return this.db.getDocument(docId)
+    }
   }
 
   /**

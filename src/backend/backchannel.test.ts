@@ -146,7 +146,7 @@ test('presence', (done) => {
   jest.runOnlyPendingTimers();
 });
 
-test.only('adds and syncs contacts with another device', (done) => {
+test('adds and syncs contacts with another device', (done) => {
   let android: Backchannel = devices.android
   let alice : Backchannel = devices.alice
   let bob : Backchannel = devices.bob
@@ -177,9 +177,10 @@ test.only('adds and syncs contacts with another device', (done) => {
       })
       jest.runOnlyPendingTimers();
       // Bob comes online and sends a message to alice
+      alice.connectToAllContacts()
+      android.connectToAllContacts()
       bob.connectToAllContacts()
       await bob.sendMessage(petalice_id, msgText)
-      console.log('message sent')
       jest.runOnlyPendingTimers();
     }
 
