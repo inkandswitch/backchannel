@@ -7,6 +7,8 @@ import { ReactComponent as Ellipse } from '../components/icons/Ellipse.svg';
 
 import { color, fontSize } from './tokens';
 
+type TODO = any;
+
 export function TopBar(props) {
   return (
     <div
@@ -68,6 +70,18 @@ export const ContentWithTopNav = (props) => (
   />
 );
 
+export const Page = (props) => (
+  <div
+    css={css`
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      position: relative;
+    `}
+    {...props}
+  />
+);
+
 export function A({ children, href, ...props }) {
   return (
     <Link
@@ -88,20 +102,26 @@ export function A({ children, href, ...props }) {
   );
 }
 
-export function Button({ children, ...props }) {
+type ButtonVariantType = 'transparent' | 'primary';
+type ButtonType = {
+  variant?: ButtonVariantType;
+} & React.ClassAttributes<HTMLButtonElement> &
+  React.ButtonHTMLAttributes<HTMLButtonElement>;
+
+export function Button({ variant = 'primary', ...props }: ButtonType) {
   return (
     <button
       css={css`
-        display: inline-block;
-        background: white;
-        color: ${color.primary};
-        padding: 6px 16px;
+        padding: 8px 16px;
         border-radius: 3px;
         font-size: ${fontSize[2]}px;
         border: none;
-        box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
         font-weight: 500;
         cursor: pointer;
+        display: inline-flex;
+        flex-direction: row;
+        align-items: center;
+        ${buttonStyles(variant)};
 
         &:disabled {
           opacity: 70%;
@@ -109,10 +129,25 @@ export function Button({ children, ...props }) {
         }
       `}
       {...props}
-    >
-      {children}
-    </button>
+    />
   );
+}
+function buttonStyles(variant: ButtonVariantType) {
+  switch (variant) {
+    case 'transparent':
+      return css`
+        background: transparent;
+        color: ${color.transparentButtonText};
+        border: 1px solid ${color.transparentButtonBorder};
+      `;
+    case 'primary':
+    default:
+      return css`
+        background: ${color.primaryButtonBackground};
+        box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+        color: ${color.primary};
+      `;
+  }
 }
 
 export const Instructions = (props) => (
@@ -137,6 +172,7 @@ export const CodeDisplayOrInput = (props) => (
       display: flex;
       flex-direction: column;
       justify-content: center;
+      align-items: center;
       margin: 18px;
     `}
     {...props}
@@ -151,6 +187,7 @@ export const BottomActions = (props) => (
       flex: 0 0 auto;
       display: flex;
       flex-direction: column;
+      align-items: center;
     `}
     {...props}
   />
@@ -159,7 +196,7 @@ export const BottomActions = (props) => (
 export const Message = (props) => (
   <div
     css={css`
-      height: 18px;
+      height: 24px;
       margin: 16px 0;
       color: ${color.textBold};
     `}
@@ -177,6 +214,52 @@ export const BackToHomeLink = (props) => (
         `}
       />
     </Link>
+  </div>
+);
+
+export const BackLink = (props) => (
+  <div {...props}>
+    <ArrowLeft
+      css={css`
+        padding: 0 18px;
+        cursor: pointer;
+      `}
+    />
+  </div>
+);
+
+type IconWithMessageType = {
+  icon: TODO;
+  text: string;
+} & React.ClassAttributes<HTMLDivElement> &
+  React.HTMLAttributes<HTMLDivElement>;
+
+export const IconWithMessage = ({
+  icon: Icon,
+  text,
+  ...props
+}: IconWithMessageType) => (
+  <div
+    css={css`
+      font-size: 22px;
+      font-weight: 200;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      letter-spacing: 1.1;
+      margin: 2em 0;
+      color: ${color.textBold};
+    `}
+    {...props}
+  >
+    <Icon />
+    <span
+      css={css`
+        margin-left: 12px;
+      `}
+    >
+      {text}
+    </span>
   </div>
 );
 

@@ -6,7 +6,13 @@ import Backchannel from '../backend';
 import { color, fontSize } from './tokens';
 import { IMessage } from '../backend/types';
 import { timestampToDate } from './util';
-import { BottomNav, Button, Instructions, Spinner } from '../components';
+import {
+  BottomNav,
+  Button,
+  Instructions,
+  Spinner,
+  IconWithMessage,
+} from '../components';
 import { ReactComponent as EnterDoor } from './icons/EnterDoor.svg';
 import { ReactComponent as Settings } from './icons/Settings.svg';
 import { ReactComponent as Checkmark } from './icons/Checkmark.svg';
@@ -129,26 +135,10 @@ export default function ContactList(props) {
           All content is end-to-end encrypted. The data is as secure as your
           knowledge and trust of your correspondant.
         </p>
-        <div
-          css={css`
-            font-size: 22px;
-            font-weight: 200;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            letter-spacing: 1.1;
-            margin: 2em 0;
-          `}
-        >
-          {showInitiationAnimation ? <Spinner /> : <Checkmark />}
-          <span
-            css={css`
-              margin-left: 12px;
-            `}
-          >
-            Creating the key
-          </span>
-        </div>
+        <IconWithMessage
+          icon={showInitiationAnimation ? Spinner : Checkmark}
+          text="Creating the key"
+        />
         <Instructions>Your device is set up and ready to go.</Instructions>
         <Button
           css={css`
@@ -352,7 +342,7 @@ function BackchannelLink() {
     <Link href="/generate">
       <div
         css={css`
-          background: ${color.backchannelButtonBackground};
+          background: ${color.primaryButtonBackground};
           border-radius: 50%;
           width: 76px;
           height: 76px;
