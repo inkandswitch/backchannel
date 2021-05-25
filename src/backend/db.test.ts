@@ -101,7 +101,7 @@ test('save/load', async () => {
   expect(bob.moniker).toBe('bob');
   expect(karen.moniker).toBe('karen');
 
-  let docId = await db.addDocument(karen.id, (doc) => {
+  let docId = await db.addDocument(karen, (doc) => {
     doc.messages = ['hello friend'];
   });
 
