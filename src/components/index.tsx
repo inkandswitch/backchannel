@@ -3,6 +3,7 @@ import React from 'react';
 import { css } from '@emotion/react/macro';
 import { Link } from 'wouter';
 import { ReactComponent as ArrowLeft } from '../components/icons/ArrowLeft.svg';
+import { ReactComponent as Ellipse } from '../components/icons/Ellipse.svg';
 
 import { color, fontSize } from './tokens';
 
@@ -15,10 +16,11 @@ export function TopBar(props) {
         text-align: center;
         padding: 18px 0;
         position: absolute;
+        top: 0;
         display: flex;
         flex-direction: row;
-        align-items: flex-end;
-        top: 0;
+        align-items: center;
+        justify-content: space-between;
         width: 100%;
       `}
       {...props}
@@ -59,7 +61,7 @@ export const ContentWithBottomNav = (props) => (
 export const ContentWithTopNav = (props) => (
   <div
     css={css`
-      padding-top: 60px;
+      padding-top: 75px;
       flex: 1 0 auto;
     `}
     {...props}
@@ -92,10 +94,19 @@ export function Button({ children, ...props }) {
       css={css`
         display: inline-block;
         background: white;
-        color: black;
-        padding: 2px 8px;
-        border-radius: 5px;
-        font-size: inherit;
+        color: ${color.primary};
+        padding: 6px 16px;
+        border-radius: 3px;
+        font-size: ${fontSize[2]}px;
+        border: none;
+        box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+        font-weight: 500;
+        cursor: pointer;
+
+        &:disabled {
+          opacity: 70%;
+          cursor: not-allowed;
+        }
       `}
       {...props}
     >
@@ -155,6 +166,7 @@ export const Message = (props) => (
     {...props}
   />
 );
+
 export const BackToHomeLink = (props) => (
   <div {...props}>
     <Link href="/">
@@ -166,4 +178,50 @@ export const BackToHomeLink = (props) => (
       />
     </Link>
   </div>
+);
+
+export const Spinner = (props) => (
+  <Ellipse
+    css={css`
+      animation: spin 1200ms infinite;
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    `}
+    {...props}
+  />
+);
+
+export const UnderlineInput = (props) => (
+  <input
+    css={css`
+      font-size: inherit;
+      width: 100%;
+      text-align: center;
+      background: none;
+      box-sizing: border-box;
+      border: 0;
+      border-bottom: 2px solid ${color.border};
+      color: white;
+      font-family: monospace;
+      padding: 2px 0;
+
+      &:focus {
+        outline: 0;
+        border-bottom: 2px solid ${color.codeShareText};
+        transition: 0.2s;
+      }
+      &::placeholder {
+        font-style: italic;
+      }
+    `}
+    type="text"
+    {...props}
+  />
 );

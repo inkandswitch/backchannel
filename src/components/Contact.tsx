@@ -12,7 +12,9 @@ import {
   BottomActions,
   Message,
   BackToHomeLink,
+  UnderlineInput,
 } from './';
+import { color } from './tokens';
 import WormholePlaceholder from './images/WormholePlaceholder.png';
 import { ContactId, Backchannel } from '../backend/types';
 
@@ -53,7 +55,8 @@ export default function Contact({ contactId, backchannel }: Props) {
         display: flex;
         flex-direction: column;
         height: 100%;
-        background: url('${WormholePlaceholder}'); /* TODO wormhole animation */
+        background-color: #001e93; /* TODO wormhole animation */
+        background-image: url('${WormholePlaceholder}'); /* TODO wormhole animation */
         background-size: cover;
         background-position: center;
       `}
@@ -81,16 +84,29 @@ export default function Contact({ contactId, backchannel }: Props) {
           `}
         >
           <CodeDisplayOrInput>
-            <input
+            <div
               css={css`
-                font-size: inherit;
-                width: 100%;
-                text-align: center;
+                background: white;
+                padding: 50px 30px;
               `}
-              type="text"
-              onChange={handleChange}
-              placeholder="Enter a nickname for your contact"
-            ></input>
+            >
+              <UnderlineInput
+                css={css`
+                  border-bottom: 2px solid ${color.borderInverse};
+                  color: ${color.textInverse};
+                  font-family: monospace;
+                  padding: 2px 0;
+
+                  &:focus {
+                    border-bottom: 2px solid ${color.borderInverseFocus};
+                    transition: 0.2s;
+                  }
+                `}
+                type="text"
+                onChange={handleChange}
+                placeholder="Contact nickname"
+              />
+            </div>
           </CodeDisplayOrInput>
           <BottomActions>
             <Button onClick={handleAddContact} type="submit">
