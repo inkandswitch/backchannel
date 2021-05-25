@@ -29,10 +29,10 @@ export default function App() {
       `}
     >
       <Route path="/add">
-        <AddContact view={'add'} backchannel={backchannel} />
+        <AddContact view={'add'} />
       </Route>
       <Route path="/generate">
-        <AddContact view={'generate'} backchannel={backchannel} />
+        <AddContact view={'generate'} />
       </Route>
       <Route path="/settings">
         <Settings />
@@ -42,7 +42,7 @@ export default function App() {
       </Route>
       <Route path="/contact/:cid/add">
         {(params) => (
-          <Contact contactId={params.cid} backchannel={backchannel} />
+          <Contact contactId={params.cid} />
         )}
       </Route>
       <Route path="/">
