@@ -19,7 +19,7 @@ import WormholePlaceholder from './images/WormholePlaceholder.png';
 import { ContactId } from '../backend/types';
 import Backchannel from '../backend';
 
-let backchannel = Backchannel()
+let backchannel = Backchannel();
 
 type Props = {
   contactId: ContactId;
