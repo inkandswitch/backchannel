@@ -134,10 +134,10 @@ export default function AddContact({ backchannel, view, object }: Props) {
             border-radius: 24px;
           `}
         >
-          <Toggle href="generate" isActive={view === 'generate'}>
+          <Toggle href={`/generate/${object}`} isActive={view === 'generate'}>
             Generate code
           </Toggle>
-          <Toggle href="add" isActive={view === 'add'}>
+          <Toggle href={`/add/${object}`} isActive={view === 'add'}>
             Enter code
           </Toggle>
         </div>

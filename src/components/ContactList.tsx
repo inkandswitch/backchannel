@@ -349,7 +349,7 @@ export default function ContactList(props) {
 
 function BackchannelLink() {
   return (
-    <Link href="/contact/generate">
+    <Link href="/generate/contact">
       <div
         css={css`
           background: ${color.backchannelButtonBackground};

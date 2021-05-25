@@ -106,6 +106,7 @@ export default class AutomergeDiscovery extends EventEmitter {
       peer.send(msg);
       return true;
     } else {
+      this.emit('sync', { peerId: peer.id })
       return false;
     }
   }

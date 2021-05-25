@@ -29,10 +29,10 @@ export default function App() {
         margin: auto;
       `}
     >
-      <Route path="/:object/add">
+      <Route path="/add/:object">
         {params => <AddContact view={'add'} backchannel={backchannel} object={params.object} />}
       </Route>
-      <Route path="/:object/generate">
+      <Route path="/generate/:object">
         {params => <AddContact view={'generate'} backchannel={backchannel} object={params.object} />}
       </Route>
       <Route path="/settings">
@@ -122,7 +122,7 @@ function Settings(props) {
           ></input>
         </div>
         <div>
-          <A href="/device/generate">Add Device</A>
+          <A href="/generate/device">Add Device</A>
           <Button onClick={clearDb}>ClearDB</Button>
           <br />
           <Button type="submit">Save</Button>

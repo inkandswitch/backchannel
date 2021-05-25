@@ -335,6 +335,10 @@ export class Database<T> extends EventEmitter {
       this.log('got patch', docId, 'updating frontend');
       this.emit('patch', docId);
     });
+
+    syncer.on('sync', ({ peerId }) => {
+      this.emit('sync', { contactId: peerId, docId: syncer.docId })
+    });
     this.log('document hydrated', docId, doc);
     return docId;
   }
