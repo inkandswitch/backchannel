@@ -8,7 +8,7 @@
     "build": "cd node_modules/automerge && npm i && npm run build && cd ../.. && react-scripts build",
     "test": "react-scripts test",
     "deploy": "npm run build && npm run build:docs",
-    "relay": "DEBUG=* PORT=3001 node ./node_modules/@localfirst/relay/dist/start.js",
+    "relay": "cross-env DEBUG=* PORT=3001 node ./node_modules/@localfirst/relay/dist/start.js",
     "lint": "prettier -c src",
     "format": "prettier -w src",
     "build:docs": "typedoc src/ --excludeExternals --excludePrivate --excludeInternal --out build/docs/api --readme docs/readme.md"
@@ -49,6 +49,7 @@
     "@types/node": "^12.0.0",
     "@types/react": "^17.0.3",
     "@types/react-dom": "^17.0.3",
+    "cross-env": "^7.0.3",
     "fake-indexeddb": "^3.1.2",
     "jest-websocket-mock": "^2.2.0",
     "jsdoc": "^3.6.6",

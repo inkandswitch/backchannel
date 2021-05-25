@@ -5,6 +5,7 @@ import debug from 'debug';
 import { serialize, deserialize } from 'bson';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
 import { Key } from './types';
+import english from './wordlist_en.json';
 
 let VERSION = 1;
 let appid = 'backchannel/app/mailbox/v1';
@@ -19,18 +20,8 @@ export class Wormhole {
   }
 
   async getCode(lang?: string) {
-    let english;
     if (lang) {
       bip.setDefaultWordlist(lang);
-    } else {
-      try {
-        let vl: string = await (await fetch('/lib/wordlist_en.txt')).text();
-        english = vl.split('\n');
-      } catch (err) {
-        console.log(
-          'Could not get nicks shorter wordlist. Defaulting to the BIP list.'
-        );
-      }
     }
     let passwordPieces = bip
       .entropyToMnemonic(randomBytes(32), english)
