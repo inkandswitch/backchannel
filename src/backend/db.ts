@@ -87,13 +87,13 @@ export class Database<T> extends EventEmitter {
    * @param send A function for sending data
    * @returns A function to call when messages come in
    */
-  onPeerConnect(
-    contact: IContact,
-    send: Function
-  ): Promise<Function> {
-    let docId: string = this.getDocumentId(contact)
+  onPeerConnect(contact: IContact, send: Function): Promise<Function> {
+    let docId: string = this.getDocumentId(contact);
     let doc = this._syncer(docId);
-    if (!doc) throw new Error('No syncer exists for this peer, this should never happen.')
+    if (!doc)
+      throw new Error(
+        'No syncer exists for this peer, this should never happen.'
+      );
     return this._addPeer(doc, contact.id, send);
   }
 
@@ -126,7 +126,7 @@ export class Database<T> extends EventEmitter {
    * @return {boolean} If the contact is currently connected
    */
   isConnected(contact: IContact): boolean {
-    let docId = this.getDocumentId(contact)
+    let docId = this.getDocumentId(contact);
     let doc = this._syncers.get(docId);
     if (!doc) return false;
     return doc.hasPeer(contact.id);
@@ -134,9 +134,9 @@ export class Database<T> extends EventEmitter {
 
   getDocumentId(contact: IContact): string {
     if (contact.device) {
-      return SYSTEM_ID
+      return SYSTEM_ID;
     } else {
-      return contact.discoveryKey
+      return contact.discoveryKey;
     }
   }
 

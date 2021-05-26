@@ -15,9 +15,9 @@ let server,
   port = 3001;
 
 function multidevice(done) {
-  let android: Backchannel 
-  let alice : Backchannel = devices.alice
-  let bob : Backchannel = devices.bob
+  let android: Backchannel;
+  let alice: Backchannel = devices.alice;
+  let bob: Backchannel = devices.bob;
   android = devices.android = createDevice('p');
   android.on('open', async () => {
     let key = await generateKey();
@@ -30,35 +30,37 @@ function multidevice(done) {
       let synced_bob = android.db.getContactById(alices_bob.id);
       expect(synced_bob.key).toBe(alices_bob.key);
 
-      let messages = android.getMessagesByContactId(alices_bob.id)
-      expect(messages).toStrictEqual([])
+      let messages = android.getMessagesByContactId(alices_bob.id);
+      expect(messages).toStrictEqual([]);
 
-      let msgText = 'hey alice'
-      let pending = 2
+      let msgText = 'hey alice';
+      let pending = 2;
       android.db.once('patch', () => {
-        pending--
-        if (pending === 0) check()
-      })
+        pending--;
+        if (pending === 0) check();
+      });
 
       alice.db.once('patch', () => {
-        pending--
-        if (pending === 0) check()
-      })
+        pending--;
+        if (pending === 0) check();
+      });
 
       let check = function () {
-        let msgs = android.getMessagesByContactId(alices_bob.id)
-        let og = alice.getMessagesByContactId(alices_bob.id)
-        expect(msgs).toStrictEqual(og)
+        let msgs = android.getMessagesByContactId(alices_bob.id);
+        let og = alice.getMessagesByContactId(alices_bob.id);
+        expect(msgs).toStrictEqual(og);
         done({
-          android, alice, bob
+          android,
+          alice,
+          bob,
         });
-      }
+      };
       jest.runOnlyPendingTimers();
       // Bob comes online and sends a message to alice
-      alice.connectToAllContacts()
-      android.connectToAllContacts()
-      bob.connectToAllContacts()
-      await bob.sendMessage(petalice_id, msgText)
+      alice.connectToAllContacts();
+      android.connectToAllContacts();
+      bob.connectToAllContacts();
+      await bob.sendMessage(petalice_id, msgText);
       jest.runOnlyPendingTimers();
     }
 
@@ -68,8 +70,8 @@ function multidevice(done) {
       jest.runOnlyPendingTimers();
 
       Promise.all([prom1, prom2]).then(([alice_id, android_id]) => {
-        alice.connectToAllContacts()
-        android.connectToAllContacts()
+        alice.connectToAllContacts();
+        android.connectToAllContacts();
         android.once('CONTACT_LIST_SYNC', onSync);
         jest.runOnlyPendingTimers();
       });
@@ -213,29 +215,29 @@ test('presence', (done) => {
 test('adds and syncs contacts with another device', (done) => {
   multidevice(({ android, alice, bob }) => {
     done();
-  })
+  });
 });
 
 test.only('editMoniker syncs between two devices', (done) => {
   multidevice(async ({ android, alice, bob }) => {
-    let newBobName = 'this is really bob i promise'
+    let newBobName = 'this is really bob i promise';
 
     alice.once('CONTACT_LIST_SYNC', () => {
-      let bb = alice.db.getContactById(petbob_id)
-      let ba = android.db.getContactById(petbob_id)
-      expect(ba).toStrictEqual(bb)
-      done()
-    })
-    let b = android.db.getContactById(petbob_id)
-    expect(b.moniker).toStrictEqual('bob')
+      let bb = alice.db.getContactById(petbob_id);
+      let ba = android.db.getContactById(petbob_id);
+      expect(ba).toStrictEqual(bb);
+      done();
+    });
+    let b = android.db.getContactById(petbob_id);
+    expect(b.moniker).toStrictEqual('bob');
 
-    let ba = alice.db.getContactById(petbob_id)
-    expect(ba.moniker).toStrictEqual('bob')
+    let ba = alice.db.getContactById(petbob_id);
+    expect(ba.moniker).toStrictEqual('bob');
 
-    await android.editMoniker(petbob_id, newBobName)
-    console.log('editing moniker')
-  })
-})
+    await android.editMoniker(petbob_id, newBobName);
+    console.log('editing moniker');
+  });
+});
 
 test('integration send multiple messages', (done) => {
   // OK, now let's send bob a message 'hello'

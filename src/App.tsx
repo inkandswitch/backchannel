@@ -30,10 +30,22 @@ export default function App() {
       `}
     >
       <Route path="/add/:object">
-        {params => <AddContact view={'add'} backchannel={backchannel} object={params.object} />}
+        {(params) => (
+          <AddContact
+            view={'add'}
+            backchannel={backchannel}
+            object={params.object}
+          />
+        )}
       </Route>
       <Route path="/generate/:object">
-        {params => <AddContact view={'generate'} backchannel={backchannel} object={params.object} />}
+        {(params) => (
+          <AddContact
+            view={'generate'}
+            backchannel={backchannel}
+            object={params.object}
+          />
+        )}
       </Route>
       <Route path="/settings">
         <Settings />

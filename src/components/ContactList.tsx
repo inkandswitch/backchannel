@@ -83,7 +83,6 @@ export default function ContactList(props) {
         setAcknowledged(dismissedWelcome);
       }
       contacts.forEach((contact) => {
-        console.log(contact)
         let messages = backchannel.getMessagesByContactId(contact.id);
         const lastMessage: IMessage = messages.pop();
         setLatestMessages((latestMessages) => ({

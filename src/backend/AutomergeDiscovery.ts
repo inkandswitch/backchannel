@@ -83,7 +83,7 @@ export default class AutomergeDiscovery extends EventEmitter {
   }
 
   updatePeers() {
-    this.log('updating peers', this.docId, this.peers)
+    this.log('updating peers', this.docId, this.peers);
     this.peers.forEach((peer) => {
       peer.idle = false;
       this._updatePeer(peer);
@@ -96,7 +96,7 @@ export default class AutomergeDiscovery extends EventEmitter {
   }
 
   _updatePeer(peer) {
-    this.log('updating peer', peer)
+    this.log('updating peer', peer);
     let [nextSyncState, msg] = Backend.generateSyncMessage(
       this.doc,
       peer.state

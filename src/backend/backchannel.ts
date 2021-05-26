@@ -66,24 +66,22 @@ export class Backchannel extends events.EventEmitter {
       documentIds.forEach((docId) => this._client.join(docId));
     });
 
-    this.db.on('patch', ({ patch } ) => {
-      console.log('got patch', patch)
+    this.db.on('patch', ({ patch }) => {
       if (patch?.diffs?.props?.contacts) {
-        let tasks = []
-        this.contacts.forEach(c => {
+        let tasks = [];
+        this.contacts.forEach((c) => {
           try {
-            this.db.getDocument(c.discoveryKey)
+            this.db.getDocument(c.discoveryKey);
           } catch (err) {
-            tasks.push(this._addContactDocument(c))
+            tasks.push(this._addContactDocument(c));
           }
-        })
+        });
 
         Promise.all(tasks).then(() => {
-          this.emit('CONTACT_LIST_SYNC')
-        })
+          this.emit('CONTACT_LIST_SYNC');
+        });
       }
-
-    })
+    });
 
     this.log = debug('bc:backchannel');
   }
@@ -197,21 +195,21 @@ export class Backchannel extends events.EventEmitter {
     let id = await this.db.addContact(key, moniker);
     let contact = this.db.getContactById(id);
     this.log('root dot created', contact.discoveryKey);
-    await this._addContactDocument(contact)
+    await this._addContactDocument(contact);
     return contact.id;
   }
 
   async _addContactDocument(contact: IContact) {
-    if (contact.device) return Promise.resolve()
+    if (contact.device) return Promise.resolve();
     try {
-      return this.db.getDocument(contact.discoveryKey)
+      return this.db.getDocument(contact.discoveryKey);
     } catch (err) {
       let docId = await this.db.addDocument(contact, (doc: Mailbox) => {
         doc.messages = [];
       });
       await this.db.save(docId);
       //@ts-ignore
-      return this.db.getDocument(docId)
+      return this.db.getDocument(docId);
     }
   }
 
@@ -242,7 +240,7 @@ export class Backchannel extends events.EventEmitter {
       );
       return doc.messages;
     } catch (err) {
-      throw new Error('Error getting messages, this should never happen.')
+      throw new Error('Error getting messages, this should never happen.');
     }
   }
 
@@ -348,7 +346,6 @@ export class Backchannel extends events.EventEmitter {
     try {
       socket.binaryType = 'arraybuffer';
       let send = (msg: Uint8Array) => {
-
         symmetric
           .encrypt(encryptionKey, Buffer.from(msg).toString('hex'))
           .then((cipher) => {
@@ -357,10 +354,7 @@ export class Backchannel extends events.EventEmitter {
           });
       };
 
-      let gotAutomergeSyncMsg = await this.db.onPeerConnect(
-        contact,
-        send
-      );
+      let gotAutomergeSyncMsg = await this.db.onPeerConnect(contact, send);
 
       let onmessage = (e) => {
         let decoded = deserialize(e.data) as EncryptedProtocolMessage;
@@ -440,5 +434,4 @@ export class Backchannel extends events.EventEmitter {
     this.db.save(docId);
     return res;
   }
-
 }
