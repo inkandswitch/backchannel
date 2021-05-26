@@ -44,6 +44,12 @@ export function BottomNav(props) {
         flex-direction: row;
         justify-content: space-around;
         align-items: center;
+
+        pointer-events: none; /* Fixes clicking elements behind this container, and scrolling while mouse is over container. */
+
+        & > * {
+          pointer-events: auto; /* Enable clicking children elements within this container */
+        }
       `}
       {...props}
     />
@@ -53,8 +59,9 @@ export function BottomNav(props) {
 export const ContentWithBottomNav = (props) => (
   <div
     css={css`
-      padding-bottom: 100px;
       flex: 1 0 auto;
+      height: 100%;
+      overflow: auto; /* scroll this only, not top or bottom nav */
     `}
     {...props}
   />
@@ -65,6 +72,17 @@ export const ContentWithTopNav = (props) => (
     css={css`
       padding-top: 75px;
       flex: 1 0 auto;
+    `}
+    {...props}
+  />
+);
+
+export const Content = (props) => (
+  <div
+    css={css`
+      flex: 1 0 auto;
+      height: 100%;
+      overflow: auto; /* scroll this only, not top or bottom nav */
     `}
     {...props}
   />
@@ -99,6 +117,18 @@ export function A({ children, href, ...props }) {
     >
       {children}
     </Link>
+  );
+}
+
+export function Text(props) {
+  return (
+    <p
+      css={css`
+        margin-left: 1em;
+        margin-right: 1em;
+      `}
+      {...props}
+    />
   );
 }
 
