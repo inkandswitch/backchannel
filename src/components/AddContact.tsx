@@ -26,7 +26,7 @@ import { ReactComponent as EnterDoor } from './icons/EnterDoor.svg';
 // Amount of time to show immediate user feedback
 let USER_FEEDBACK_TIMER = 5000;
 
-type CodeViewMode = 'input' | 'generate';
+type CodeViewMode = 'redeem' | 'generate';
 type Props = {
   view: CodeViewMode;
   backchannel: Backchannel;
@@ -174,7 +174,7 @@ export default function AddContact({ backchannel, view }: Props) {
                 <IconWithMessage icon={Spinner} text="Waiting for other side" />
               </>
             )}
-            {view === 'input' && (
+            {view === 'redeem' && (
               <IconWithMessage icon={Spinner} text="Connecting" />
             )}
           </div>
@@ -195,10 +195,10 @@ export default function AddContact({ backchannel, view }: Props) {
             border-radius: 24px;
           `}
         >
-          <Toggle href="generate" isActive={view === 'generate'}>
+          <Toggle href="/generate" isActive={view === 'generate'}>
             Generate code
           </Toggle>
-          <Toggle href="input" isActive={view === 'input'}>
+          <Toggle href="/redeem" isActive={view === 'redeem'}>
             Enter code
           </Toggle>
         </div>
@@ -240,7 +240,7 @@ export default function AddContact({ backchannel, view }: Props) {
             </BottomActions>
           </React.Fragment>
         )}
-        {view === 'input' && (
+        {view === 'redeem' && (
           <React.Fragment>
             <Instructions>
               Enter the code your correspondant sent you to access the
