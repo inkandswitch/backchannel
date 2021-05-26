@@ -139,7 +139,7 @@ export default function ContactList(props) {
           <Text>
             First a new secret key is generated on your device. No user account
             is created: no username, email or password is required since your
-            device and your correspondant’sk handle the authentification.
+            device and your correspondant's handle the authentification.
           </Text>
           <h4>Security</h4>
           <Text>
