@@ -121,15 +121,11 @@ export default function AddContact({ backchannel, view }: Props) {
     }
   }
 
-  const handleBackClick = () => {
-    setIsConnecting(false);
-  };
-
   if (isConnecting && !errorMsg) {
     return (
       <Page>
         <TopBar>
-          <BackLink onClick={handleBackClick} />
+          <BackToHomeLink />
           <div
             css={css`
               flex: 0 1 auto;
