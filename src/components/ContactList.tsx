@@ -84,7 +84,7 @@ export default function ContactList(props) {
       }
       contacts.forEach((contact) => {
         let messages = backchannel.getMessagesByContactId(contact.id);
-        const lastMessage: IMessage = messages.pop();
+        const lastMessage: IMessage = messages[messages.length - 1];
         setLatestMessages((latestMessages) => ({
           ...latestMessages,
           [contact.id]: lastMessage,
@@ -96,11 +96,11 @@ export default function ContactList(props) {
 
     backchannel.on('contact.disconnected', refreshContactList);
     backchannel.on('contact.connected', refreshContactList);
-    backchannel.on('patch', refreshContactList);
+    backchannel.db.on('patch', refreshContactList);
     return function unsub() {
       backchannel.removeListener('contact.disconnected', refreshContactList);
       backchannel.removeListener('contact.connected', refreshContactList);
-      backchannel.removeListener('patch', refreshContactList);
+      backchannel.db.removeListener('patch', refreshContactList);
     };
   }, []);
 
