@@ -317,7 +317,7 @@ export class Database<T> extends EventEmitter {
       this._frontends.set(docId, newFrontend);
       if (docId === SYSTEM_ID && this.onContactListChange)
         this.onContactListChange(patch);
-      this.emit('patch', { docId, patch });
+      else this.emit('patch', { docId, patch });
     });
     this.log('Document hydrated', doc);
     return docId;

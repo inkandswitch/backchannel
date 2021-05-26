@@ -238,14 +238,15 @@ test('integration send multiple messages', async () => {
   expect(alice.opened()).toBe(true);
   expect(bob.opened()).toBe(true);
 
+  let docId = bob.db.getContactById(petalice_id).discoveryKey;
+  let p = patched(bob, docId);
   await alice.sendMessage(outgoing.contact, outgoing.text);
-  let docId = bob.db.getDocumentId(bob.db.getContactById(petalice_id));
-  await patched(bob, docId);
+  await p;
 
   let messages = bob.getMessagesByContactId(petalice_id);
   expect(messages.length).toBe(1);
 
-  let p = patched(alice, docId);
+  p = patched(alice, docId);
   await bob.sendMessage(response.contact, response.text);
   await p;
 
