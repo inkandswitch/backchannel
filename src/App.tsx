@@ -33,7 +33,6 @@ export default function App() {
         {(params) => (
           <AddContact
             view={'add'}
-            backchannel={backchannel}
             object={params.object}
           />
         )}
@@ -42,7 +41,6 @@ export default function App() {
         {(params) => (
           <AddContact
             view={'generate'}
-            backchannel={backchannel}
             object={params.object}
           />
         )}
@@ -57,9 +55,7 @@ export default function App() {
         {(params) => <Mailbox contactId={params.cid} />}
       </Route>
       <Route path="/contact/:cid/add">
-        {(params) => (
-          <Contact contactId={params.cid} backchannel={backchannel} />
-        )}
+        {(params) => <Contact contactId={params.cid} />}
       </Route>
       <Route path="/">
         <ContactList />
