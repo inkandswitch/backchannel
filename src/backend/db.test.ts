@@ -120,3 +120,4 @@ test('save/load', async () => {
   expect(doc.messages.length).toBe(1);
   expect(doc.messages[0]).toBe('hello friend');
 });
+
