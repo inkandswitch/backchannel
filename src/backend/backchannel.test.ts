@@ -11,7 +11,7 @@ let server,
 
 async function connected(device: Backchannel, id: string) {
   let p = new Promise<any>((resolve) => {
-    device.on('contact.connected', async (payload) => {
+    device.once('contact.connected', async (payload) => {
       jest.runOnlyPendingTimers();
       if (payload.contact.id === id) resolve(payload);
     });
