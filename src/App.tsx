@@ -28,8 +28,8 @@ export default function App() {
         margin: auto;
       `}
     >
-      <Route path="/add">
-        <AddContact view={'add'} backchannel={backchannel} />
+      <Route path="/input">
+        <AddContact view={'input'} backchannel={backchannel} />
       </Route>
       <Route path="/generate">
         <AddContact view={'generate'} backchannel={backchannel} />
