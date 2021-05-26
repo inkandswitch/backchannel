@@ -19,6 +19,7 @@ export interface System {
 const SYSTEM_ID = 'BACKCHANNEL_ROOT_DOCUMENT';
 
 export class Database<T> extends EventEmitter {
+  public onContactListChange: Function;
   private _idb: DB;
   private _syncers: Map<DocumentId, AutomergeDiscovery> = new Map<
     DocumentId,
@@ -38,8 +39,9 @@ export class Database<T> extends EventEmitter {
    *
    * @param {string} dbname The name of the database
    */
-  constructor(dbname) {
+  constructor(dbname: string, onContactListChange?: Function) {
     super();
+    this.onContactListChange = onContactListChange;
     this._idb = new DB(dbname);
     this.log = debug('bc:db');
     this.open().then(() => {
@@ -313,7 +315,8 @@ export class Database<T> extends EventEmitter {
 
       let newFrontend = Automerge.Frontend.applyPatch(frontend, patch);
       this._frontends.set(docId, newFrontend);
-      this.log('got patch', docId, 'updating frontend');
+      if (docId === SYSTEM_ID && this.onContactListChange)
+        this.onContactListChange(patch);
       this.emit('patch', { docId, patch });
     });
     this.log('Document hydrated', doc);

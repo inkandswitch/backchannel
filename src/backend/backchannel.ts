@@ -48,12 +48,17 @@ export class Backchannel extends events.EventEmitter {
    * the backchannel app on their device. There is one Mailbox per contact which
    * is identified by the contact's discoveryKey.
    * @constructor
-   * @param {Database<Mailbox>} db  Use a database of type Mailbox, the only document supported currently
+   * @param {string} dbName The name of the db for indexeddb
    * @param defaultRelay The default URL of the relay
    */
-  constructor(db: Database<Mailbox>, _settings: BackchannelSettings) {
+  constructor(dbName: string, _settings: BackchannelSettings) {
     super();
-    this.db = db;
+
+    this.db = new Database<Mailbox>(
+      dbName,
+      this.onChangeContactList.bind(this)
+    );
+
     this.db.once('open', () => {
       let documentIds = this.db.documents;
       let relay =
@@ -65,25 +70,22 @@ export class Backchannel extends events.EventEmitter {
       this.log(`Joining ${documentIds.length} documentIds`);
       documentIds.forEach((docId) => this._client.join(docId));
     });
+    this.log = debug('bc:backchannel');
+  }
 
-    this.db.on('patch', ({ patch }) => {
-      if (patch?.diffs?.props?.contacts) {
-        let tasks = [];
-        this.contacts.forEach((c) => {
-          try {
-            this.db.getDocument(c.discoveryKey);
-          } catch (err) {
-            tasks.push(this._addContactDocument(c));
-          }
-        });
-
-        Promise.all(tasks).then(() => {
-          this.emit('CONTACT_LIST_SYNC');
-        });
+  onChangeContactList() {
+    let tasks = [];
+    this.contacts.forEach((c) => {
+      try {
+        this.db.getDocument(c.discoveryKey);
+      } catch (err) {
+        tasks.push(this._addContactDocument(c));
       }
     });
 
-    this.log = debug('bc:backchannel');
+    Promise.all(tasks).then(() => {
+      this.emit('CONTACT_LIST_SYNC');
+    });
   }
 
   async updateSettings(newSettings: BackchannelSettings) {
@@ -181,6 +183,7 @@ export class Backchannel extends events.EventEmitter {
    * @returns
    */
   async editMoniker(contactId: ContactId, moniker: string): Promise<void> {
+    this.log('editmoniker', contactId, moniker);
     return this.db.editMoniker(contactId, moniker);
   }
 

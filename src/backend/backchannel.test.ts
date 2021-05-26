@@ -1,29 +1,47 @@
-import { Mailbox, Backchannel } from './backchannel';
-import { Database } from './db';
+import { Backchannel } from './backchannel';
 import { generateKey } from './crypto';
 import { randomBytes } from 'crypto';
 
 let doc,
   petbob_id,
   petalice_id = null;
-let devices = {
-  alice: null,
-  bob: null,
-  android: null,
-};
+let alice, bob, android: Backchannel;
 let server,
   port = 3001;
 
+async function connected(device: Backchannel, id: string) {
+  let p = new Promise<any>((resolve) => {
+    device.on('contact.connected', async (payload) => {
+      jest.runOnlyPendingTimers();
+      if (payload.contact.id === id) resolve(payload);
+    });
+  });
+  device.connectToContactId(id);
+  jest.runOnlyPendingTimers();
+  return p;
+}
+
+async function patched(device, id) {
+  jest.runOnlyPendingTimers();
+  return new Promise<any>((resolve) => {
+    device.db.on('patch', async (payload) => {
+      jest.runOnlyPendingTimers();
+      if (payload.docId === id) resolve(payload);
+    });
+  });
+}
+
 function multidevice(done) {
-  let android: Backchannel;
-  let alice: Backchannel = devices.alice;
-  let bob: Backchannel = devices.bob;
-  android = devices.android = createDevice('p');
-  android.on('open', async () => {
+  android = createDevice('p');
+  android.once('open', async () => {
+    jest.runOnlyPendingTimers();
     let key = await generateKey();
 
     async function onSync() {
       jest.runOnlyPendingTimers();
+
+      android.connectToAllContacts();
+      bob.connectToAllContacts();
 
       let alices_bob = alice.db.getContactById(petbob_id);
       expect(alices_bob.id).toBe(petbob_id);
@@ -34,45 +52,38 @@ function multidevice(done) {
       expect(messages).toStrictEqual([]);
 
       let msgText = 'hey alice';
-      let pending = 2;
-      android.db.once('patch', () => {
-        pending--;
-        if (pending === 0) check();
-      });
+      let docId = synced_bob.discoveryKey;
+      let allPatched = Promise.all([
+        patched(android, docId),
+        patched(alice, docId),
+      ]);
+      await bob.sendMessage(petalice_id, msgText);
 
-      alice.db.once('patch', () => {
-        pending--;
-        if (pending === 0) check();
+      await allPatched;
+      let msgs = android.getMessagesByContactId(alices_bob.id);
+      let og = alice.getMessagesByContactId(alices_bob.id);
+      expect(msgs).toStrictEqual(og);
+      done({
+        android,
+        alice,
+        bob,
       });
-
-      let check = function () {
-        let msgs = android.getMessagesByContactId(alices_bob.id);
-        let og = alice.getMessagesByContactId(alices_bob.id);
-        expect(msgs).toStrictEqual(og);
-        done({
-          android,
-          alice,
-          bob,
-        });
-      };
       jest.runOnlyPendingTimers();
       // Bob comes online and sends a message to alice
-      alice.connectToAllContacts();
-      android.connectToAllContacts();
-      bob.connectToAllContacts();
-      await bob.sendMessage(petalice_id, msgText);
+
       jest.runOnlyPendingTimers();
     }
 
-    android.on('server.connect', () => {
+    android.once('server.connect', () => {
       let prom2 = alice.addDevice(key, 'my android');
       let prom1 = android.addDevice(key, 'my windows laptop');
       jest.runOnlyPendingTimers();
 
       Promise.all([prom1, prom2]).then(([alice_id, android_id]) => {
-        alice.connectToAllContacts();
-        android.connectToAllContacts();
         android.once('CONTACT_LIST_SYNC', onSync);
+        android.connectToAllContacts();
+        alice.connectToAllContacts();
+        bob.connectToAllContacts();
         jest.runOnlyPendingTimers();
       });
       jest.runOnlyPendingTimers();
@@ -81,33 +92,37 @@ function multidevice(done) {
 }
 
 function createDevice(name): Backchannel {
-  let dbname = randomBytes(16);
-  let db_a = new Database<Mailbox>(dbname + name);
-  return new Backchannel(db_a, { relay: `ws://localhost:${port}` });
+  let dbname = randomBytes(16).toString('hex');
+  return new Backchannel(dbname, { relay: `ws://localhost:${port}` });
 }
 
 beforeEach((done) => {
   // start a backchannel on bob and alice's devices
-  devices.alice = createDevice('a');
-  devices.bob = createDevice('b');
+  alice = createDevice('a');
+  bob = createDevice('b');
 
   generateKey().then((_doc) => {
     // OK, so now I create a petname for bob on alice's device..
     doc = _doc;
 
     async function create() {
-      petbob_id = await devices.alice.addContact(doc);
-      devices.alice.editMoniker(petbob_id, 'bob');
+      petbob_id = await alice.addContact(doc);
+      await alice.editMoniker(petbob_id, 'bob');
 
-      petalice_id = await devices.bob.addContact(doc);
-      devices.bob.editMoniker(petalice_id, 'alice');
+      petalice_id = await bob.addContact(doc);
+      await bob.editMoniker(petalice_id, 'alice');
     }
 
-    devices.alice.once('open', () => {
-      devices.bob.once('open', () => {
+    alice.once('open', () => {
+      bob.once('open', () => {
+        jest.useFakeTimers();
         create().then(() => {
-          jest.useFakeTimers();
-          done();
+          Promise.all([
+            connected(alice, petbob_id),
+            connected(bob, petalice_id),
+          ]).then(() => {
+            done();
+          });
         });
       });
     });
@@ -120,95 +135,62 @@ afterEach(async () => {
   petbob_id = null;
   doc = null;
   let promise = Promise.resolve();
-  if (devices.alice) await devices.alice.destroy();
-  if (devices.bob) await devices.bob.destroy();
-  if (devices.android) await devices.android.destroy();
+  if (alice) await alice.destroy();
+  if (bob) await bob.destroy();
+  if (android) await android.destroy();
+  alice = null;
+  bob = null;
+  android = null;
   return promise;
 });
 
 test('getMessagesByContactId', async () => {
   let msgs = ['hey .... whats up', 'h4x the planet', 'ok bob'];
 
-  let contact = devices.bob.db.getContactById(petalice_id);
-  msgs.map((msg) => devices.bob.sendMessage(contact.id, msg));
-  let messages = devices.bob.getMessagesByContactId(petalice_id);
+  let contact = bob.db.getContactById(petalice_id);
+  msgs.map((msg) => bob.sendMessage(contact.id, msg));
+  let messages = bob.getMessagesByContactId(petalice_id);
   expect(messages.length).toBe(msgs.length);
 });
 
-test('integration send a message', (done) => {
+test('integration send a message', async () => {
   // OK, now let's send bob a message 'hello'
   let outgoing = {
     contact: petbob_id,
     text: 'hello',
   };
 
-  // sending a message
-  async function onConnect({ socket, contact }) {
-    expect(contact.id).toBe(petbob_id);
-    // bob's device has a message!
-    devices.bob.db.on('patch', onSync);
-    jest.runOnlyPendingTimers();
+  expect(alice.opened()).toBe(true);
+  expect(bob.opened()).toBe(true);
 
-    await devices.alice.sendMessage(outgoing.contact, outgoing.text);
-    jest.runOnlyPendingTimers();
-    jest.runOnlyPendingTimers();
-  }
-
-  // what we do when bob's device has received the message
-  async function onSync({ docId, patch }) {
-    jest.runOnlyPendingTimers();
-    let messages = devices.bob.getMessagesByContactId(petalice_id);
-    expect(messages.length).toBe(1);
-    expect(messages[0].text).toBe(outgoing.text);
-    done();
-  }
-
-  // sending the message once we an open contact
-  devices.alice.on('contact.connected', onConnect);
+  await alice.sendMessage(outgoing.contact, outgoing.text);
+  let docId = bob.db.getDocumentId(bob.db.getContactById(petalice_id));
+  await patched(bob, docId);
   jest.runOnlyPendingTimers();
+  let messages = bob.getMessagesByContactId(petalice_id);
+  expect(messages.length).toBe(1);
+  expect(messages[0].text).toBe(outgoing.text);
 
-  expect(devices.alice.opened()).toBe(true);
-  expect(devices.bob.opened()).toBe(true);
-
-  // joining the document on both sides fires the 'contact.connected' event
-  devices.alice.connectToContactId(petbob_id);
-  devices.bob.connectToContactId(petalice_id);
+  jest.runOnlyPendingTimers();
+  jest.runOnlyPendingTimers();
   jest.runOnlyPendingTimers();
 });
 
 test('presence', (done) => {
-  // sending a message
-  expect(devices.alice.opened()).toBe(true);
-  expect(devices.bob.opened()).toBe(true);
-  jest.runOnlyPendingTimers();
-  async function onConnect({ socket, contact }) {
-    // only if the contact is bob!
-    expect(contact.id).toBe(petbob_id);
-    // ok bob will now disconnect
-    let contacts = devices.alice.contacts;
-    expect(contacts[0].isConnected).toBe(true);
-    socket.close();
-    jest.runOnlyPendingTimers();
-  }
-
   async function onDisconnect({ contact, documentId }) {
     // after bob destroys himself, we should get the disconnected event
-    let contacts = devices.alice.contacts;
+    let contacts = alice.contacts;
     expect(contacts[0].isConnected).toBe(false);
     expect(contact.id).toBe(petbob_id);
     done();
   }
 
-  let contacts = devices.alice.contacts;
-  expect(contacts[0].isConnected).toBe(false);
+  let contacts = alice.contacts;
+  expect(contacts[0].isConnected).toBe(true);
   // sending the message once we an open contact
-  devices.alice.on('contact.connected', onConnect);
-  devices.alice.on('contact.disconnected', onDisconnect);
+  alice.once('contact.disconnected', onDisconnect);
   jest.runOnlyPendingTimers();
-
-  // joining the document on both sides fires the 'contact.connected' event
-  devices.alice.connectToContactId(petbob_id);
-  devices.bob.connectToContactId(petalice_id);
+  bob.destroy();
   jest.runOnlyPendingTimers();
 });
 
@@ -218,11 +200,12 @@ test('adds and syncs contacts with another device', (done) => {
   });
 });
 
-test.only('editMoniker syncs between two devices', (done) => {
+test('editMoniker syncs between two devices', (done) => {
   multidevice(async ({ android, alice, bob }) => {
     let newBobName = 'this is really bob i promise';
 
     alice.once('CONTACT_LIST_SYNC', () => {
+      jest.runOnlyPendingTimers();
       let bb = alice.db.getContactById(petbob_id);
       let ba = android.db.getContactById(petbob_id);
       expect(ba).toStrictEqual(bb);
@@ -235,11 +218,10 @@ test.only('editMoniker syncs between two devices', (done) => {
     expect(ba.moniker).toStrictEqual('bob');
 
     await android.editMoniker(petbob_id, newBobName);
-    console.log('editing moniker');
   });
 });
 
-test('integration send multiple messages', (done) => {
+test('integration send multiple messages', async () => {
   // OK, now let's send bob a message 'hello'
   let outgoing = {
     contact: petbob_id,
@@ -251,45 +233,26 @@ test('integration send multiple messages', (done) => {
     text: 'hey bob',
   };
 
-  // sending the message once we an open contact
-  devices.alice.on('contact.connected', async ({ socket, contact }) => {
-    expect(contact.id).toBe(petbob_id);
-    await devices.alice.sendMessage(outgoing.contact, outgoing.text);
-    jest.runOnlyPendingTimers();
-    devices.bob.db.once('patch', async function () {
-      jest.runOnlyPendingTimers();
-      let messages = devices.bob.getMessagesByContactId(petalice_id);
-      expect(messages.length).toBe(1);
-      devices.alice.db.once('patch', onSync);
-      await devices.bob.sendMessage(response.contact, response.text);
-      jest.runOnlyPendingTimers();
-    });
-    jest.runOnlyPendingTimers();
-  });
-  jest.runOnlyPendingTimers();
-  // sending a message
-
-  // bob's device has received the message, send a message back.
-  async function onSync({ docId, peerId }) {
-    jest.runOnlyPendingTimers();
-    let messages = devices.alice.getMessagesByContactId(petbob_id);
-    expect(messages[0].text).toBe(outgoing.text);
-    expect(messages[1].text).toBe(response.text);
-    let alices = devices.alice.getMessagesByContactId(petbob_id);
-    jest.runOnlyPendingTimers();
-    let bobs = devices.bob.getMessagesByContactId(petalice_id);
-    jest.runOnlyPendingTimers();
-    expect(alices).toStrictEqual(bobs);
-    done();
-  }
-
   jest.runOnlyPendingTimers();
 
-  expect(devices.alice.opened()).toBe(true);
-  expect(devices.bob.opened()).toBe(true);
+  expect(alice.opened()).toBe(true);
+  expect(bob.opened()).toBe(true);
 
-  // joining the document on both sides fires the 'contact.connected' event
-  devices.alice.connectToContactId(petbob_id);
-  devices.bob.connectToContactId(petalice_id);
-  jest.runOnlyPendingTimers();
+  await alice.sendMessage(outgoing.contact, outgoing.text);
+  let docId = bob.db.getDocumentId(bob.db.getContactById(petalice_id));
+  await patched(bob, docId);
+
+  let messages = bob.getMessagesByContactId(petalice_id);
+  expect(messages.length).toBe(1);
+
+  let p = patched(alice, docId);
+  await bob.sendMessage(response.contact, response.text);
+  await p;
+
+  docId = alice.db.getDocumentId(alice.db.getContactById(petbob_id));
+  let alices = alice.getMessagesByContactId(petbob_id);
+  expect(alices[0].text).toBe(outgoing.text);
+  expect(alices[1].text).toBe(response.text);
+  let bobs = bob.getMessagesByContactId(petalice_id);
+  expect(alices).toStrictEqual(bobs);
 });
