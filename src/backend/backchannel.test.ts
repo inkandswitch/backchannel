@@ -65,6 +65,8 @@ function multidevice(done) {
       let msgs = android.getMessagesByContactId(alices_bob.id);
       let og = alice.getMessagesByContactId(alices_bob.id);
       expect(msgs).toStrictEqual(og);
+
+      jest.runOnlyPendingTimers();
       done({
         android,
         alice,
