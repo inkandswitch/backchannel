@@ -67,10 +67,15 @@ export class Backchannel extends events.EventEmitter {
     });
 
     this.db.on('patch', ({ patch } ) => {
+      console.log('got patch', patch)
       if (patch?.diffs?.props?.contacts) {
         let tasks = []
         this.contacts.forEach(c => {
-          tasks.push(this._addContactDocument(c))
+          try {
+            this.db.getDocument(c.discoveryKey)
+          } catch (err) {
+            tasks.push(this._addContactDocument(c))
+          }
         })
 
         Promise.all(tasks).then(() => {
