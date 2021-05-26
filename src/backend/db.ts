@@ -8,6 +8,7 @@ import * as crypto from './crypto';
 import { Key, ContactId, IContact } from './types';
 import AutomergeDiscovery from './AutomergeDiscovery';
 import { DB } from './automerge-db';
+import { ReceiveSyncMsg } from './AutomergeDiscovery';
 
 type DocumentId = string;
 
@@ -89,7 +90,7 @@ export class Database<T> extends EventEmitter {
    * @param send A function for sending data
    * @returns A function to call when messages come in
    */
-  onPeerConnect(contact: IContact, send: Function): Promise<Function> {
+  onPeerConnect(contact: IContact, send: Function): Promise<ReceiveSyncMsg> {
     let docId: string = this.getDocumentId(contact);
     let doc = this._syncer(docId);
     if (!doc)
@@ -347,7 +348,7 @@ export class Database<T> extends EventEmitter {
     syncer: AutomergeDiscovery,
     peerId: string,
     send: Function
-  ) {
+  ): Promise<ReceiveSyncMsg> {
     let contact = this.getContactById(peerId);
     this.log('adding peer', contact);
     let docId = contact.discoveryKey;

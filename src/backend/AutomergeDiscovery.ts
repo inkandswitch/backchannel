@@ -12,6 +12,8 @@ import { EventEmitter } from 'events';
 
 type PeerId = string;
 
+export type ReceiveSyncMsg = (msg: Uint8Array) => void;
+
 interface Peer {
   id: string;
   send: Function;
@@ -53,7 +55,7 @@ export default class AutomergeDiscovery extends EventEmitter {
     return true;
   }
 
-  addPeer(id: string, peer: Peer) {
+  addPeer(id: string, peer: Peer): ReceiveSyncMsg {
     peer.state = Backend.initSyncState();
     this.peers.set(id, peer);
 
@@ -61,10 +63,10 @@ export default class AutomergeDiscovery extends EventEmitter {
     this.log('sending hello');
     this._updatePeer(peer);
 
-    return (msg) => {
+    return (msg: Uint8Array) => {
       let peer = this.peers.get(id);
       msg = new Uint8Array(msg);
-      this._receive(peer, msg);
+      this._receive(peer, msg as BinarySyncMessage);
       this._updatePeer(peer);
     };
   }

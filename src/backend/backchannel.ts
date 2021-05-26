@@ -18,6 +18,7 @@ import {
 } from './types';
 import { Wormhole } from './wormhole';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
+import { ReceiveSyncMsg } from './AutomergeDiscovery';
 
 export enum ERROR {
   UNREACHABLE = 404,
@@ -359,7 +360,7 @@ export class Backchannel extends events.EventEmitter {
           });
       };
 
-      let gotAutomergeSyncMsg = await this.db.onPeerConnect(contact, send);
+      let gotAutomergeSyncMsg: ReceiveSyncMsg = await this.db.onPeerConnect(contact, send);
 
       let onmessage = (e) => {
         let decoded = deserialize(e.data) as EncryptedProtocolMessage;
