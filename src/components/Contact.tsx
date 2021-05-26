@@ -17,14 +17,16 @@ import {
 } from './';
 import { color } from './tokens';
 import WormholePlaceholder from './images/WormholePlaceholder.png';
-import { ContactId, Backchannel } from '../backend/types';
+import { ContactId } from '../backend/types';
+import Backchannel from '../backend';
+
+let backchannel = Backchannel();
 
 type Props = {
   contactId: ContactId;
-  backchannel: Backchannel;
 };
 
-export default function Contact({ contactId, backchannel }: Props) {
+export default function Contact({ contactId }: Props) {
   let [nickname, setNickname] = useState<string>('');
   let [errorMsg, setErrorMsg] = useState('');
   //eslint-disable-next-line
