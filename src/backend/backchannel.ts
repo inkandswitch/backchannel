@@ -77,13 +77,16 @@ export class Backchannel extends events.EventEmitter {
     let tasks = [];
     this.contacts.forEach((c) => {
       try {
-        this.db.getDocument(c.discoveryKey);
+        let doc = this.db.getDocument(c.discoveryKey) as Automerge.Doc<Mailbox>;
+        if (!doc.messages) throw new Error()
       } catch (err) {
+        this.log('creating a document for contact')
         tasks.push(this._addContactDocument(c));
       }
     });
 
     Promise.all(tasks).then(() => {
+      this.connectToAllContacts();
       this.emit('CONTACT_LIST_SYNC');
     });
   }
@@ -204,16 +207,11 @@ export class Backchannel extends events.EventEmitter {
 
   async _addContactDocument(contact: IContact) {
     if (contact.device) return Promise.resolve();
-    try {
-      return this.db.getDocument(contact.discoveryKey);
-    } catch (err) {
-      let docId = await this.db.addDocument(contact, (doc: Mailbox) => {
-        doc.messages = [];
-      });
-      await this.db.save(docId);
-      //@ts-ignore
-      return this.db.getDocument(docId);
-    }
+    let docId = await this.db.addDocument(contact, (doc: Mailbox) => {
+      doc.messages = [];
+    });
+    //@ts-ignore
+    return this.db.getDocument(docId);
   }
 
   /**
@@ -241,7 +239,7 @@ export class Backchannel extends events.EventEmitter {
       let doc: Automerge.Doc<Mailbox> = this.db.getDocument(
         contact.discoveryKey
       );
-      return doc.messages;
+      return doc.messages
     } catch (err) {
       throw new Error('Error getting messages, this should never happen.');
     }
@@ -252,7 +250,11 @@ export class Backchannel extends events.EventEmitter {
    * @returns An array of contacts
    */
   get contacts(): IContact[] {
-    return this.db.getContacts();
+    return this.db.getContacts().filter(c => c.device === 0);
+  }
+
+  get devices(): IContact[] {
+    return this.db.getContacts().filter(c => c.device === 1);
   }
 
   listContacts() {
@@ -304,7 +306,7 @@ export class Backchannel extends events.EventEmitter {
    * connection for each contact which could be an expensive operation.
    */
   connectToAllContacts() {
-    let contacts = this.contacts;
+    let contacts = this.contacts.concat(this.devices);
     contacts.forEach((contact) => {
       this.connectToContact(contact);
     });

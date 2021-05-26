@@ -53,11 +53,13 @@ function multidevice(done) {
 
       let msgText = 'hey alice';
       let docId = synced_bob.discoveryKey;
+      jest.runOnlyPendingTimers();
       let allPatched = Promise.all([
         patched(android, docId),
         patched(alice, docId),
       ]);
       await bob.sendMessage(petalice_id, msgText);
+      jest.runOnlyPendingTimers();
 
       await allPatched;
       let msgs = android.getMessagesByContactId(alices_bob.id);
@@ -68,10 +70,6 @@ function multidevice(done) {
         alice,
         bob,
       });
-      jest.runOnlyPendingTimers();
-      // Bob comes online and sends a message to alice
-
-      jest.runOnlyPendingTimers();
     }
 
     android.once('server.connect', () => {
@@ -81,9 +79,6 @@ function multidevice(done) {
 
       Promise.all([prom1, prom2]).then(([alice_id, android_id]) => {
         android.once('CONTACT_LIST_SYNC', onSync);
-        android.connectToAllContacts();
-        alice.connectToAllContacts();
-        bob.connectToAllContacts();
         jest.runOnlyPendingTimers();
       });
       jest.runOnlyPendingTimers();
