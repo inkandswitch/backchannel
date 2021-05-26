@@ -261,6 +261,7 @@ export default function AddContact({ backchannel, view }: Props) {
                   `}
                   placeholder="Enter the code"
                   onChange={handleChange}
+                  autoFocus
                 />
               </form>
             </CodeDisplayOrInput>

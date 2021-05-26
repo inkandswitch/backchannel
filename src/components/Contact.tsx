@@ -103,6 +103,7 @@ export default function Contact({ contactId, backchannel }: Props) {
                 type="text"
                 onChange={handleChange}
                 placeholder="Contact nickname"
+                autoFocus
               />
             </div>
           </CodeDisplayOrInput>
