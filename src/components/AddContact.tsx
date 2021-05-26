@@ -227,7 +227,7 @@ export default function AddContact({ backchannel, view }: Props) {
               backchannel and add them as a contact:
             </Instructions>
             <CodeDisplayOrInput>
-              {code}
+              {code ? code : <Spinner />}
               <Button
                 variant="transparent"
                 onClick={onClickCopy}
