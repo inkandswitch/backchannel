@@ -17,7 +17,6 @@ import {
   Page,
   Spinner,
   IconWithMessage,
-  BackLink,
 } from '../components';
 import { Code, ContactId, Backchannel } from '../backend/types';
 import { color } from '../components/tokens';
