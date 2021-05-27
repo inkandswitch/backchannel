@@ -18,7 +18,7 @@ import {
   Spinner,
   IconWithMessage,
 } from '../components';
-import { Code, ContactId } from '../backend/types';
+import { Key, Code, ContactId } from '../backend/types';
 import { color } from '../components/tokens';
 import { ReactComponent as EnterDoor } from './icons/EnterDoor.svg';
 import Backchannel from '../backend';
@@ -31,9 +31,10 @@ let backchannel = Backchannel();
 
 type Props = {
   view: CodeViewMode;
+  object: string;
 };
 
-export default function AddContact({ view }: Props) {
+export default function AddContact({ view, object }: Props) {
   let [code, setCode] = useState<Code>('');
   let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
@@ -69,37 +70,6 @@ export default function AddContact({ view }: Props) {
     setCode(event.target.value);
   }
 
-  // Enter backchannel from 'input' code view
-  async function onClickRedeem(e) {
-    e.preventDefault();
-    try {
-      setIsConnecting(true);
-      let cid: ContactId = await backchannel.accept(code);
-      setIsConnecting(false);
-      setErrorMsg('');
-      setLocation(`/contact/${cid}/add`);
-    } catch (err) {
-      console.log('got error', err);
-      onError(err);
-      setCode('');
-    }
-  }
-
-  // Enter backchannel from 'generate' code view
-  async function onClickEnterBackchannel() {
-    try {
-      setIsConnecting(true);
-      let cid: ContactId = await backchannel.accept(code);
-      setIsConnecting(false);
-      setErrorMsg('');
-      setLocation(`/contact/${cid}/add`);
-    } catch (err) {
-      console.log('got error', err);
-      onError(err);
-      setCode('');
-    }
-  }
-
   async function generateCode() {
     try {
       const code: Code = await backchannel.getCode();
@@ -112,6 +82,29 @@ export default function AddContact({ view }: Props) {
       onError(err);
       setCode('');
       generateCode();
+    }
+  }
+
+  // Enter backchannel from 'input' code view
+  async function onClickRedeem(e) {
+    e.preventDefault();
+    try {
+      setIsConnecting(true);
+      let key: Key = await backchannel.accept(code);
+      setIsConnecting(false);
+      if (object === 'device') {
+        let deviceId: ContactId = await backchannel.addDevice(key);
+        setErrorMsg('');
+        setLocation(`/device/${deviceId}`);
+      } else {
+        let cid: ContactId = await backchannel.addContact(key);
+        setErrorMsg('');
+        setLocation(`/contact/${cid}/add`);
+      }
+    } catch (err) {
+      console.log('got error', err);
+      onError(err);
+      setCode('');
     }
   }
 
@@ -196,10 +189,10 @@ export default function AddContact({ view }: Props) {
             border-radius: 24px;
           `}
         >
-          <Toggle href="/generate" isActive={view === 'generate'}>
+          <Toggle href={`/generate/${object}`} isActive={view === 'generate'}>
             Generate code
           </Toggle>
-          <Toggle href="/redeem" isActive={view === 'redeem'}>
+          <Toggle href={`/redeem/${object}`} isActive={view === 'redeem'}>
             Enter code
           </Toggle>
         </div>
@@ -237,7 +230,7 @@ export default function AddContact({ view }: Props) {
             </CodeDisplayOrInput>
             <BottomActions>
               <Message>{errorMsg || message}</Message>
-              <EnterBackchannelButton onClick={onClickEnterBackchannel} />
+              <EnterBackchannelButton onClick={onClickRedeem} />
             </BottomActions>
           </React.Fragment>
         )}

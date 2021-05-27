@@ -8,6 +8,7 @@ import * as crypto from './crypto';
 import { Key, ContactId, IContact } from './types';
 import AutomergeDiscovery from './AutomergeDiscovery';
 import { DB } from './automerge-db';
+import { ReceiveSyncMsg } from './AutomergeDiscovery';
 
 type DocumentId = string;
 
@@ -19,6 +20,7 @@ export interface System {
 const SYSTEM_ID = 'BACKCHANNEL_ROOT_DOCUMENT';
 
 export class Database<T> extends EventEmitter {
+  public onContactListChange: Function;
   private _idb: DB;
   private _syncers: Map<DocumentId, AutomergeDiscovery> = new Map<
     DocumentId,
@@ -38,8 +40,9 @@ export class Database<T> extends EventEmitter {
    *
    * @param {string} dbname The name of the database
    */
-  constructor(dbname) {
+  constructor(dbname: string, onContactListChange?: Function) {
     super();
+    this.onContactListChange = onContactListChange;
     this._idb = new DB(dbname);
     this.log = debug('bc:db');
     this.open().then(() => {
@@ -81,26 +84,29 @@ export class Database<T> extends EventEmitter {
     return this.root.contacts.map((c) => this._hydrateContact(c));
   }
 
-  // FIXME this API is awkward yo
-  onDeviceConnect(peerId: string, send: Function): Promise<Function> {
-    let syncer = this._syncer(SYSTEM_ID);
-    return this._addPeer(syncer, peerId, send);
-  }
-
   /**
    * When a peer connects, call this function
-   * @param docId A unique identifier for the document
-   * @param peerId A unique identifier for the peer.
+   * @param contact The contact that connected
    * @param send A function for sending data
    * @returns A function to call when messages come in
    */
   onPeerConnect(
-    docId: DocumentId,
     peerId: string,
+    contact: IContact,
     send: Function
-  ): Promise<Function> {
-    let doc = this._syncer(docId);
-    return this._addPeer(doc, peerId, send);
+  ): ReceiveSyncMsg {
+    let docId: string = this.getDocumentId(contact);
+    let syncer = this._syncer(docId);
+    if (!syncer)
+      throw new Error(
+        'No syncer exists for this peer, this should never happen.'
+      );
+    this.log('adding peer', peerId);
+    let peer = {
+      id: peerId,
+      send,
+    };
+    return syncer.addPeer(peerId, peer);
   }
 
   /**
@@ -132,26 +138,21 @@ export class Database<T> extends EventEmitter {
    * @return {boolean} If the contact is currently connected
    */
   isConnected(contact: IContact): boolean {
-    let docId;
-    if (contact.device) {
-      docId = SYSTEM_ID;
-    } else {
-      docId = contact.discoveryKey;
-    }
+    let docId = this.getDocumentId(contact);
     let doc = this._syncers.get(docId);
     if (!doc) return false;
-    return doc.hasPeer(contact.id);
+    let match = doc.peers.filter((p) => {
+      return p.id.startsWith(contact.id);
+    });
+    return match.length > 0;
   }
 
-  /**
-   * Get the document for this contact.
-   * @param {ContactId} contactId
-   * @returns Automerge document
-   */
-  getDocumentByContactId(contactId: ContactId): Automerge.Doc<System | T> {
-    let contact = this.getContactById(contactId);
-    let docId = contact.discoveryKey;
-    return this.getDocument(docId);
+  getDocumentId(contact: IContact): string {
+    if (contact.device) {
+      return SYSTEM_ID;
+    } else {
+      return contact.discoveryKey;
+    }
   }
 
   /**
@@ -173,10 +174,6 @@ export class Database<T> extends EventEmitter {
     syncer.updatePeers();
   }
 
-  addDevice(key: Key, description: string): Promise<ContactId> {
-    return this.addContact(key, description, 1);
-  }
-
   /**
    * Add a contact.
    */
@@ -194,7 +191,7 @@ export class Database<T> extends EventEmitter {
       discoveryKey,
       device: device ? 1 : 0,
     };
-    this.log('addContact', key, moniker);
+    this.log('addContact', key, moniker, device);
     await this.change(SYSTEM_ID, (doc: System) => {
       doc.contacts.push(contact);
     });
@@ -202,10 +199,9 @@ export class Database<T> extends EventEmitter {
   }
 
   addDocument(
-    contactId: ContactId,
+    contact: IContact,
     changeFn: Automerge.ChangeFn<T>
   ): Promise<DocumentId> {
-    let contact = this.getContactById(contactId);
     return this._addDocument(contact.discoveryKey, changeFn);
   }
 
@@ -227,7 +223,7 @@ export class Database<T> extends EventEmitter {
     if (this.root.contacts) {
       // LOAD EXISTING DOCUMENTS
       let c = 0;
-      this.log('loading docs');
+      this.log('loading contacts', this.root.contacts);
       let tasks = [];
       this.root.contacts.forEach(async (contact) => {
         c++;
@@ -323,7 +319,7 @@ export class Database<T> extends EventEmitter {
     this._syncers.set(docId, syncer);
     let doc = this._frontends.get(docId);
 
-    syncer.on('patch', ({ docId, patch, change }) => {
+    syncer.on('patch', ({ docId, patch, changes }) => {
       let frontend = this._frontends.get(docId);
       if (!frontend)
         throw new Error(
@@ -331,11 +327,15 @@ export class Database<T> extends EventEmitter {
         );
 
       let newFrontend = Automerge.Frontend.applyPatch(frontend, patch);
+      changes.forEach(async (c) => {
+        await this._idb.storeChange(docId, c);
+      });
       this._frontends.set(docId, newFrontend);
-      this.log('got patch', docId, 'updating frontend');
-      this.emit('patch', docId);
+      if (docId === SYSTEM_ID && this.onContactListChange)
+        this.onContactListChange(patch);
+      else this.emit('patch', { docId, patch });
     });
-    this.log('document hydrated', docId, doc);
+    this.log('Document hydrated', doc);
     return docId;
   }
 
@@ -346,35 +346,16 @@ export class Database<T> extends EventEmitter {
       ? Backend.load(doc.serializedDoc)
       : Backend.init();
 
-    this.log('loading document', doc.changes);
     const [backend, patch] = Backend.applyChanges(state, doc.changes);
     let frontend: Automerge.Doc<T | System> = Automerge.Frontend.applyPatch(
       Automerge.Frontend.init(),
       patch
     );
-    this.log('got doc', frontend, backend);
     return this._hyrateDocument(docId, frontend, backend);
   }
 
   private _hydrateContact(contact: IContact): IContact {
     let isConnected = this.isConnected(contact);
     return { ...contact, isConnected };
-  }
-
-  private async _addPeer(
-    syncer: AutomergeDiscovery,
-    peerId: string,
-    send: Function
-  ) {
-    let contact = this.getContactById(peerId);
-    this.log('adding peer', contact);
-    let docId = contact.discoveryKey;
-    let state = await this._idb.getSyncState(docId, peerId);
-    let peer = {
-      id: peerId,
-      send,
-      state,
-    };
-    return syncer.addPeer(peerId, peer);
   }
 }

@@ -1,6 +1,5 @@
-import { Mailbox, Backchannel, BackchannelSettings } from './backchannel';
+import { Backchannel, BackchannelSettings } from './backchannel';
 import defaultConfig from './config';
-import { Database } from './db';
 
 let instance = null;
 
@@ -10,8 +9,7 @@ export default function initialize(
 ): Backchannel {
   if (instance) return instance;
   let dbName = _dbName || 'backchannel_' + window.location.hash;
-  let db = new Database<Mailbox>(dbName);
-  instance = new Backchannel(db, config || defaultConfig);
+  instance = new Backchannel(dbName, config || defaultConfig);
   instance.on('error', function onError(err: Error) {
     console.error('Connection error');
     console.error(err);

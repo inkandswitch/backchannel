@@ -75,7 +75,6 @@ export class DB extends Dexie {
 
   async getDoc(docId: string): Promise<Doc> {
     let doc = await this.documents.get(docId);
-    this.log('getDoc', doc);
     let changes = await this.changes.where({ docId }).toArray();
     return {
       serializedDoc: doc?.serializedDoc,
