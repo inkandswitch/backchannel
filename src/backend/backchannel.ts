@@ -13,8 +13,11 @@ import {
   Code,
   ContactId,
   IContact,
+  TextMessage,
+  FileMessage,
   IMessage,
   DiscoveryKey,
+  MessageType,
 } from './types';
 import { Wormhole } from './wormhole';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
@@ -248,16 +251,32 @@ export class Backchannel extends events.EventEmitter {
    * @param {WebSocket} socket: the open socket for the contact
    */
   async sendMessage(contactId: ContactId, text: string) {
-    let msg: IMessage = {
+    let msg: TextMessage = {
       id: uuid(),
       target: contactId,
       text: text,
+      type: MessageType.TEXT,
       timestamp: Date.now().toString(),
     };
     this.log('sending message', msg);
     let contact = this.db.getContactById(contactId);
     await this._addMessage(msg, contact);
     return msg;
+  }
+
+  async sendFile(contactId: ContactId, file: File) {
+    let msg: FileMessage = {
+      id: uuid(),
+      target: contactId,
+      timestamp: Date.now().toString(),
+      type: MessageType.FILE,
+      mime_type: file.type,
+      size: file.size,
+      lastModified: file.lastModified,
+      name: file.name,
+    };
+    let contact = this.db.getContactById(contactId);
+    await this._addMessage(msg, contact);
   }
 
   /**

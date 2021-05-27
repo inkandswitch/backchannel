@@ -80,6 +80,20 @@ export default function Mailbox(props: Props) {
     setMessageText(event.target.value);
   }
 
+  function handleDrop(e) {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files.length !== 0) {
+      for (let i = 0; i < files.length; i++) {
+        backchannel.sendFile(contactId, files[i]);
+      }
+    }
+  }
+
+  function onDragOver(event) {
+    event.preventDefault();
+  }
+
   return (
     <div
       css={css`
@@ -91,6 +105,8 @@ export default function Mailbox(props: Props) {
         position: relative;
         height: 100%;
       `}
+      onDragOver={onDragOver}
+      onDrop={handleDrop}
     >
       <TopBar
         title={`${contact ? contact.moniker : ''} ${
