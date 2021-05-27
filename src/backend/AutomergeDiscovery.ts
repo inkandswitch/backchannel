@@ -97,9 +97,9 @@ export default class AutomergeDiscovery extends EventEmitter {
     });
   }
 
-  _sendToRenderer(patch: Patch) {
+  _sendToRenderer(patch: Patch, changes: BinaryChange[] = []) {
     this.log('emitting patch');
-    this.emit('patch', { docId: this.docId, patch });
+    this.emit('patch', { docId: this.docId, patch, changes });
   }
 
   _updatePeer(peer) {
@@ -129,7 +129,10 @@ export default class AutomergeDiscovery extends EventEmitter {
     this.doc = newDoc;
     peer.state = newSyncState;
     this._peers.set(peer.id, peer);
-    if (patch) this._sendToRenderer(patch);
+    if (patch) {
+      let changes = Backend.getChanges(newDoc, patch.deps);
+      this._sendToRenderer(patch, changes);
+    }
     return patch;
   }
 }

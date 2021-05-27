@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import Automerge from 'automerge';
 import { Mailbox } from './backchannel';
 
-let db;
+let db: Database<Mailbox>;
 let dbname;
 
 beforeEach((done) => {
@@ -44,7 +44,7 @@ test('getContacts', async () => {
 
   let contacts = db.getContacts();
   expect(contacts.length).toBe(2);
-  let sorted = contacts.sort((a, b) => a.moniker > b.moniker);
+  let sorted = contacts.sort((a, b) => (a.moniker > b.moniker ? 1 : 0));
   expect(sorted[0]).toStrictEqual(bob);
   expect(sorted[1]).toStrictEqual(alice);
 });
@@ -96,27 +96,46 @@ test('save/load', async () => {
   let bob = db.getContactById(bob_id);
   expect(bob.moniker).toBe('bob');
 
-  await db.editMoniker(bob.id, 'karen');
-  let karen = db.getContactById(bob_id);
+  await db.editMoniker(bob.id, 'bob2');
+  let bob2 = db.getContactById(bob_id);
   expect(bob.moniker).toBe('bob');
-  expect(karen.moniker).toBe('karen');
+  expect(bob2.moniker).toBe('bob2');
 
-  let docId = await db.addDocument(karen, (doc) => {
-    doc.messages = ['hello friend'];
+  let docId = await db.addDocument(bob2, (doc: Mailbox) => {
+    doc.messages = [
+      {
+        id: '523',
+        target: bob.id,
+        text: 'hello friend',
+        timestamp: Date.now().toString(),
+      },
+    ];
   });
 
   expect(db.documents).toStrictEqual([docId]);
-  let doc = db.getDocument(docId);
+  //@ts-ignore
+  let doc: Automerge.Doc<Mailbox> = db.getDocument(docId);
   expect(doc.messages.length).toBe(1);
-  expect(doc.messages[0]).toBe('hello friend');
+  expect(doc.messages[0].text).toBe('hello friend');
+
+  db.change(docId, (doc: Mailbox) => {
+    doc.messages.push({
+      id: '525',
+      target: bob.id,
+      text: 'peanuts',
+      timestamp: Date.now().toString(),
+    });
+  });
+
   db = null;
 
   db = new Database(dbname);
   await db.open();
-  let maybe_karen = db.getContactById(bob_id);
-  expect(maybe_karen).toStrictEqual(karen);
+  let maybe_bob2 = db.getContactById(bob_id);
+  expect(maybe_bob2).toStrictEqual(bob2);
+  //@ts-ignore
   doc = db.getDocument(docId);
   expect(db.documents).toStrictEqual([docId]);
-  expect(doc.messages.length).toBe(1);
-  expect(doc.messages[0]).toBe('hello friend');
+  expect(doc.messages.length).toBe(2);
+  expect(doc.messages[0].text).toBe('hello friend');
 });

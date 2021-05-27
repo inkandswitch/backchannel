@@ -9,6 +9,7 @@ import { timestampToDate } from './util';
 import { ReactComponent as ArrowLeft } from './icons/ArrowLeft.svg';
 import { TopBar, Instructions } from '../components';
 import { Link } from 'wouter';
+import throttle from 'lodash.throttle';
 
 let backchannel = Backchannel();
 const PADDING_CHAT = 12;
@@ -58,12 +59,12 @@ export default function Mailbox(props: Props) {
   }, [contactId]);
 
   useEffect(() => {
-    let onMessage = ({ docId }) => {
+    let onMessage = throttle(({ docId }) => {
       if (contact && docId === contact.discoveryKey) {
         let messages = backchannel.getMessagesByContactId(contactId);
         setMessages(messages);
       }
-    };
+    }, 200);
     backchannel.db.on('patch', onMessage);
 
     return function cleanup() {

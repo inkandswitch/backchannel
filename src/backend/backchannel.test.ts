@@ -27,11 +27,11 @@ async function patched(device, id) {
     let onPatch = async (payload) => {
       jest.runOnlyPendingTimers();
       if (payload.docId === id) {
-        device.db.removeListener('patch', onPatch)
+        device.db.removeListener('patch', onPatch);
         resolve(payload);
       }
     };
-    device.db.on('patch', onPatch)
+    device.db.on('patch', onPatch);
   });
 }
 
@@ -206,7 +206,7 @@ test('editMoniker syncs between two devices', (done) => {
   multidevice(async ({ android, alice, bob }) => {
     let newBobName = 'this is really bob i promise';
 
-    alice.on('CONTACT_LIST_SYNC', () => {
+    alice.once('CONTACT_LIST_SYNC', () => {
       jest.runOnlyPendingTimers();
       let bb = alice.db.getContactById(petbob_id);
       let ba = android.db.getContactById(petbob_id);

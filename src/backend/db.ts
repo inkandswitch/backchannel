@@ -319,7 +319,7 @@ export class Database<T> extends EventEmitter {
     this._syncers.set(docId, syncer);
     let doc = this._frontends.get(docId);
 
-    syncer.on('patch', ({ docId, patch, change }) => {
+    syncer.on('patch', ({ docId, patch, changes }) => {
       let frontend = this._frontends.get(docId);
       if (!frontend)
         throw new Error(
@@ -327,6 +327,9 @@ export class Database<T> extends EventEmitter {
         );
 
       let newFrontend = Automerge.Frontend.applyPatch(frontend, patch);
+      changes.forEach(async (c) => {
+        await this._idb.storeChange(docId, c);
+      });
       this._frontends.set(docId, newFrontend);
       if (docId === SYSTEM_ID && this.onContactListChange)
         this.onContactListChange(patch);
