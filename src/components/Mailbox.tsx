@@ -2,13 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { css } from '@emotion/react/macro';
 import { ContactId } from '../backend/types';
-import { Button, UnderlineInput } from './';
+import { Button, TopBar, UnderlineInput } from './';
 import Backchannel from '../backend';
 import { color, fontSize } from './tokens';
 import { timestampToDate } from './util';
-import { ReactComponent as ArrowLeft } from './icons/ArrowLeft.svg';
-import { TopBar, Instructions } from '../components';
-import { Link } from 'wouter';
+import { Instructions } from '../components';
 
 let backchannel = Backchannel();
 const PADDING_CHAT = 12;
@@ -94,25 +92,11 @@ export default function Mailbox(props: Props) {
         height: 100%;
       `}
     >
-      <TopBar>
-        <div>
-          <Link href="/">
-            <ArrowLeft
-              css={css`
-                cursor: pointer;
-                padding: 0 18px;
-              `}
-            />
-          </Link>
-        </div>
-        <div
-          css={css`
-            flex: 1 0 auto;
-          `}
-        >
-          {contact ? contact.moniker : ''} {contact && connected ? '🤠' : '😪'}
-        </div>
-      </TopBar>
+      <TopBar
+        title={`${contact ? contact.moniker : ''} ${
+          contact && connected ? '🤠' : '😪'
+        }`}
+      />
       <div
         css={css`
           margin-top: 60px;

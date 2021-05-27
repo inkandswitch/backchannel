@@ -13,6 +13,7 @@ const rawColor = {
   lightPurple: '#9187EB',
   yellow: '#CC9900',
   red: '#7C0A02',
+  lightRed: '#ED0039',
 };
 
 /*
@@ -38,6 +39,7 @@ export const color = {
   chatText: rawColor.darkBlue,
   chatTimestamp: rawColor.lightBlue2,
   primaryButtonBackground: rawColor.white,
+  destructiveText: rawColor.lightRed,
   transparentButtonText: rawColor.white,
   transparentButtonBorder: rawColor.white,
   contactListBackground: rawColor.blue,

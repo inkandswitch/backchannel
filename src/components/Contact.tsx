@@ -4,16 +4,15 @@ import { css } from '@emotion/react/macro';
 import { useLocation } from 'wouter';
 
 import {
-  TopBar,
   Button,
   ContentWithTopNav,
   Instructions,
   CodeDisplayOrInput,
   BottomActions,
   Message,
-  BackToHomeLink,
   UnderlineInput,
   Page,
+  TopBar,
 } from './';
 import { color } from './tokens';
 import WormholePlaceholder from './images/WormholePlaceholder.png';
@@ -65,14 +64,10 @@ export default function Contact({ contactId }: Props) {
         css={css`
           background: none;
         `}
-      >
-        <BackToHomeLink />
-      </TopBar>
+      />
       <ContentWithTopNav
         css={css`
           text-align: center;
-          display: flex;
-          flex-direction: column;
         `}
       >
         <Message>{errorMsg}</Message>
