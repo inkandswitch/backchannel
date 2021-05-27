@@ -5,18 +5,17 @@ import { Link, useLocation } from 'wouter';
 
 import { copyToClipboard } from '../web';
 import {
-  TopBar,
   Button,
   ContentWithTopNav,
   Instructions,
   CodeDisplayOrInput,
   BottomActions,
   Message,
-  BackToHomeLink,
   UnderlineInput,
   Page,
   Spinner,
   IconWithMessage,
+  TopBar,
 } from '../components';
 import { Key, Code, ContactId } from '../backend/types';
 import { color } from '../components/tokens';
@@ -118,25 +117,11 @@ export default function AddContact({ view, object }: Props) {
   if (isConnecting && !errorMsg) {
     return (
       <Page>
-        <TopBar>
-          <BackToHomeLink />
-          <div
-            css={css`
-              flex: 0 1 auto;
-            `}
-          ></div>
-          <div
-            css={css`
-              width: 50px;
-            `}
-          />
-        </TopBar>
+        <TopBar />
         <ContentWithTopNav
           css={css`
             background: ${color.codeShareBackground};
             text-align: center;
-            display: flex;
-            flex-direction: column;
           `}
         >
           <div
@@ -180,7 +165,6 @@ export default function AddContact({ view, object }: Props) {
   return (
     <Page>
       <TopBar>
-        <BackToHomeLink />
         <div
           css={css`
             flex: 0 1 auto;
@@ -206,8 +190,6 @@ export default function AddContact({ view, object }: Props) {
         css={css`
           background: ${color.codeShareBackground};
           text-align: center;
-          display: flex;
-          flex-direction: column;
         `}
       >
         {view === 'generate' && (

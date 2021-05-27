@@ -9,7 +9,16 @@ import { color, fontSize } from './tokens';
 
 type TODO = any;
 
-export function TopBar(props) {
+/**
+ * Top bar component with left back link, center title, and optional icon on the right. By default the back link goes home.
+ */
+export function TopBar({
+  backHref = '/',
+  title = '',
+  children = null,
+  icon = null,
+  ...props
+}) {
   return (
     <div
       css={css`
@@ -26,7 +35,26 @@ export function TopBar(props) {
         width: 100%;
       `}
       {...props}
-    />
+    >
+      <BackLink href={backHref} />
+      <div
+        css={css`
+          flex: 0 1 auto;
+        `}
+      >
+        {title}
+        {children}
+      </div>
+      {icon ? (
+        icon
+      ) : (
+        <div
+          css={css`
+            width: 50px;
+          `}
+        />
+      )}
+    </div>
   );
 }
 
@@ -70,6 +98,9 @@ export const ContentWithBottomNav = (props) => (
 export const ContentWithTopNav = (props) => (
   <div
     css={css`
+      display: flex;
+      flex-direction: column;
+
       padding-top: 75px;
       flex: 1 0 auto;
     `}
@@ -88,13 +119,14 @@ export const Content = (props) => (
   />
 );
 
-export const Page = (props) => (
+export const Page = ({ align = 'left', ...props }) => (
   <div
     css={css`
       display: flex;
       flex-direction: column;
       height: 100%;
       position: relative;
+      text-align: ${align};
     `}
     {...props}
   />
@@ -132,7 +164,7 @@ export function Text(props) {
   );
 }
 
-type ButtonVariantType = 'transparent' | 'primary';
+type ButtonVariantType = 'transparent' | 'primary' | 'destructive';
 type ButtonType = {
   variant?: ButtonVariantType;
 } & React.ClassAttributes<HTMLButtonElement> &
@@ -151,6 +183,7 @@ export function Button({ variant = 'primary', ...props }: ButtonType) {
         display: inline-flex;
         flex-direction: row;
         align-items: center;
+        justify-content: center;
         ${buttonStyles(variant)};
 
         &:disabled {
@@ -164,6 +197,12 @@ export function Button({ variant = 'primary', ...props }: ButtonType) {
 }
 function buttonStyles(variant: ButtonVariantType) {
   switch (variant) {
+    case 'destructive':
+      return css`
+        background: ${color.primaryButtonBackground};
+        box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+        color: ${color.destructiveText};
+      `;
     case 'transparent':
       return css`
         background: transparent;
@@ -234,9 +273,9 @@ export const Message = (props) => (
   />
 );
 
-export const BackToHomeLink = (props) => (
+export const BackLink = ({ href = '/', ...props }) => (
   <div {...props}>
-    <Link href="/">
+    <Link href={href}>
       <ArrowLeft
         css={css`
           padding: 0 18px;
@@ -244,17 +283,6 @@ export const BackToHomeLink = (props) => (
         `}
       />
     </Link>
-  </div>
-);
-
-export const BackLink = (props) => (
-  <div {...props}>
-    <ArrowLeft
-      css={css`
-        padding: 0 18px;
-        cursor: pointer;
-      `}
-    />
   </div>
 );
 
