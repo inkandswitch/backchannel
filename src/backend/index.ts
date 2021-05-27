@@ -15,5 +15,10 @@ export default function initialize(
     console.error(err);
   });
 
+  instance.on('close', () => {
+    console.error('close')
+    instance = null
+  })
+
   return instance;
 }
