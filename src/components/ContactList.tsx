@@ -1,12 +1,22 @@
 /** @jsxImportSource @emotion/react */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { css } from '@emotion/react/macro';
 import { Link } from 'wouter';
 import Backchannel from '../backend';
 import { color, fontSize } from './tokens';
 import { IMessage } from '../backend/types';
 import { timestampToDate } from './util';
-import { BottomNav, Button, Instructions, Spinner } from '../components';
+import {
+  BottomNav,
+  Button,
+  Instructions,
+  Spinner,
+  IconWithMessage,
+  Page,
+  Content,
+  ContentWithBottomNav,
+  Text,
+} from '../components';
 import { ReactComponent as EnterDoor } from './icons/EnterDoor.svg';
 import { ReactComponent as Settings } from './icons/Settings.svg';
 import { ReactComponent as Checkmark } from './icons/Checkmark.svg';
@@ -44,6 +54,7 @@ export default function ContactList(props) {
   let [showInitiationAnimation, setShowInitiationAnimation] = useState(false);
   let [acknowledged, setAcknowledged] = useState(true);
   let [latestMessages, setLatestMessages] = useState([]);
+  const confirmButtonRef = useRef(null);
 
   useEffect(() => {
     // wait a second before showing loading screen, so that the loading screen is less likely to flash for a couple milliseconds before content is ready
@@ -59,6 +70,8 @@ export default function ContactList(props) {
     if (showInitiationAnimation) {
       const timeout = setTimeout(() => {
         setShowInitiationAnimation(false);
+        // Make sure the button to proceed is visible!
+        scrollToConfirmButton();
       }, APP_INITIATION_ANIMATION_MS);
 
       return () => clearTimeout(timeout);
@@ -104,83 +117,65 @@ export default function ContactList(props) {
     };
   }, []);
 
-  let handleAcknowledge = () => {
+  const scrollToConfirmButton = () => {
+    confirmButtonRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleAcknowledge = () => {
     storage.set(storage.keys.dismissed_welcome_message, true);
     setAcknowledged(true);
   };
 
   if (isLoaded && !acknowledged) {
     return (
-      <div
-        css={css`
-          color: ${color.textBold};
-          text-align: center;
-          padding: 20px;
-        `}
-      >
-        <h4>How does it work?</h4>
-        <p>
-          First a new secret key is generated on your device. No user account is
-          created: no username, email or password is required since your device
-          and your correspondant’s handle the authentification.
-        </p>
-        <h4>Security</h4>
-        <p>
-          All content is end-to-end encrypted. The data is as secure as your
-          knowledge and trust of your correspondant.
-        </p>
-        <div
+      <Page>
+        <Content
           css={css`
-            font-size: 22px;
-            font-weight: 200;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            letter-spacing: 1.1;
-            margin: 2em 0;
+            color: ${color.textBold};
+            text-align: center;
           `}
         >
-          {showInitiationAnimation ? <Spinner /> : <Checkmark />}
-          <span
+          <h4>How does it work?</h4>
+          <Text>
+            First a new secret key is generated on your device. No user account
+            is created: no username, email or password is required since your
+            device and your correspondant's handle the authentification.
+          </Text>
+          <h4>Security</h4>
+          <Text>
+            All content is end-to-end encrypted. The data is as secure as your
+            knowledge and trust of your correspondant.
+          </Text>
+          <IconWithMessage
+            icon={showInitiationAnimation ? Spinner : Checkmark}
+            text="Creating the key"
+          />
+          <Instructions
             css={css`
-              margin-left: 12px;
+              opacity: ${showInitiationAnimation ? 0 : 1};
             `}
           >
-            Creating the key
-          </span>
-        </div>
-        <Instructions>Your device is set up and ready to go.</Instructions>
-        <Button
-          css={css`
-            margin-top: 12px;
-          `}
-          onClick={handleAcknowledge}
-          disabled={showInitiationAnimation}
-        >
-          Get Started
-        </Button>
-      </div>
+            Your device is set up and ready to go.
+          </Instructions>
+          <Button
+            css={css`
+              margin: 12px;
+            `}
+            onClick={handleAcknowledge}
+            disabled={showInitiationAnimation}
+          >
+            Get Started
+          </Button>
+          <div ref={confirmButtonRef} />
+        </Content>
+      </Page>
     );
   }
 
   if (isLoaded && acknowledged) {
     return (
-      <div
-        css={css`
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-          background: ${color.contactListBackground};
-          position: relative;
-        `}
-      >
-        <div
-          css={css`
-            flex: 1 0 auto;
-            margin-bottom: 100px;
-            overflow: auto; /* scroll contact list only */
-          `}
-        >
+      <Page>
+        <ContentWithBottomNav>
           {contacts.length === 0 ? (
             <div
               css={css`
@@ -209,6 +204,7 @@ export default function ContactList(props) {
                 list-style: none;
                 padding-left: 0;
                 margin: 0;
+                margin-bottom: 100px;
               `}
             >
               {contacts.map((contact) => {
@@ -293,7 +289,7 @@ export default function ContactList(props) {
               })}
             </ul>
           )}
-        </div>
+        </ContentWithBottomNav>
         <BottomNav>
           <Link href="/settings">
             <div
@@ -303,7 +299,12 @@ export default function ContactList(props) {
                 cursor: pointer;
               `}
             >
-              <Settings />
+              <Settings
+                css={css`
+                  background: ${color.contactListBackground};
+                  border-radius: 50%;
+                `}
+              />
             </div>
           </Link>
           {contacts.length > 0 ? (
@@ -323,7 +324,7 @@ export default function ContactList(props) {
             `}
           ></div>
         </BottomNav>
-      </div>
+      </Page>
     );
   }
 
@@ -352,7 +353,7 @@ function BackchannelLink() {
     <Link href="/generate">
       <div
         css={css`
-          background: ${color.backchannelButtonBackground};
+          background: ${color.primaryButtonBackground};
           border-radius: 50%;
           width: 76px;
           height: 76px;

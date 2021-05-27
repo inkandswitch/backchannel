@@ -14,17 +14,21 @@ import {
   Message,
   BackToHomeLink,
   UnderlineInput,
+  Page,
+  Spinner,
+  IconWithMessage,
 } from '../components';
 import { Code, ContactId } from '../backend/types';
 import { color } from '../components/tokens';
+import { ReactComponent as EnterDoor } from './icons/EnterDoor.svg';
 import Backchannel from '../backend';
 
 // Amount of time to show immediate user feedback
 let USER_FEEDBACK_TIMER = 5000;
 
+type CodeViewMode = 'redeem' | 'generate';
 let backchannel = Backchannel();
 
-type CodeViewMode = 'add' | 'generate';
 type Props = {
   view: CodeViewMode;
 };
@@ -33,13 +37,14 @@ export default function AddContact({ view }: Props) {
   let [code, setCode] = useState<Code>('');
   let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
+  const [isConnecting, setIsConnecting] = useState(false);
   //eslint-disable-next-line
   let [_, setLocation] = useLocation();
 
   useEffect(() => {
     // get code on initial page load
     if (view === 'generate' && !code && !errorMsg) {
-      onClickGenerate();
+      generateCode();
     }
   });
 
@@ -64,9 +69,13 @@ export default function AddContact({ view }: Props) {
     setCode(event.target.value);
   }
 
-  async function onClickRedeem() {
+  // Enter backchannel from 'input' code view
+  async function onClickRedeem(e) {
+    e.preventDefault();
     try {
+      setIsConnecting(true);
       let cid: ContactId = await backchannel.accept(code);
+      setIsConnecting(false);
       setErrorMsg('');
       setLocation(`/contact/${cid}/add`);
     } catch (err) {
@@ -76,22 +85,33 @@ export default function AddContact({ view }: Props) {
     }
   }
 
-  async function onClickGenerate() {
+  // Enter backchannel from 'generate' code view
+  async function onClickEnterBackchannel() {
+    try {
+      setIsConnecting(true);
+      let cid: ContactId = await backchannel.accept(code);
+      setIsConnecting(false);
+      setErrorMsg('');
+      setLocation(`/contact/${cid}/add`);
+    } catch (err) {
+      console.log('got error', err);
+      onError(err);
+      setCode('');
+    }
+  }
+
+  async function generateCode() {
     try {
       const code: Code = await backchannel.getCode();
 
       if (code) {
         setCode(code);
-
-        // This promise returns once the other party redeems the code
-        let cid: ContactId = await backchannel.announce(code);
         setErrorMsg('');
-        setLocation(`/contact/${cid}/add`);
       }
     } catch (err) {
       onError(err);
       setCode('');
-      onClickGenerate();
+      generateCode();
     }
   }
 
@@ -102,15 +122,70 @@ export default function AddContact({ view }: Props) {
     }
   }
 
+  if (isConnecting && !errorMsg) {
+    return (
+      <Page>
+        <TopBar>
+          <BackToHomeLink />
+          <div
+            css={css`
+              flex: 0 1 auto;
+            `}
+          ></div>
+          <div
+            css={css`
+              width: 50px;
+            `}
+          />
+        </TopBar>
+        <ContentWithTopNav
+          css={css`
+            background: ${color.codeShareBackground};
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+          `}
+        >
+          <div
+            css={css`
+              font-size: 22px;
+              font-weight: 200;
+              display: flex;
+              justify-content: center;
+              flex-direction: column;
+              align-items: center;
+              letter-spacing: 1.1;
+              margin: 2em 0;
+            `}
+          >
+            {view === 'generate' && (
+              <>
+                <CodeDisplayOrInput>
+                  {code}
+                  <Button
+                    variant="transparent"
+                    onClick={onClickCopy}
+                    css={css`
+                      margin-top: 24px;
+                    `}
+                  >
+                    Copy code
+                  </Button>
+                </CodeDisplayOrInput>
+                <IconWithMessage icon={Spinner} text="Waiting for other side" />
+              </>
+            )}
+            {view === 'redeem' && (
+              <IconWithMessage icon={Spinner} text="Connecting" />
+            )}
+          </div>
+        </ContentWithTopNav>
+      </Page>
+    );
+  }
+
   return (
-    <div
-      css={css`
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        position: relative;
-      `}
-    >
+    <Page>
       <TopBar>
         <BackToHomeLink />
         <div
@@ -121,10 +196,10 @@ export default function AddContact({ view }: Props) {
             border-radius: 24px;
           `}
         >
-          <Toggle href="generate" isActive={view === 'generate'}>
+          <Toggle href="/generate" isActive={view === 'generate'}>
             Generate code
           </Toggle>
-          <Toggle href="add" isActive={view === 'add'}>
+          <Toggle href="/redeem" isActive={view === 'redeem'}>
             Enter code
           </Toggle>
         </div>
@@ -148,39 +223,57 @@ export default function AddContact({ view }: Props) {
               Share this code with a correspondant you trust to open a
               backchannel and add them as a contact:
             </Instructions>
-            <CodeDisplayOrInput>{code}</CodeDisplayOrInput>
+            <CodeDisplayOrInput>
+              {code ? code : <Spinner />}
+              <Button
+                variant="transparent"
+                onClick={onClickCopy}
+                css={css`
+                  margin-top: 24px;
+                `}
+              >
+                Copy code
+              </Button>
+            </CodeDisplayOrInput>
             <BottomActions>
               <Message>{errorMsg || message}</Message>
-              <Button onClick={onClickCopy}>Copy code</Button>
+              <EnterBackchannelButton onClick={onClickEnterBackchannel} />
             </BottomActions>
           </React.Fragment>
         )}
-        {view === 'add' && (
+        {view === 'redeem' && (
           <React.Fragment>
             <Instructions>
               Enter the code your correspondant sent you to access the
               backchannel:
             </Instructions>
             <CodeDisplayOrInput>
-              <UnderlineInput
-                value={code}
-                css={css`
-                  font-size: inherit;
-                  width: 100%;
-                  text-align: center;
-                `}
-                placeholder="Enter the code"
-                onChange={handleChange}
-              />
+              <form id="code-input">
+                <UnderlineInput
+                  value={code}
+                  css={css`
+                    font-size: inherit;
+                    width: 100%;
+                    text-align: center;
+                  `}
+                  placeholder="Enter the code"
+                  onChange={handleChange}
+                  autoFocus
+                />
+              </form>
             </CodeDisplayOrInput>
             <BottomActions>
               <Message>{errorMsg || message}</Message>
-              <Button onClick={onClickRedeem}>Enter Backchannel</Button>
+              <EnterBackchannelButton
+                onClick={onClickRedeem}
+                type="submit"
+                form="code-input"
+              />
             </BottomActions>
           </React.Fragment>
         )}
       </ContentWithTopNav>
-    </div>
+    </Page>
   );
 }
 
@@ -209,5 +302,18 @@ function Toggle({ isActive = false, ...props }: ToggleProps) {
       `}
       {...props}
     />
+  );
+}
+
+function EnterBackchannelButton(props) {
+  return (
+    <Button {...props}>
+      <EnterDoor
+        css={css`
+          height: 22px;
+        `}
+      />
+      Enter backchannel
+    </Button>
   );
 }

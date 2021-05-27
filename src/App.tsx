@@ -28,8 +28,8 @@ export default function App() {
         margin: auto;
       `}
     >
-      <Route path="/add">
-        <AddContact view={'add'} />
+      <Route path="/redeem">
+        <AddContact view={'redeem'} />
       </Route>
       <Route path="/generate">
         <AddContact view={'generate'} />
