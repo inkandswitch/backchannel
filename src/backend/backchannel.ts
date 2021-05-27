@@ -148,7 +148,7 @@ export class Backchannel extends events.EventEmitter {
         );
       }, TWENTY_SECONDS);
       try {
-        let key: Key = await this._wormhole.accept(code.trim());
+        let key: Key = await this._wormhole.accept(code.toLowerCase().trim());
         return resolve(key);
       } catch (err) {
         reject(

@@ -99,10 +99,6 @@ export class Wormhole {
     });
   }
 
-  async announce(code): Promise<Key> {
-    return this._symmetric(code);
-  }
-
   async accept(code): Promise<Key> {
     return this._symmetric(code);
   }
