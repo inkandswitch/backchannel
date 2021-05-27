@@ -333,7 +333,11 @@ export class Backchannel extends events.EventEmitter {
     await this.db.destroy();
   }
 
-  private async _onPeerConnect(socket: WebSocket, discoveryKey: DiscoveryKey) {
+  private async _onPeerConnect(
+    socket: WebSocket,
+    discoveryKey: DiscoveryKey,
+    userName: string
+  ) {
     let onerror = (err) => {
       let code = ERROR.PEER;
       this.emit('error', err, code);
@@ -360,7 +364,9 @@ export class Backchannel extends events.EventEmitter {
           });
       };
 
-      let gotAutomergeSyncMsg: ReceiveSyncMsg = await this.db.onPeerConnect(
+      let peerId = contact.id + '#' + userName;
+      let gotAutomergeSyncMsg: ReceiveSyncMsg = this.db.onPeerConnect(
+        peerId,
         contact,
         send
       );
@@ -381,7 +387,8 @@ export class Backchannel extends events.EventEmitter {
         socket.removeEventListener('message', onmessage);
         socket.removeEventListener('error', onerror);
         socket.removeEventListener('close', onclose);
-        this.db.onDisconnect(documentId, contact.id).then(() => {
+        let peerId = contact.id + '#' + userName;
+        this.db.onDisconnect(documentId, peerId).then(() => {
           this.emit('contact.disconnected', { contact });
         });
       };
@@ -428,8 +435,8 @@ export class Backchannel extends events.EventEmitter {
       this._open = false;
     });
 
-    client.on('peer.connect', ({ socket, documentId }) => {
-      this._onPeerConnect(socket, documentId);
+    client.on('peer.connect', ({ socket, documentId, userName }) => {
+      this._onPeerConnect(socket, documentId, userName);
     });
 
     return client;

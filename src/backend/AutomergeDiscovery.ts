@@ -17,39 +17,43 @@ export type ReceiveSyncMsg = (msg: Uint8Array) => void;
 interface Peer {
   id: string;
   send: Function;
-  state?: SyncState;
   idle?: Boolean;
+  state?: SyncState;
 }
 
 export default class AutomergeDiscovery extends EventEmitter {
   public doc: BackendState;
   public docId: string;
-  private peers: Map<PeerId, Peer>;
+  private _peers: Map<PeerId, Peer>;
   private log: debug;
 
   constructor(docId: string, backend?: BackendState) {
     super();
     this.doc = backend || Backend.init();
     this.docId = docId;
-    this.peers = new Map<PeerId, Peer>();
+    this._peers = new Map<PeerId, Peer>();
     this.log = debug('bc:AutomergePeers:' + this.docId.slice(0, 5));
   }
 
   removePeer(id): boolean {
-    return this.peers.delete(id);
+    return this._peers.delete(id);
   }
 
   hasPeer(id): boolean {
-    return this.peers.has(id);
+    return this._peers.has(id);
+  }
+
+  get peers(): Peer[] {
+    return Array.from(this._peers.values());
   }
 
   getPeer(id): Peer {
-    return this.peers.get(id);
+    return this._peers.get(id);
   }
 
   idle() {
-    for (let peerId in this.peers) {
-      let p = this.peers.get(peerId);
+    for (let peerId in this._peers) {
+      let p = this._peers.get(peerId);
       if (!p.idle) return false;
     }
     return true;
@@ -57,14 +61,14 @@ export default class AutomergeDiscovery extends EventEmitter {
 
   addPeer(id: string, peer: Peer): ReceiveSyncMsg {
     peer.state = Backend.initSyncState();
-    this.peers.set(id, peer);
+    this._peers.set(id, peer);
 
     // HELLO!
     this.log('sending hello');
     this._updatePeer(peer);
 
     return (msg: Uint8Array) => {
-      let peer = this.peers.get(id);
+      let peer = this._peers.get(id);
       if (!peer) return;
       msg = new Uint8Array(msg);
       this._receive(peer, msg as BinarySyncMessage);
@@ -86,8 +90,8 @@ export default class AutomergeDiscovery extends EventEmitter {
   }
 
   updatePeers() {
-    this.log('updating peers', this.docId, Array.from(this.peers).length);
-    this.peers.forEach((peer) => {
+    this.log('updating peers', this.docId, Array.from(this._peers).length);
+    this._peers.forEach((peer) => {
       peer.idle = false;
       this._updatePeer(peer);
     });
@@ -105,7 +109,7 @@ export default class AutomergeDiscovery extends EventEmitter {
       peer.state
     );
     peer.state = nextSyncState;
-    this.peers.set(peer.id, peer);
+    this._peers.set(peer.id, peer);
     if (msg) {
       this.log('sending syncMsg len=', msg.length);
       peer.send(msg);
@@ -124,7 +128,7 @@ export default class AutomergeDiscovery extends EventEmitter {
     );
     this.doc = newDoc;
     peer.state = newSyncState;
-    this.peers.set(peer.id, peer);
+    this._peers.set(peer.id, peer);
     if (patch) this._sendToRenderer(patch);
     return patch;
   }

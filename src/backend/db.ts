@@ -90,14 +90,23 @@ export class Database<T> extends EventEmitter {
    * @param send A function for sending data
    * @returns A function to call when messages come in
    */
-  onPeerConnect(contact: IContact, send: Function): Promise<ReceiveSyncMsg> {
+  onPeerConnect(
+    peerId: string,
+    contact: IContact,
+    send: Function
+  ): ReceiveSyncMsg {
     let docId: string = this.getDocumentId(contact);
-    let doc = this._syncer(docId);
-    if (!doc)
+    let syncer = this._syncer(docId);
+    if (!syncer)
       throw new Error(
         'No syncer exists for this peer, this should never happen.'
       );
-    return this._addPeer(doc, contact.id, send);
+    this.log('adding peer', peerId);
+    let peer = {
+      id: peerId,
+      send,
+    };
+    return syncer.addPeer(peerId, peer);
   }
 
   /**
@@ -132,7 +141,10 @@ export class Database<T> extends EventEmitter {
     let docId = this.getDocumentId(contact);
     let doc = this._syncers.get(docId);
     if (!doc) return false;
-    return doc.hasPeer(contact.id);
+    let match = doc.peers.filter((p) => {
+      return p.id.startsWith(contact.id);
+    });
+    return match.length > 0;
   }
 
   getDocumentId(contact: IContact): string {
@@ -342,22 +354,5 @@ export class Database<T> extends EventEmitter {
   private _hydrateContact(contact: IContact): IContact {
     let isConnected = this.isConnected(contact);
     return { ...contact, isConnected };
-  }
-
-  private async _addPeer(
-    syncer: AutomergeDiscovery,
-    peerId: string,
-    send: Function
-  ): Promise<ReceiveSyncMsg> {
-    let contact = this.getContactById(peerId);
-    this.log('adding peer', contact);
-    let docId = contact.discoveryKey;
-    let state = await this._idb.getSyncState(docId, peerId);
-    let peer = {
-      id: peerId,
-      send,
-      state,
-    };
-    return syncer.addPeer(peerId, peer);
   }
 }

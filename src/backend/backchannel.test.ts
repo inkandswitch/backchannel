@@ -79,9 +79,12 @@ function multidevice(done) {
       jest.runOnlyPendingTimers();
 
       Promise.all([prom1, prom2]).then(([alice_id, android_id]) => {
-        android.once('CONTACT_LIST_SYNC', onSync);
-        android.connectToContactId(alice_id);
-        alice.connectToContactId(android_id);
+        android.once('CONTACT_LIST_SYNC', () => {
+          onSync();
+        });
+        android.connectToAllContacts();
+        alice.connectToAllContacts();
+        bob.connectToAllContacts();
         jest.runOnlyPendingTimers();
       });
       jest.runOnlyPendingTimers();
@@ -199,7 +202,7 @@ test('editMoniker syncs between two devices', (done) => {
   multidevice(async ({ android, alice, bob }) => {
     let newBobName = 'this is really bob i promise';
 
-    alice.once('CONTACT_LIST_SYNC', () => {
+    alice.on('CONTACT_LIST_SYNC', () => {
       jest.runOnlyPendingTimers();
       let bb = alice.db.getContactById(petbob_id);
       let ba = android.db.getContactById(petbob_id);
