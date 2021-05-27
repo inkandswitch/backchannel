@@ -62,9 +62,10 @@ export class Backchannel extends events.EventEmitter {
 
     this.db.once('open', () => {
       let documentIds = this.db.documents;
-      let relay = this.db.settings && this.db.settings.relay
-      if (!relay) this.updateSettings({ ...this.db.settings, relay: _settings.relay });
-      relay = _settings.relay
+      let relay = this.db.settings && this.db.settings.relay;
+      if (!relay)
+        this.updateSettings({ ...this.db.settings, relay: _settings.relay });
+      relay = _settings.relay;
       this.log('Connecting to relay', relay);
       this._client = this._createClient(relay);
       this._wormhole = new Wormhole(this._client);
@@ -332,9 +333,9 @@ export class Backchannel extends events.EventEmitter {
     this._open = false;
     await this._client.disconnectServer();
     await this.db.destroy();
-    this._client = null
-    this.db = null
-    this.emit('close')
+    this._client = null;
+    this.db = null;
+    this.emit('close');
   }
 
   private async _onPeerConnect(

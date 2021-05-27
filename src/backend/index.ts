@@ -16,9 +16,9 @@ export default function initialize(
   });
 
   instance.on('close', () => {
-    console.error('close')
-    instance = null
-  })
+    console.error('close');
+    instance = null;
+  });
 
   return instance;
 }
