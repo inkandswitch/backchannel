@@ -130,8 +130,10 @@ export default class AutomergeDiscovery extends EventEmitter {
     this.doc = newDoc;
     peer.state = newSyncState;
     this._peers.set(peer.id, peer);
-    let changes = Backend.getChanges(newDoc, Backend.getHeads(oldDoc));
-    this._sendToRenderer(patch, changes);
+    if (patch) {
+      let changes = Backend.getChanges(newDoc, Backend.getHeads(oldDoc));
+      this._sendToRenderer(patch, changes);
+    }
     return patch;
   }
 }
