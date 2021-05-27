@@ -223,7 +223,7 @@ export class Database<T> extends EventEmitter {
     if (this.root.contacts) {
       // LOAD EXISTING DOCUMENTS
       let c = 0;
-      this.log('loading docs');
+      this.log('loading contacts', this.root.contacts);
       let tasks = [];
       this.root.contacts.forEach(async (contact) => {
         c++;

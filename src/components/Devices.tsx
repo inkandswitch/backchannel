@@ -15,10 +15,8 @@ export default function Devices({ deviceId }: Props) {
   let [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    backchannel.on('CONTACT_LIST_SYNC', ({ docId, contactId }) => {
-      if (contactId === deviceId) {
-        setLoading(false);
-      }
+    backchannel.on('CONTACT_LIST_SYNC', () => {
+      setLoading(false);
       console.log(
         'UPDATED. NOW HAVE',
         backchannel.contacts.length,
