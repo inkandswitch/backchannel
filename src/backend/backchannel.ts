@@ -43,8 +43,10 @@ export class Backchannel extends events.EventEmitter {
   public db: Database<Mailbox>;
   private _wormhole: Wormhole;
   private _client: Client;
-  private _open = true || false;
-  private log = debug;
+  private _open: boolean;
+  private log: debug;
+  private _fileSockets: Object = {};
+  private _sendQueue: Array<any> = [];
 
   /**
    * Create a new backchannel client. Each instance represents a user opening
@@ -61,6 +63,7 @@ export class Backchannel extends events.EventEmitter {
       dbName,
       this.onChangeContactList.bind(this)
     );
+
 
     this.db.once('open', () => {
       let documentIds = this.db.documents;
@@ -268,19 +271,47 @@ export class Backchannel extends events.EventEmitter {
     return msg;
   }
 
-  async sendFile(contactId: ContactId, file: File) {
-    let msg: FileMessage = {
-      id: uuid(),
-      target: contactId,
-      timestamp: Date.now().toString(),
-      type: MessageType.FILE,
-      mime_type: file.type,
-      size: file.size,
-      lastModified: file.lastModified,
-      name: file.name,
-    };
-    let contact = this.db.getContactById(contactId);
-    await this._addMessage(msg, contact);
+  async sendFile(contactId: ContactId, file: File): Promise<FileMessage> {
+    return new Promise<FileMessage>(async (resolve, reject) => {
+      let msg: FileMessage = {
+        id: uuid(),
+        target: contactId,
+        timestamp: Date.now().toString(),
+        type: MessageType.FILE,
+        mime_type: file.type,
+        size: file.size,
+        lastModified: file.lastModified,
+        name: file.name,
+      };
+      let contact = this.db.getContactById(contactId);
+      await this._addMessage(msg, contact);
+      let socket = this._fileSockets[contactId]
+      if (!socket) this._sendQueue.push([contactId, file])
+      if (!file.stream) throw new Error('file.stream not supported. File failed to send')
+
+      socket.send(new TextEncoder().encode(
+        JSON.stringify({
+          id: msg.id,
+          name: msg.name,
+          size: msg.size,
+          type: msg.type,
+        }),
+      ))
+      const reader = file.stream().getReader();
+      let sending = {
+        id: msg.id,
+        offset: 0,
+        progress: 0
+      }
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) return resolve(msg)
+        await socket.send(value);
+        sending.offset += value.length;
+        sending.progress = sending.offset / file.size;
+        this.emit('progress', sending)
+      }
+    })
   }
 
   /**
@@ -361,7 +392,6 @@ export class Backchannel extends events.EventEmitter {
         let documentId = contact.discoveryKey;
         socket.removeEventListener('message', onmessage);
         socket.removeEventListener('close', onclose);
-        let peerId = contact.id + '#' + userName;
         this.db.onDisconnect(documentId, peerId).then(() => {
           this.emit('contact.disconnected', { contact });
         });
@@ -382,6 +412,41 @@ export class Backchannel extends events.EventEmitter {
     }
   }
 
+  private async fileSocket(socket: WebSocket, contact: IContact, peerId: string) {
+    socket.binaryType = 'arraybuffer'
+    this._fileSockets[contact.id] = socket
+    let receiving = null
+
+    let onmessage = (e) => {
+      if (!receiving) {
+        receiving = JSON.parse(new TextDecoder("utf8").decode(e.data))
+    		receiving.offset = 0;
+        receiving.progress = 0;
+  			receiving.data = new Uint8Array(receiving.size);
+        return;
+      }
+
+      const chunkSize = e.data.byteLength;
+
+      if (receiving.offset + chunkSize > receiving.size) {
+        const error = "received more bytes than expected";
+        throw new Error(error)
+      }
+      console.log('receiving', receiving, chunkSize)
+      receiving.data.set(new Uint8Array(e.data), receiving.offset);
+      receiving.offset += chunkSize;
+      receiving.progress = receiving.offset / receiving.size;
+      this.emit('progress', receiving)
+
+      if (receiving.offset === receiving.size) {
+        this.emit('download', receiving);
+        receiving = null
+      }
+
+    }
+    socket.addEventListener('message', onmessage)
+  }
+
   private async _onPeerConnect(
     socket: WebSocket,
     documentId: DocumentId,
@@ -399,16 +464,16 @@ export class Backchannel extends events.EventEmitter {
       return this.log('got connection to ', documentId); // this is handled by wormhole.ts
     }
 
-    if (documentId.startsWith('files-')) {
-      return this.log('got file connection');
+    let discoveryKey = documentId.slice(documentId.indexOf('-') + 1)
+    let contact = this.db.getContactByDiscoveryKey(discoveryKey);
+    let peerId = contact.id + '#' + userName;
+
+    if (documentId.startsWith('files')) {
+      return this.fileSocket(socket, contact, peerId)
     }
 
-    if (documentId.startsWith('automerge-')) {
-      let discoveryKey = documentId.slice('automerge-'.length)
-      this.log('got', discoveryKey)
-      let contact = this.db.getContactByDiscoveryKey(discoveryKey);
-      this.log('onPeerConnect', contact);
-      return this.automergeSocket(socket, contact, userName)
+    if (documentId.startsWith('automerge')) {
+      return this.automergeSocket(socket, contact, peerId)
     }
   }
 

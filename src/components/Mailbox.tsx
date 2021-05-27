@@ -62,6 +62,17 @@ export default function Mailbox(props: Props) {
         setMessages(messages);
       }
     };
+    backchannel.on('progress', (progress) => {
+      console.log('progress', progress)
+    })
+    backchannel.on('download', (receiving) => {
+      const blob = new Blob([receiving.data], {type: receiving.type});
+      let a = document.createElement('a')
+      document.body.appendChild(a)
+      a.href = URL.createObjectURL(blob);
+      a.download = receiving.name;
+      a.click();
+    })
     backchannel.db.on('patch', onMessage);
 
     return function cleanup() {
@@ -85,7 +96,9 @@ export default function Mailbox(props: Props) {
     const files = e.dataTransfer.files;
     if (files.length !== 0) {
       for (let i = 0; i < files.length; i++) {
-        backchannel.sendFile(contactId, files[i]);
+        backchannel.sendFile(contactId, files[i]).then(msg => {
+          console.log('message sent!')
+        })
       }
     }
   }
