@@ -129,32 +129,8 @@ export class Backchannel extends events.EventEmitter {
   }
 
   /**
-   * Announce the code to the magic wormhole service. This blocks on the
-   * recipient of the code calling backchannel.accept(code) on the other side. A
-   * contact will then be created with an anonymous handle and the id returned.
-   *
-   * @param {Code} code The code to announce
-   * @returns {ContactId} The ID of the contact in the database
-   */
-  async announce(code: Code): Promise<ContactId> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        let key = await this._wormhole.announce(code.trim());
-        return resolve(key);
-      } catch (err) {
-        reject(
-          new Error(
-            'Secure connection failed. Did they type the code correctly? Try again.'
-          )
-        );
-      }
-    });
-  }
-
-  /**
    * Open a websocket connection to the magic wormhole service and accept the
-   * code. Will fail if someone has not called backchannel.announce(code) on
-   * another instance. Once the contact has been established, a contact will
+   * code. Once the contact has been established, a contact will
    * then be created with an anonymous handle and the id returned.
    *
    * @param {Code} code The code to accept
