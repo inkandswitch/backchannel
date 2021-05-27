@@ -40,8 +40,7 @@ function multidevice(done) {
     async function onSync() {
       jest.runOnlyPendingTimers();
 
-      android.connectToContactId(petbob_id);
-      bob.connectToContactId(petalice_id);
+      android.connectToAllContacts();
 
       let alices_bob = alice.db.getContactById(petbob_id);
       expect(alices_bob.id).toBe(petbob_id);
@@ -80,7 +79,7 @@ function multidevice(done) {
       jest.runOnlyPendingTimers();
 
       Promise.all([prom1, prom2]).then(([alice_id, android_id]) => {
-        android.on('CONTACT_LIST_SYNC', onSync);
+        android.once('CONTACT_LIST_SYNC', onSync);
         android.connectToContactId(alice_id);
         alice.connectToContactId(android_id);
         jest.runOnlyPendingTimers();
@@ -237,6 +236,7 @@ test('integration send multiple messages', async () => {
 
   let docId = bob.db.getContactById(petalice_id).discoveryKey;
   let p = patched(bob, docId);
+  jest.runOnlyPendingTimers();
   await alice.sendMessage(outgoing.contact, outgoing.text);
   jest.runOnlyPendingTimers();
   await p;
@@ -245,6 +245,7 @@ test('integration send multiple messages', async () => {
   expect(messages.length).toBe(1);
 
   p = patched(alice, docId);
+  jest.runOnlyPendingTimers();
   await bob.sendMessage(response.contact, response.text);
   jest.runOnlyPendingTimers();
   await p;
