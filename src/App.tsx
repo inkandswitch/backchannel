@@ -29,8 +29,8 @@ export default function App() {
         margin: auto;
       `}
     >
-      <Route path="/add/:object">
-        {(params) => <AddContact view={'add'} object={params.object} />}
+      <Route path="/redeem/:object">
+        {(params) => <AddContact view={'redeem'} object={params.object} />}
       </Route>
       <Route path="/generate/:object">
         {(params) => <AddContact view={'generate'} object={params.object} />}

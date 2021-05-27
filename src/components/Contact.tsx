@@ -13,6 +13,7 @@ import {
   Message,
   BackToHomeLink,
   UnderlineInput,
+  Page,
 } from './';
 import { color } from './tokens';
 import WormholePlaceholder from './images/WormholePlaceholder.png';
@@ -52,11 +53,8 @@ export default function Contact({ contactId }: Props) {
   };
 
   return (
-    <div
+    <Page
       css={css`
-        display: flex;
-        flex-direction: column;
-        height: 100%;
         background-color: #001e93; /* TODO wormhole animation */
         background-image: url('${WormholePlaceholder}'); /* TODO wormhole animation */
         background-size: cover;
@@ -107,6 +105,7 @@ export default function Contact({ contactId }: Props) {
                 type="text"
                 onChange={handleChange}
                 placeholder="Contact nickname"
+                autoFocus
               />
             </div>
           </CodeDisplayOrInput>
@@ -117,6 +116,6 @@ export default function Contact({ contactId }: Props) {
           </BottomActions>
         </form>
       </ContentWithTopNav>
-    </div>
+    </Page>
   );
 }
