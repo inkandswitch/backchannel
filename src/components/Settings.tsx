@@ -17,6 +17,9 @@ export default function Settings() {
       <TopBar title="Settings" />
       <ContentWithTopNav>
         <SettingsContent>
+          <Link href="/generate/device">
+            <Button>Syncronize Devices</Button>
+          </Link>
           <Link href="/settings/relay">
             <Button>Relay URL</Button>
           </Link>
