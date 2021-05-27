@@ -24,10 +24,14 @@ async function connected(device: Backchannel, id: string) {
 async function patched(device, id) {
   jest.runOnlyPendingTimers();
   return new Promise<any>((resolve) => {
-    device.db.on('patch', async (payload) => {
+    let onPatch = async (payload) => {
       jest.runOnlyPendingTimers();
-      if (payload.docId === id) resolve(payload);
-    });
+      if (payload.docId === id) {
+        device.db.removeListener('patch', onPatch)
+        resolve(payload);
+      }
+    };
+    device.db.on('patch', onPatch)
   });
 }
 
@@ -116,8 +120,8 @@ beforeEach((done) => {
 
     alice.once('open', () => {
       bob.once('open', () => {
-        jest.useFakeTimers();
         create().then(() => {
+          jest.useFakeTimers();
           Promise.all([
             connected(alice, petbob_id),
             connected(bob, petalice_id),
