@@ -21,9 +21,9 @@ export interface IContact {
 export class IMessage {
   id?: MessageId;
   target: ContactId;
-  incoming?: boolean;
   timestamp: string;
   text?: string;
+  incoming?: boolean;
   filename?: string;
   mime_type?: string;
 }

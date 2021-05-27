@@ -18,6 +18,7 @@ import {
 } from './types';
 import { Wormhole } from './wormhole';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
+import { ReceiveSyncMsg } from './AutomergeDiscovery';
 
 export enum ERROR {
   UNREACHABLE = 404,
@@ -48,12 +49,17 @@ export class Backchannel extends events.EventEmitter {
    * the backchannel app on their device. There is one Mailbox per contact which
    * is identified by the contact's discoveryKey.
    * @constructor
-   * @param {Database<Mailbox>} db  Use a database of type Mailbox, the only document supported currently
+   * @param {string} dbName The name of the db for indexeddb
    * @param defaultRelay The default URL of the relay
    */
-  constructor(db: Database<Mailbox>, _settings: BackchannelSettings) {
+  constructor(dbName: string, _settings: BackchannelSettings) {
     super();
-    this.db = db;
+
+    this.db = new Database<Mailbox>(
+      dbName,
+      this.onChangeContactList.bind(this)
+    );
+
     this.db.once('open', () => {
       let documentIds = this.db.documents;
       let relay =
@@ -65,8 +71,25 @@ export class Backchannel extends events.EventEmitter {
       this.log(`Joining ${documentIds.length} documentIds`);
       documentIds.forEach((docId) => this._client.join(docId));
     });
-
     this.log = debug('bc:backchannel');
+  }
+
+  onChangeContactList() {
+    let tasks = [];
+    this.contacts.forEach((c) => {
+      try {
+        let doc = this.db.getDocument(c.discoveryKey) as Automerge.Doc<Mailbox>;
+        if (!doc.messages) throw new Error();
+      } catch (err) {
+        this.log('creating a document for contact');
+        tasks.push(this._addContactDocument(c));
+      }
+    });
+
+    Promise.all(tasks).then(() => {
+      this.connectToAllContacts();
+      this.emit('CONTACT_LIST_SYNC');
+    });
   }
 
   async updateSettings(newSettings: BackchannelSettings) {
@@ -113,8 +136,7 @@ export class Backchannel extends events.EventEmitter {
     return new Promise(async (resolve, reject) => {
       try {
         let key = await this._wormhole.announce(code.trim());
-        let id = await this._addContact(key);
-        return resolve(id);
+        return resolve(key);
       } catch (err) {
         reject(
           new Error(
@@ -147,8 +169,7 @@ export class Backchannel extends events.EventEmitter {
       }, TWENTY_SECONDS);
       try {
         let key: Key = await this._wormhole.accept(code.trim());
-        let id = await this._addContact(key);
-        return resolve(id);
+        return resolve(key);
       } catch (err) {
         reject(
           new Error(
@@ -166,7 +187,32 @@ export class Backchannel extends events.EventEmitter {
    * @returns
    */
   async editMoniker(contactId: ContactId, moniker: string): Promise<void> {
+    this.log('editmoniker', contactId, moniker);
     return this.db.editMoniker(contactId, moniker);
+  }
+
+  /**
+   * Create a new contact in the database
+   *
+   * @param {Key} key - The key add to the database
+   * @returns {ContactId} id - The local id number for this contact
+   */
+  async addContact(key: Key): Promise<ContactId> {
+    let moniker = catnames.random();
+    let id = await this.db.addContact(key, moniker);
+    let contact = this.db.getContactById(id);
+    this.log('root dot created', contact.discoveryKey);
+    await this._addContactDocument(contact);
+    return contact.id;
+  }
+
+  async _addContactDocument(contact: IContact) {
+    if (contact.device) return Promise.resolve();
+    let docId = await this.db.addDocument(contact, (doc: Mailbox) => {
+      doc.messages = [];
+    });
+    //@ts-ignore
+    return this.db.getDocument(docId);
   }
 
   /**
@@ -179,7 +225,7 @@ export class Backchannel extends events.EventEmitter {
    */
   async addDevice(key: Key, description?: string): Promise<ContactId> {
     let moniker = description || 'my device';
-    return this.db.addDevice(key, moniker);
+    return this.db.addContact(key, moniker, 1);
   }
 
   /**
@@ -196,8 +242,7 @@ export class Backchannel extends events.EventEmitter {
       );
       return doc.messages;
     } catch (err) {
-      console.error('error', err);
-      return [];
+      throw new Error('Error getting messages, this should never happen.');
     }
   }
 
@@ -206,9 +251,11 @@ export class Backchannel extends events.EventEmitter {
    * @returns An array of contacts
    */
   get contacts(): IContact[] {
-    let contacts = this.db.getContacts();
-    if (contacts) return contacts.filter((c) => c.device === 0);
-    else return [];
+    return this.db.getContacts().filter((c) => c.device === 0);
+  }
+
+  get devices(): IContact[] {
+    return this.db.getContacts().filter((c) => c.device === 1);
   }
 
   listContacts() {
@@ -260,7 +307,7 @@ export class Backchannel extends events.EventEmitter {
    * connection for each contact which could be an expensive operation.
    */
   connectToAllContacts() {
-    let contacts = this.listContacts();
+    let contacts = this.contacts.concat(this.devices);
     contacts.forEach((contact) => {
       this.connectToContact(contact);
     });
@@ -286,7 +333,11 @@ export class Backchannel extends events.EventEmitter {
     await this.db.destroy();
   }
 
-  private async _onPeerConnect(socket: WebSocket, discoveryKey: DiscoveryKey) {
+  private async _onPeerConnect(
+    socket: WebSocket,
+    discoveryKey: DiscoveryKey,
+    userName: string
+  ) {
     let onerror = (err) => {
       let code = ERROR.PEER;
       this.emit('error', err, code);
@@ -299,14 +350,12 @@ export class Backchannel extends events.EventEmitter {
       return this.log('got connection to ', discoveryKey); // this is handled by wormhole.ts
     }
     let contact = this.db.getContactByDiscoveryKey(discoveryKey);
-    this.log('onPeerConnect', discoveryKey, contact);
+    this.log('onPeerConnect', contact);
     let encryptionKey = contact.key;
 
     try {
       socket.binaryType = 'arraybuffer';
       let send = (msg: Uint8Array) => {
-        this.log('got encryption key', encryptionKey);
-
         symmetric
           .encrypt(encryptionKey, Buffer.from(msg).toString('hex'))
           .then((cipher) => {
@@ -315,17 +364,12 @@ export class Backchannel extends events.EventEmitter {
           });
       };
 
-      let gotAutomergeSyncMsg;
-      if (contact.device) {
-        gotAutomergeSyncMsg = await this.db.onDeviceConnect(contact.id, send);
-      } else {
-        let docId = contact.discoveryKey;
-        gotAutomergeSyncMsg = await this.db.onPeerConnect(
-          docId,
-          contact.id,
-          send
-        );
-      }
+      let peerId = contact.id + '#' + userName;
+      let gotAutomergeSyncMsg: ReceiveSyncMsg = this.db.onPeerConnect(
+        peerId,
+        contact,
+        send
+      );
 
       let onmessage = (e) => {
         let decoded = deserialize(e.data) as EncryptedProtocolMessage;
@@ -343,7 +387,8 @@ export class Backchannel extends events.EventEmitter {
         socket.removeEventListener('message', onmessage);
         socket.removeEventListener('error', onerror);
         socket.removeEventListener('close', onclose);
-        this.db.onDisconnect(documentId, contact.id).then(() => {
+        let peerId = contact.id + '#' + userName;
+        this.db.onDisconnect(documentId, peerId).then(() => {
           this.emit('contact.disconnected', { contact });
         });
       };
@@ -390,9 +435,8 @@ export class Backchannel extends events.EventEmitter {
       this._open = false;
     });
 
-    client.on('peer.connect', ({ socket, documentId }) => {
-      this.log('on peer connect');
-      this._onPeerConnect(socket, documentId);
+    client.on('peer.connect', ({ socket, documentId, userName }) => {
+      this._onPeerConnect(socket, documentId, userName);
     });
 
     return client;
@@ -405,23 +449,5 @@ export class Backchannel extends events.EventEmitter {
     });
     this.db.save(docId);
     return res;
-  }
-
-  /**
-   * Create a new contact in the database
-   *
-   * @param {Key} key - The key add to the database
-   * @returns {ContactId} id - The local id number for this contact
-   */
-  private async _addContact(key: Key): Promise<ContactId> {
-    let moniker = catnames.random();
-    let id = await this.db.addContact(key, moniker);
-    let contact = this.db.getContactById(id);
-    this.log('root dot created', contact.discoveryKey);
-    let docId = await this.db.addDocument(contact.id, (doc: Mailbox) => {
-      doc.messages = [];
-    });
-    this.db.save(docId);
-    return contact.id;
   }
 }

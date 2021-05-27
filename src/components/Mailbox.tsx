@@ -56,7 +56,7 @@ export default function Mailbox(props: Props) {
   }, [contactId]);
 
   useEffect(() => {
-    let onMessage = (docId) => {
+    let onMessage = ({ docId }) => {
       if (contact && docId === contact.discoveryKey) {
         let messages = backchannel.getMessagesByContactId(contactId);
         setMessages(messages);

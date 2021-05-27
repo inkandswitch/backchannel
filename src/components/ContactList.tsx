@@ -5,6 +5,8 @@ import { Link } from 'wouter';
 import Backchannel from '../backend';
 import { color, fontSize } from './tokens';
 import { IMessage } from '../backend/types';
+import Automerge from 'automerge';
+import { Mailbox } from '../backend/backchannel';
 import { timestampToDate } from './util';
 import {
   BottomNav,
@@ -95,9 +97,16 @@ export default function ContactList(props) {
         }
         setAcknowledged(dismissedWelcome);
       }
-      contacts.forEach((contact) => {
+      contacts.forEach(async (contact) => {
         let messages = backchannel.getMessagesByContactId(contact.id);
-        const lastMessage: IMessage = messages.pop();
+
+        if (!messages) {
+          let doc = (await backchannel._addContactDocument(
+            contact
+          )) as Automerge.Doc<Mailbox>;
+          messages = doc.messages;
+        }
+        const lastMessage: IMessage = messages[messages.length - 1];
         setLatestMessages((latestMessages) => ({
           ...latestMessages,
           [contact.id]: lastMessage,
@@ -109,11 +118,11 @@ export default function ContactList(props) {
 
     backchannel.on('contact.disconnected', refreshContactList);
     backchannel.on('contact.connected', refreshContactList);
-    backchannel.on('sync', refreshContactList);
+    backchannel.db.on('patch', refreshContactList);
     return function unsub() {
       backchannel.removeListener('contact.disconnected', refreshContactList);
       backchannel.removeListener('contact.connected', refreshContactList);
-      backchannel.removeListener('sync', refreshContactList);
+      backchannel.db.removeListener('patch', refreshContactList);
     };
   }, []);
 
@@ -350,7 +359,7 @@ export default function ContactList(props) {
 
 function BackchannelLink() {
   return (
-    <Link href="/generate">
+    <Link href="/generate/contact">
       <div
         css={css`
           background: ${color.primaryButtonBackground};

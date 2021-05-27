@@ -7,6 +7,7 @@ import { color } from './components/tokens';
 import Mailbox from './components/Mailbox';
 import ContactList from './components/ContactList';
 import Contact from './components/Contact';
+import Devices from './components/Devices';
 import AddContact from './components/AddContact';
 import NetworkError from './components/Error';
 import Settings, {
@@ -25,11 +26,11 @@ export default function App() {
         margin: auto;
       `}
     >
-      <Route path="/redeem">
-        <AddContact view={'redeem'} />
+      <Route path="/redeem/:object">
+        {(params) => <AddContact view={'redeem'} object={params.object} />}
       </Route>
-      <Route path="/generate">
-        <AddContact view={'generate'} />
+      <Route path="/generate/:object">
+        {(params) => <AddContact view={'generate'} object={params.object} />}
       </Route>
       <Route path="/settings/reset">
         <ClearAllSettings />
@@ -39,6 +40,9 @@ export default function App() {
       </Route>
       <Route path="/settings">
         <Settings />
+      </Route>
+      <Route path="/device/:did">
+        {(params) => <Devices deviceId={params.did} />}
       </Route>
       <Route path="/mailbox/:cid">
         {(params) => <Mailbox contactId={params.cid} />}
