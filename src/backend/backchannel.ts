@@ -16,7 +16,6 @@ import {
   TextMessage,
   FileMessage,
   IMessage,
-  DiscoveryKey,
   MessageType,
 } from './types';
 import { Wormhole } from './wormhole';
@@ -74,6 +73,11 @@ export class Backchannel extends events.EventEmitter {
       }
       this.log('Connecting to relay', relay);
       this.log(`Joining ${documentIds.length} documentIds`);
+      let allDocuments = []
+      documentIds.forEach(docId => {
+        allDocuments.push(`automerge-${docId}`)
+        allDocuments.push(`files-${docId}`)
+      })
       this._client = this._createClient(relay, documentIds);
       this._wormhole = new Wormhole(this._client);
       this._emitOpen();
@@ -284,11 +288,10 @@ export class Backchannel extends events.EventEmitter {
    * @param {IContact} contact The contact to connect to
    */
   connectToContact(contact: IContact) {
-    if (!this._open) return;
-    this.log('joining', contact.discoveryKey);
     if (!contact || !contact.discoveryKey)
       throw new Error('contact.discoveryKey required');
-    this._client.join(contact.discoveryKey);
+    this._client.join('automerge-' + contact.discoveryKey);
+    this._client.join('files-' + contact.discoveryKey);
   }
 
   /**
@@ -313,16 +316,6 @@ export class Backchannel extends events.EventEmitter {
   }
 
   /**
-   * Leave a document and disconnect from peers.
-   * @param {IContact} contact The contact object
-   */
-  disconnectFromContact(contact: IContact) {
-    if (!contact || !contact.discoveryKey)
-      throw new Error('contact.discoveryKey required');
-    this._client.leave(contact.discoveryKey);
-  }
-
-  /**
    * Destroy this instance and delete the data. Disconnects from all websocket
    * clients.  Danger! Unrecoverable!
    */
@@ -332,27 +325,9 @@ export class Backchannel extends events.EventEmitter {
     await this.db.destroy();
     this.emit('close');
   }
-
-  private async _onPeerConnect(
-    socket: WebSocket,
-    discoveryKey: DiscoveryKey,
-    userName: string
-  ) {
-    let onerror = (err) => {
-      let code = ERROR.PEER;
-      this.emit('error', err, code);
-      console.error('error', err);
-      console.trace(err);
-    };
-    socket.addEventListener('error', onerror);
-
-    if (discoveryKey.startsWith('wormhole')) {
-      return this.log('got connection to ', discoveryKey); // this is handled by wormhole.ts
-    }
-    let contact = this.db.getContactByDiscoveryKey(discoveryKey);
-    this.log('onPeerConnect', contact);
+  
+  private automergeSocket(socket: WebSocket, contact: IContact, userName: string) {
     let encryptionKey = contact.key;
-
     try {
       socket.binaryType = 'arraybuffer';
       let send = (msg: Uint8Array) => {
@@ -385,7 +360,6 @@ export class Backchannel extends events.EventEmitter {
       let onclose = () => {
         let documentId = contact.discoveryKey;
         socket.removeEventListener('message', onmessage);
-        socket.removeEventListener('error', onerror);
         socket.removeEventListener('close', onclose);
         let peerId = contact.id + '#' + userName;
         this.db.onDisconnect(documentId, peerId).then(() => {
@@ -405,6 +379,36 @@ export class Backchannel extends events.EventEmitter {
     } catch (err) {
       this.log('contact.error', err);
       this.emit('contact.error', err);
+    }
+  }
+
+  private async _onPeerConnect(
+    socket: WebSocket,
+    documentId: DocumentId,
+    userName: string
+  ) {
+    let onerror = (err) => {
+      let code = ERROR.PEER;
+      this.emit('error', err, code);
+      console.error('error', err);
+      console.trace(err);
+    };
+    socket.addEventListener('error', onerror);
+
+    if (documentId.startsWith('wormhole')) {
+      return this.log('got connection to ', documentId); // this is handled by wormhole.ts
+    }
+
+    if (documentId.startsWith('files-')) {
+      return this.log('got file connection');
+    }
+
+    if (documentId.startsWith('automerge-')) {
+      let discoveryKey = documentId.slice('automerge-'.length)
+      this.log('got', discoveryKey)
+      let contact = this.db.getContactByDiscoveryKey(discoveryKey);
+      this.log('onPeerConnect', contact);
+      return this.automergeSocket(socket, contact, userName)
     }
   }
 
