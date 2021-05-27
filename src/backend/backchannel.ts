@@ -79,9 +79,9 @@ export class Backchannel extends events.EventEmitter {
     this.contacts.forEach((c) => {
       try {
         let doc = this.db.getDocument(c.discoveryKey) as Automerge.Doc<Mailbox>;
-        if (!doc.messages) throw new Error()
+        if (!doc.messages) throw new Error();
       } catch (err) {
-        this.log('creating a document for contact')
+        this.log('creating a document for contact');
         tasks.push(this._addContactDocument(c));
       }
     });
@@ -240,7 +240,7 @@ export class Backchannel extends events.EventEmitter {
       let doc: Automerge.Doc<Mailbox> = this.db.getDocument(
         contact.discoveryKey
       );
-      return doc.messages
+      return doc.messages;
     } catch (err) {
       throw new Error('Error getting messages, this should never happen.');
     }
@@ -251,11 +251,11 @@ export class Backchannel extends events.EventEmitter {
    * @returns An array of contacts
    */
   get contacts(): IContact[] {
-    return this.db.getContacts().filter(c => c.device === 0);
+    return this.db.getContacts().filter((c) => c.device === 0);
   }
 
   get devices(): IContact[] {
-    return this.db.getContacts().filter(c => c.device === 1);
+    return this.db.getContacts().filter((c) => c.device === 1);
   }
 
   listContacts() {
@@ -360,7 +360,10 @@ export class Backchannel extends events.EventEmitter {
           });
       };
 
-      let gotAutomergeSyncMsg: ReceiveSyncMsg = await this.db.onPeerConnect(contact, send);
+      let gotAutomergeSyncMsg: ReceiveSyncMsg = await this.db.onPeerConnect(
+        contact,
+        send
+      );
 
       let onmessage = (e) => {
         let decoded = deserialize(e.data) as EncryptedProtocolMessage;

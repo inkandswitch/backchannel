@@ -32,7 +32,7 @@ async function patched(device, id) {
 }
 
 function multidevice(done) {
-  android = createDevice('p');
+  android = createDevice(randomBytes(32).toString('hex'));
   android.once('open', async () => {
     jest.runOnlyPendingTimers();
     let key = await generateKey();
@@ -40,8 +40,8 @@ function multidevice(done) {
     async function onSync() {
       jest.runOnlyPendingTimers();
 
-      android.connectToAllContacts();
-      bob.connectToAllContacts();
+      android.connectToContactId(petbob_id);
+      bob.connectToContactId(petalice_id);
 
       let alices_bob = alice.db.getContactById(petbob_id);
       expect(alices_bob.id).toBe(petbob_id);
@@ -80,7 +80,9 @@ function multidevice(done) {
       jest.runOnlyPendingTimers();
 
       Promise.all([prom1, prom2]).then(([alice_id, android_id]) => {
-        android.once('CONTACT_LIST_SYNC', onSync);
+        android.on('CONTACT_LIST_SYNC', onSync);
+        android.connectToContactId(alice_id);
+        alice.connectToContactId(android_id);
         jest.runOnlyPendingTimers();
       });
       jest.runOnlyPendingTimers();
@@ -161,16 +163,13 @@ test('integration send a message', async () => {
   expect(bob.opened()).toBe(true);
 
   await alice.sendMessage(outgoing.contact, outgoing.text);
+  jest.runOnlyPendingTimers();
   let docId = bob.db.getDocumentId(bob.db.getContactById(petalice_id));
   await patched(bob, docId);
   jest.runOnlyPendingTimers();
   let messages = bob.getMessagesByContactId(petalice_id);
   expect(messages.length).toBe(1);
   expect(messages[0].text).toBe(outgoing.text);
-
-  jest.runOnlyPendingTimers();
-  jest.runOnlyPendingTimers();
-  jest.runOnlyPendingTimers();
 });
 
 test('presence', (done) => {
@@ -215,6 +214,7 @@ test('editMoniker syncs between two devices', (done) => {
     expect(ba.moniker).toStrictEqual('bob');
 
     await android.editMoniker(petbob_id, newBobName);
+    jest.runOnlyPendingTimers();
   });
 });
 
@@ -238,6 +238,7 @@ test('integration send multiple messages', async () => {
   let docId = bob.db.getContactById(petalice_id).discoveryKey;
   let p = patched(bob, docId);
   await alice.sendMessage(outgoing.contact, outgoing.text);
+  jest.runOnlyPendingTimers();
   await p;
 
   let messages = bob.getMessagesByContactId(petalice_id);
@@ -245,6 +246,7 @@ test('integration send multiple messages', async () => {
 
   p = patched(alice, docId);
   await bob.sendMessage(response.contact, response.text);
+  jest.runOnlyPendingTimers();
   await p;
 
   docId = alice.db.getDocumentId(alice.db.getContactById(petbob_id));
