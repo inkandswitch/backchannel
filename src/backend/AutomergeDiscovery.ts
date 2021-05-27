@@ -121,6 +121,7 @@ export default class AutomergeDiscovery extends EventEmitter {
 
   _receive(peer, syncMsg: BinarySyncMessage): Patch {
     this.log('got syncMsg len=', syncMsg.length);
+    let oldDoc = this.doc;
     let [newDoc, newSyncState, patch] = Backend.receiveSyncMessage(
       this.doc,
       peer.state,
@@ -129,10 +130,8 @@ export default class AutomergeDiscovery extends EventEmitter {
     this.doc = newDoc;
     peer.state = newSyncState;
     this._peers.set(peer.id, peer);
-    if (patch) {
-      let changes = Backend.getChanges(newDoc, patch.deps);
-      this._sendToRenderer(patch, changes);
-    }
+    let changes = Backend.getChanges(newDoc, Backend.getHeads(oldDoc))
+    this._sendToRenderer(patch, changes);
     return patch;
   }
 }
