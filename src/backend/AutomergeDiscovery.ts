@@ -65,6 +65,7 @@ export default class AutomergeDiscovery extends EventEmitter {
 
     return (msg: Uint8Array) => {
       let peer = this.peers.get(id);
+      if (!peer) return;
       msg = new Uint8Array(msg);
       this._receive(peer, msg as BinarySyncMessage);
       this._updatePeer(peer);
