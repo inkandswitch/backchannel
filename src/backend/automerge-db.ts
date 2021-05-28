@@ -22,6 +22,11 @@ interface SavedState {
   state: Automerge.BinarySyncState;
 }
 
+interface SavedBlob {
+  id: string;
+  data: Uint8Array;
+}
+
 export interface Doc {
   changes: Automerge.BinaryChange[];
   serializedDoc: Automerge.BinaryDocument;
@@ -31,18 +36,21 @@ export class DB extends Dexie {
   documents: Dexie.Table<SavedBinary, DocumentId>;
   changes: Dexie.Table<SavedChange, DocumentId>;
   states: Dexie.Table<SavedState>;
+  blobs: Dexie.Table<SavedBlob, string>;
   private log: debug;
 
   constructor(dbname) {
     super(dbname);
-    this.version(2).stores({
+    this.version(3).stores({
       documents: 'id++,docId',
       changes: 'id++,docId',
       states: 'id++, [docId+contactId]', // compound index on docId and contactId
+      blobs: 'id',
     });
     this.documents = this.table('documents');
     this.changes = this.table('changes');
     this.states = this.table('states');
+    this.blobs = this.table('blobs');
     this.log = debug('bc:automerge:db');
   }
 

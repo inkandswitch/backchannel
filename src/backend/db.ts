@@ -67,10 +67,6 @@ export class Database<T> extends EventEmitter {
     await this.change(SYSTEM_ID, changeFn);
   }
 
-  error(err) {
-    this.log('got error', err);
-    throw new Error(err);
-  }
 
   set root(doc: Automerge.Doc<System>) {
     this._frontends.set(SYSTEM_ID, doc);
@@ -80,10 +76,25 @@ export class Database<T> extends EventEmitter {
     return this._frontends.get(SYSTEM_ID) as Automerge.Doc<System>;
   }
 
+
+  async getBlob(id: string) : Promise<Uint8Array> {
+    let maybeBlob = await this._idb.blobs.get(id)
+    if (maybeBlob) return maybeBlob.data
+    else return null
+  }
+
+  saveBlob(id: string, data: Uint8Array) {
+    return this._idb.blobs.put({ id, data }, id)
+  }
+
   getContacts(): IContact[] {
     return this.root.contacts.map((c) => this._hydrateContact(c));
   }
 
+  error(err) {
+    this.log('got error', err);
+    throw new Error(err);
+  }
   /**
    * When a peer connects, call this function
    * @param contact The contact that connected

@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState, useEffect } from 'react';
 import { css } from '@emotion/react/macro';
-import { ContactId } from '../backend/types';
+import { ContactId, MessageType, FileMessage } from '../backend/types';
 import { Button, TopBar, UnderlineInput } from './';
 import Backchannel from '../backend';
 import { color, fontSize } from './tokens';
@@ -62,16 +62,11 @@ export default function Mailbox(props: Props) {
         setMessages(messages);
       }
     };
+
     backchannel.on('progress', (progress) => {
       console.log('progress', progress)
     })
     backchannel.on('download', (receiving) => {
-      const blob = new Blob([receiving.data], {type: receiving.type});
-      let a = document.createElement('a')
-      document.body.appendChild(a)
-      a.href = URL.createObjectURL(blob);
-      a.download = receiving.name;
-      a.click();
     })
     backchannel.db.on('patch', onMessage);
 
@@ -145,6 +140,22 @@ export default function Mailbox(props: Props) {
           `}
         >
           {messages.map((message) => {
+            let download = () => { }
+            if (message.type === MessageType.FILE) {
+              let fileMsg = message as FileMessage
+              download = async () => {
+                let data: Uint8Array = await backchannel.db.getBlob(message.id)
+                if (data) {
+                  const blob = new Blob([data], {type: fileMsg.mime_type});
+                  let a = document.createElement('a')
+                  document.body.appendChild(a)
+                  a.href = URL.createObjectURL(blob);
+                  a.download = fileMsg.name;
+                  a.click();
+                  document.body.removeChild(a)
+                }
+              }
+            }
             message.incoming = contactId !== message.target;
             return (
               <li
@@ -165,9 +176,9 @@ export default function Mailbox(props: Props) {
                     padding: 18px;
                     border-radius: 1px;
                   `}
+                  onClick={download}
                 >
-                  <div></div>
-                  {message.text}
+                  {message.type === MessageType.TEXT ? message.text : message.name}
                 </div>{' '}
                 <div
                   css={css`

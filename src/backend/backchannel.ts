@@ -7,6 +7,7 @@ import { v4 as uuid } from 'uuid';
 import { serialize, deserialize } from 'bson';
 
 import { System, Database } from './db';
+import { FileProgress, Blobs }  from './blobs';
 import {
   DocumentId,
   Key,
@@ -45,8 +46,7 @@ export class Backchannel extends events.EventEmitter {
   private _client: Client;
   private _open: boolean;
   private log: debug;
-  private _fileSockets: Object = {};
-  private _sendQueue: Array<any> = [];
+  private _blobs: Blobs;
 
   /**
    * Create a new backchannel client. Each instance represents a user opening
@@ -64,6 +64,16 @@ export class Backchannel extends events.EventEmitter {
       this.onChangeContactList.bind(this)
     );
 
+    this._blobs = new Blobs()
+
+    this._blobs.on('progress', (p: FileProgress) => {
+      this.emit('progress', p)
+    })
+
+    this._blobs.on('download', (p: FileProgress) => {
+      this.db.saveBlob(p.id, p.data)
+      this.emit('download', p)
+    })
 
     this.db.once('open', () => {
       let documentIds = this.db.documents;
@@ -272,46 +282,20 @@ export class Backchannel extends events.EventEmitter {
   }
 
   async sendFile(contactId: ContactId, file: File): Promise<FileMessage> {
-    return new Promise<FileMessage>(async (resolve, reject) => {
-      let msg: FileMessage = {
-        id: uuid(),
-        target: contactId,
-        timestamp: Date.now().toString(),
-        type: MessageType.FILE,
-        mime_type: file.type,
-        size: file.size,
-        lastModified: file.lastModified,
-        name: file.name,
-      };
-      let contact = this.db.getContactById(contactId);
-      await this._addMessage(msg, contact);
-      let socket = this._fileSockets[contactId]
-      if (!socket) this._sendQueue.push([contactId, file])
-      if (!file.stream) throw new Error('file.stream not supported. File failed to send')
-
-      socket.send(new TextEncoder().encode(
-        JSON.stringify({
-          id: msg.id,
-          name: msg.name,
-          size: msg.size,
-          type: msg.type,
-        }),
-      ))
-      const reader = file.stream().getReader();
-      let sending = {
-        id: msg.id,
-        offset: 0,
-        progress: 0
-      }
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) return resolve(msg)
-        await socket.send(value);
-        sending.offset += value.length;
-        sending.progress = sending.offset / file.size;
-        this.emit('progress', sending)
-      }
-    })
+    let msg: FileMessage = {
+      id: uuid(),
+      target: contactId,
+      timestamp: Date.now().toString(),
+      type: MessageType.FILE,
+      mime_type: file.type,
+      size: file.size,
+      lastModified: file.lastModified,
+      name: file.name,
+    };
+    let contact = this.db.getContactById(contactId);
+    await this._addMessage(msg, contact);
+    await this._blobs.sendFile({ contact, msg, file })
+    return msg;
   }
 
   /**
@@ -413,38 +397,14 @@ export class Backchannel extends events.EventEmitter {
   }
 
   private async fileSocket(socket: WebSocket, contact: IContact, peerId: string) {
-    socket.binaryType = 'arraybuffer'
-    this._fileSockets[contact.id] = socket
-    let receiving = null
-
+    this._blobs.addPeer(contact, socket);
     let onmessage = (e) => {
-      if (!receiving) {
-        receiving = JSON.parse(new TextDecoder("utf8").decode(e.data))
-    		receiving.offset = 0;
-        receiving.progress = 0;
-  			receiving.data = new Uint8Array(receiving.size);
-        return;
-      }
-
-      const chunkSize = e.data.byteLength;
-
-      if (receiving.offset + chunkSize > receiving.size) {
-        const error = "received more bytes than expected";
-        throw new Error(error)
-      }
-      console.log('receiving', receiving, chunkSize)
-      receiving.data.set(new Uint8Array(e.data), receiving.offset);
-      receiving.offset += chunkSize;
-      receiving.progress = receiving.offset / receiving.size;
-      this.emit('progress', receiving)
-
-      if (receiving.offset === receiving.size) {
-        this.emit('download', receiving);
-        receiving = null
-      }
-
+      this._blobs.receiveFile(contact, e.data)
     }
     socket.addEventListener('message', onmessage)
+    socket.onclose = () => {
+      socket.removeEventListener('message', onmessage)
+    }
   }
 
   private async _onPeerConnect(
@@ -468,6 +428,7 @@ export class Backchannel extends events.EventEmitter {
     let contact = this.db.getContactByDiscoveryKey(discoveryKey);
     let peerId = contact.id + '#' + userName;
 
+    socket.binaryType = 'arraybuffer'
     if (documentId.startsWith('files')) {
       return this.fileSocket(socket, contact, peerId)
     }
