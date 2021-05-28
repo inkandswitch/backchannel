@@ -1,14 +1,14 @@
-import { FileMessage, ContactId, MessageId, IContact } from './types';
+import { FileMessage } from './types';
 import { EventEmitter } from 'events';
 
 type PendingFile = {
-  contact: IContact;
+  contactId: string;
   msg: FileMessage;
   file: File;
 };
 
 export type FileProgress = {
-  id: MessageId;
+  id: string;
   progress: number;
   offset: number;
   data: Uint8Array;
@@ -29,33 +29,33 @@ export class Blobs extends EventEmitter {
     FileProgress
   >();
 
-  async drainQueue(contactId: ContactId) {
+  async drainQueue(contactId: string) {
     let toSend = this._sendQueue.get(contactId);
     if (!toSend) return;
     let pending = toSend.shift();
     if (pending) await this.sendFile(pending);
   }
 
-  removePeer(contact: IContact) {
-    this._connections.delete(contact.id);
+  removePeer(contactId: string) {
+    this._connections.delete(contactId);
   }
 
-  hasPendingFiles(contactId: ContactId) {
+  hasPendingFiles(contactId: string) {
     let pending = this._sendQueue.get(contactId);
     return pending && pending.length > 0;
   }
 
-  addPeer(contact: IContact, fn: SendFn) {
-    this._connections.set(contact.id, fn);
-    this.drainQueue(contact.id);
+  addPeer(contactId: string, fn: SendFn) {
+    this._connections.set(contactId, fn);
+    this.drainQueue(contactId);
   }
 
   addQueue(pendingFile: PendingFile) {
-    let { contact } = pendingFile;
-    let queue = this._sendQueue.get(contact.id);
+    let { contactId } = pendingFile;
+    let queue = this._sendQueue.get(contactId);
     if (!queue) queue = [];
     queue.push(pendingFile);
-    this._sendQueue.set(contact.id, queue);
+    this._sendQueue.set(contactId, queue);
   }
 
   /**
@@ -64,10 +64,10 @@ export class Blobs extends EventEmitter {
    * @returns true if successful, false if file has been queued
    */
   sendFile(pendingFile: PendingFile) {
-    let { contact, msg, file } = pendingFile;
+    let { contactId, msg, file } = pendingFile;
     return new Promise<boolean>(async (resolve, reject) => {
-      let send = this._connections.get(contact.id);
-      if (!send || this._sending.get(contact.id)) {
+      let send = this._connections.get(contactId);
+      if (!send || this._sending.get(contactId)) {
         this.addQueue(pendingFile);
         return resolve(false);
       }
@@ -95,7 +95,7 @@ export class Blobs extends EventEmitter {
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
-          this.drainQueue(contact.id);
+          this.drainQueue(contactId);
           resolve(true);
           return;
         }
@@ -113,11 +113,10 @@ export class Blobs extends EventEmitter {
    * Internet Explorer
    *
    * @param file The browser-generated file object
-   * @param offset The offset, defaults to 0
    * @param chunkSize Chunksize, defaults to 64<<10
    * @returns An async interator that mimics the stream interface
    */
-  private _read(file: File, offset: number = 0, chunkSize: number = 64 << 10) {
+  private _read(file: File, chunkSize: number = 64 << 10) {
     let _read = (file, offset) =>
       new Promise((resolve, reject) => {
         const fr = new FileReader();
@@ -152,19 +151,19 @@ export class Blobs extends EventEmitter {
    * @param {ArrayBuffer} data The data we're receiving
    * @returns
    */
-  receiveFile(contact, data: ArrayBuffer) {
-    if (!this._receiving.get(contact.id)) {
+  receiveFile(contactId: string, data: ArrayBuffer) {
+    if (!this._receiving.get(contactId)) {
       let r = JSON.parse(new TextDecoder('utf8').decode(data));
       r.offset = 0;
       r.progress = 0;
       r.data = new Uint8Array(r.size);
-      this._receiving.set(contact.id, r);
+      this._receiving.set(contactId, r);
       return;
     }
 
     const chunkSize = data.byteLength;
 
-    let r = this._receiving.get(contact.id);
+    let r = this._receiving.get(contactId);
 
     if (r.offset + chunkSize > r.size) {
       const error = 'received more bytes than expected';
@@ -173,12 +172,12 @@ export class Blobs extends EventEmitter {
     r.data.set(new Uint8Array(data), r.offset);
     r.offset += chunkSize;
     r.progress = r.offset / r.size;
-    this._receiving.set(contact.id, r);
+    this._receiving.set(contactId, r);
     this.emit('progress', r);
 
     if (r.offset === r.size) {
       this.emit('download', r);
-      this._receiving.delete(contact.id);
+      this._receiving.delete(contactId);
     }
   }
 }

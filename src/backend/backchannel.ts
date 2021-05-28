@@ -297,7 +297,7 @@ export class Backchannel extends events.EventEmitter {
     };
     let contact = this.db.getContactById(contactId);
     await this._addMessage(msg, contact);
-    let sent = await this._blobs.sendFile({ contact, msg, file });
+    let sent = await this._blobs.sendFile({ contactId: contact.id, msg, file });
     if (sent) {
       this._markMessageSent(msg.id, contact);
     }
@@ -428,15 +428,15 @@ export class Backchannel extends events.EventEmitter {
       socket.send(encoded)
     }
 
-    this._blobs.addPeer(contact, send);
+    this._blobs.addPeer(contact.id, send);
     let onmessage = async (e) => {
       let decoded = await this._decrypt(e.data, contact)
-      this._blobs.receiveFile(contact, decoded);
+      this._blobs.receiveFile(contact.id, decoded);
     };
 
     socket.addEventListener('message', onmessage);
     socket.onclose = () => {
-      this._blobs.removePeer(contact);
+      this._blobs.removePeer(contact.id);
       socket.removeEventListener('message', onmessage);
     };
   }
@@ -463,6 +463,7 @@ export class Backchannel extends events.EventEmitter {
     let peerId = contact.id + '#' + userName;
 
     socket.binaryType = 'arraybuffer';
+    this.log('onpeer connect', documentId)
     if (documentId.startsWith('files')) {
       return this.fileSocket(socket, contact, peerId);
     }
