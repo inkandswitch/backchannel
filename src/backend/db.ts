@@ -170,17 +170,19 @@ export class Database<T> extends EventEmitter {
    * @param changeFn The Automerge change function to change the document.
    */
   async change(docId: DocumentId, changeFn: Automerge.ChangeFn<System | T>) {
-    this.log('changing', docId);
     let doc = this._frontends.get(docId);
     const [newDoc, changeData] = Automerge.Frontend.change(doc, changeFn);
+    this.log('changing', docId, changeData);
     this._frontends.set(docId, newDoc);
     let syncer = this._syncer(docId);
     if (!syncer)
       this.error(new Error('Document doesnt exist with id ' + docId));
-    let change = syncer.change(changeData);
-    this.log('storing change', docId);
-    await this._idb.storeChange(docId, change);
-    syncer.updatePeers();
+    if (changeData) {
+      let change = syncer.change(changeData);
+      this.log('storing change', docId);
+      await this._idb.storeChange(docId, change);
+      syncer.updatePeers();
+    }
   }
 
   /**

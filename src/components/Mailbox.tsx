@@ -24,18 +24,17 @@ export default function Mailbox(props: Props) {
     backchannel.db.getContactById(contactId)
   );
   let [connected, setConnected] = useState(contact && contact.isConnected);
+  let [progress, setProgress] = useState({});
 
   useEffect(() => {
     function onContact({ contact }) {
       if (contact.id === contactId) {
-        console.log('contact connected', contactId);
         setContact(contact);
         setConnected(true);
       }
     }
     function onContactDisconnected({ contact }) {
       if (contact.id === contactId) {
-        console.log('contact disconnected', contactId);
         setConnected(false);
       }
     }
@@ -67,7 +66,7 @@ export default function Mailbox(props: Props) {
     backchannel.db.on('patch', onMessage);
 
     let onMessagesChanged = (progress: FileProgress) => {
-      console.log('progress', progress);
+      setProgress({ ...progress, [progress.id]: progress.progress });
     };
 
     backchannel.on('progress', onMessagesChanged);
@@ -148,22 +147,6 @@ export default function Mailbox(props: Props) {
         >
           {messages.map((message) => {
             // TODO: ugly
-            message.download = () => {};
-            if (message.type === MessageType.FILE) {
-              let fileMsg = message as FileMessage;
-              message.download = async () => {
-                let data: Uint8Array = await backchannel.db.getBlob(message.id);
-                if (data) {
-                  const blob = new Blob([data], { type: fileMsg.mime_type });
-                  let a = document.createElement('a');
-                  document.body.appendChild(a);
-                  a.href = URL.createObjectURL(blob);
-                  a.download = fileMsg.name;
-                  a.click();
-                  document.body.removeChild(a);
-                }
-              };
-            }
             message.incoming = contactId !== message.target;
             return (
               <li
@@ -184,11 +167,14 @@ export default function Mailbox(props: Props) {
                     padding: 18px;
                     border-radius: 1px;
                   `}
-                  onClick={message.download}
                 >
-                  {message.type === MessageType.TEXT
-                    ? message.text
-                    : message.name}
+                  {message.type === MessageType.TEXT && message.text}
+                  {message.type === MessageType.FILE && (
+                    <FileDownloader
+                      progress={progress[message.id]}
+                      message={message}
+                    />
+                  )}
                 </div>{' '}
                 <div
                   css={css`
@@ -232,6 +218,76 @@ export default function Mailbox(props: Props) {
           Send
         </Button>
       </form>
+    </div>
+  );
+}
+
+enum FileStates {
+  QUEUED = 0,
+  ERROR = 1,
+  SUCCESS = 2,
+  PROGRESS = 3,
+}
+
+type FileDownloaderProps = { progress: number; message: FileMessage };
+
+function FileDownloader(props: FileDownloaderProps) {
+  let { progress, message } = props;
+
+  let state = message.sent ? FileStates.SUCCESS : FileStates.QUEUED;
+
+  // outgoing
+  if (!message.incoming) {
+    // did the file fail to send?
+    if (backchannel.didFileError(message)) state = FileStates.ERROR;
+  }
+  if (progress > -1 && progress < 1) state = FileStates.PROGRESS;
+
+  let download = async () => {
+    let data: Uint8Array = await backchannel.db.getBlob(message.id);
+    // on the incoming side we only know it's erroring if this blob doesn't exist
+    if (data) {
+      const blob = new Blob([data], { type: message.mime_type });
+      let a = document.createElement('a');
+      document.body.appendChild(a);
+      a.href = URL.createObjectURL(blob);
+      a.download = message.name;
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
+  let element = null;
+  switch (state) {
+    case FileStates.QUEUED:
+      element = 'spinner';
+      break;
+    case FileStates.ERROR:
+      element = 'error';
+      break;
+    case FileStates.PROGRESS:
+      element = (
+        <div
+          css={css`
+            background-color: ${color.border};
+            height: 10px;
+            width: ${progress * 100}%;
+          `}
+        />
+      );
+      break;
+    default:
+      element = message.incoming ? (
+        <div onClick={download}>download</div>
+      ) : (
+        'success'
+      );
+  }
+
+  return (
+    <div>
+      {message.name}
+      {element}
     </div>
   );
 }

@@ -540,7 +540,7 @@ export class Backchannel extends events.EventEmitter {
     if (!contact) return;
     let docId = contact.discoveryKey;
     let res = await this.db.change(docId, (doc: Mailbox) => {
-      let idx = doc.messages.findIndex((message) => (message.id = msgId));
+      let idx = doc.messages.findIndex((message) => message.id === msgId);
       doc.messages[idx].sent = true;
     });
     this.db.save(docId);

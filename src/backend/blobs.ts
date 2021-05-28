@@ -2,6 +2,7 @@
 // https://github.com/saljam/webwormhole/blob/master/web/main.js#L125
 
 import { EventEmitter } from 'events';
+import debug from 'debug';
 
 type FileMetadata = {
   id: string;
@@ -39,6 +40,7 @@ export class Blobs extends EventEmitter {
     string,
     FileProgress
   >();
+  private log: debug = debug('bc:blobs');
 
   async drainQueue(contactId: string) {
     let toSend = this._sendQueue.get(contactId);
@@ -80,6 +82,7 @@ export class Blobs extends EventEmitter {
       let send = this._connections.get(contactId);
       if (!send || this._sending.get(contactId)) {
         this.addQueue(pendingFile);
+        this.log('adding to queue', pendingFile);
         return resolve(false);
       }
       send(
@@ -110,6 +113,7 @@ export class Blobs extends EventEmitter {
         if (done) {
           this.drainQueue(contactId);
           this.emit('sent', sending);
+          this.log('sent', sending);
           resolve(true);
           return;
         }
