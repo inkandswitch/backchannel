@@ -362,18 +362,12 @@ export class Backchannel extends events.EventEmitter {
     contact: IContact,
     userName: string
   ) {
-    let encryptionKey = contact.key;
     try {
-      socket.binaryType = 'arraybuffer';
-      let send = (msg: Uint8Array) => {
-        symmetric
-          .encrypt(encryptionKey, Buffer.from(msg).toString('hex'))
-          .then((cipher) => {
-            let encoded = serialize(cipher);
-            socket.send(encoded);
-          });
+      // Set up send event
+      let send = async (msg: Uint8Array) => {
+        let encoded = await this._encrypt(msg, contact)
+        socket.send(encoded);
       };
-
       let peerId = contact.id + '#' + userName;
       let gotAutomergeSyncMsg: ReceiveSyncMsg = this.db.onPeerConnect(
         peerId,
@@ -381,17 +375,15 @@ export class Backchannel extends events.EventEmitter {
         send
       );
 
-      let onmessage = (e) => {
-        let decoded = deserialize(e.data) as EncryptedProtocolMessage;
-        symmetric.decrypt(encryptionKey, decoded).then((plainText) => {
-          const syncMsg = Uint8Array.from(Buffer.from(plainText, 'hex'));
-          gotAutomergeSyncMsg(syncMsg);
-        });
+      // Setup onmessage eevent
+      let onmessage = async (e) => {
+        let syncMsg = await this._decrypt(e.data, contact)
+         gotAutomergeSyncMsg(syncMsg);
       };
       socket.addEventListener('message', onmessage);
 
-      // localfirst/relay-client also has a peer.disconnect event
-      // but it is somewhat unreliable. this is better.
+      // HACK: localfirst/relay-client also has a peer.disconnect event
+      // but it is somewhat unreliable.
       let onclose = () => {
         let documentId = contact.discoveryKey;
         socket.removeEventListener('message', onmessage);
@@ -400,7 +392,6 @@ export class Backchannel extends events.EventEmitter {
           this.emit('contact.disconnected', { contact });
         });
       };
-
       socket.addEventListener('close', onclose);
 
       contact.isConnected = this.db.isConnected(contact);
@@ -416,18 +407,33 @@ export class Backchannel extends events.EventEmitter {
     }
   }
 
+  async _encrypt(msg: Uint8Array, contact: IContact): Promise<ArrayBuffer> {
+    let cipher = await symmetric.encrypt(contact.key, Buffer.from(msg).toString('hex'))
+    return serialize(cipher);
+  }
+
+  async _decrypt(msg: ArrayBuffer, contact: IContact): Promise<Uint8Array> {
+    let decoded = deserialize(msg) as EncryptedProtocolMessage;
+    let plainText = await symmetric.decrypt(contact.key, decoded)
+    return Uint8Array.from(Buffer.from(plainText, 'hex'));
+  }
+
   private async fileSocket(
     socket: WebSocket,
     contact: IContact,
     peerId: string
   ) {
-    let send = (msg: Uint8Array) => {
-      socket.send(msg)
+    let send = async (msg: Uint8Array) => {
+      let encoded = await this._encrypt(msg, contact)
+      socket.send(encoded)
     }
+
     this._blobs.addPeer(contact, send);
-    let onmessage = (e) => {
-      this._blobs.receiveFile(contact, e.data);
+    let onmessage = async (e) => {
+      let decoded = await this._decrypt(e.data, contact)
+      this._blobs.receiveFile(contact, decoded);
     };
+
     socket.addEventListener('message', onmessage);
     socket.onclose = () => {
       this._blobs.removePeer(contact);
