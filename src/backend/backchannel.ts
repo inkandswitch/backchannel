@@ -71,6 +71,11 @@ export class Backchannel extends events.EventEmitter {
       this.emit('progress', p);
     });
 
+    this._blobs.on('sent', (p: FileProgress) => {
+      this._markMessageSent(p.id, p.contactId);
+      this.emit('sent', p);
+    });
+
     this._blobs.on('download', (p: FileProgress) => {
       this.db.saveBlob(p.id, p.data);
       this.emit('download', p);
@@ -302,11 +307,15 @@ export class Backchannel extends events.EventEmitter {
       lastModified: msg.lastModified,
       mime_type: msg.mime_type,
       size: msg.size,
-      name: msg.name
-    }
-    let sent = await this._blobs.sendFile({ contactId: contact.id, meta, file });
+      name: msg.name,
+    };
+    let sent = await this._blobs.sendFile({
+      contactId: contact.id,
+      meta,
+      file,
+    });
     if (sent) {
-      this._markMessageSent(msg.id, contact);
+      this._markMessageSent(msg.id, contact.id);
     }
     return msg;
   }
@@ -372,7 +381,7 @@ export class Backchannel extends events.EventEmitter {
     try {
       // Set up send event
       let send = async (msg: Uint8Array) => {
-        let encoded = await this._encrypt(msg, contact)
+        let encoded = await this._encrypt(msg, contact);
         socket.send(encoded);
       };
       let peerId = contact.id + '#' + userName;
@@ -384,8 +393,8 @@ export class Backchannel extends events.EventEmitter {
 
       // Setup onmessage eevent
       let onmessage = async (e) => {
-        let syncMsg = await this._decrypt(e.data, contact)
-         gotAutomergeSyncMsg(syncMsg);
+        let syncMsg = await this._decrypt(e.data, contact);
+        gotAutomergeSyncMsg(syncMsg);
       };
       socket.addEventListener('message', onmessage);
 
@@ -415,13 +424,16 @@ export class Backchannel extends events.EventEmitter {
   }
 
   async _encrypt(msg: Uint8Array, contact: IContact): Promise<ArrayBuffer> {
-    let cipher = await symmetric.encrypt(contact.key, Buffer.from(msg).toString('hex'))
+    let cipher = await symmetric.encrypt(
+      contact.key,
+      Buffer.from(msg).toString('hex')
+    );
     return serialize(cipher);
   }
 
   async _decrypt(msg: ArrayBuffer, contact: IContact): Promise<Uint8Array> {
     let decoded = deserialize(msg) as EncryptedProtocolMessage;
-    let plainText = await symmetric.decrypt(contact.key, decoded)
+    let plainText = await symmetric.decrypt(contact.key, decoded);
     return Uint8Array.from(Buffer.from(plainText, 'hex'));
   }
 
@@ -431,13 +443,13 @@ export class Backchannel extends events.EventEmitter {
     peerId: string
   ) {
     let send = async (msg: Uint8Array) => {
-      let encoded = await this._encrypt(msg, contact)
-      socket.send(encoded)
-    }
+      let encoded = await this._encrypt(msg, contact);
+      socket.send(encoded);
+    };
 
     this._blobs.addPeer(contact.id, send);
     let onmessage = async (e) => {
-      let decoded = await this._decrypt(e.data, contact)
+      let decoded = await this._decrypt(e.data, contact);
       this._blobs.receiveFile(contact.id, decoded);
     };
 
@@ -470,7 +482,7 @@ export class Backchannel extends events.EventEmitter {
     let peerId = contact.id + '#' + userName;
 
     socket.binaryType = 'arraybuffer';
-    this.log('onpeer connect', documentId)
+    this.log('onpeer connect', documentId);
     if (documentId.startsWith('files')) {
       return this.fileSocket(socket, contact, peerId);
     }
@@ -523,7 +535,9 @@ export class Backchannel extends events.EventEmitter {
     return res;
   }
 
-  private async _markMessageSent(msgId: MessageId, contact: IContact) {
+  private async _markMessageSent(msgId: MessageId, contactId: ContactId) {
+    let contact = this.db.getContactById(contactId);
+    if (!contact) return;
     let docId = contact.discoveryKey;
     let res = await this.db.change(docId, (doc: Mailbox) => {
       let idx = doc.messages.findIndex((message) => (message.id = msgId));

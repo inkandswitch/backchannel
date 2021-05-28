@@ -9,7 +9,7 @@ type FileMetadata = {
   size: number;
   mime_type: string;
   lastModified?: number;
-}
+};
 
 type PendingFile = {
   contactId: string;
@@ -18,10 +18,11 @@ type PendingFile = {
 };
 
 export type FileProgress = {
+  contactId: string;
   id: string;
   progress: number;
   offset: number;
-  data: Uint8Array;
+  data?: Uint8Array;
   size: number;
 };
 
@@ -97,15 +98,18 @@ export class Blobs extends EventEmitter {
       } else {
         reader = this._read(file);
       }
-      let sending = {
+      let sending: FileProgress = {
+        contactId,
         id: meta.id,
         offset: 0,
         progress: 0,
+        size: meta.size,
       };
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
           this.drainQueue(contactId);
+          this.emit('sent', sending);
           resolve(true);
           return;
         }
