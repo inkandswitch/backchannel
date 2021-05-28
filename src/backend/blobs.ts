@@ -1,5 +1,6 @@
 import { FileMessage, ContactId, MessageId, IContact } from './types';
 import { EventEmitter } from 'events';
+import { nextTick } from 'process';
 
 type PendingFile = {
   contact: IContact;
@@ -64,9 +65,6 @@ export class Blobs extends EventEmitter {
         this.addQueue(pendingFile);
         return resolve(false);
       }
-      if (!file.stream)
-        throw new Error('file.stream not supported. File failed to send');
-
       socket.send(
         new TextEncoder().encode(
           JSON.stringify({
@@ -77,7 +75,12 @@ export class Blobs extends EventEmitter {
           })
         )
       );
-      const reader = file.stream().getReader();
+      let reader;
+      if (!file.stream) {
+        reader = file.stream().getReader();
+      } else {
+        reader = this._read(file);
+      }
       let sending = {
         id: msg.id,
         offset: 0,
@@ -87,7 +90,8 @@ export class Blobs extends EventEmitter {
         const { done, value } = await reader.read();
         if (done) {
           this.drainQueue(contact.id);
-          return resolve(true);
+          resolve(true);
+          return;
         }
         await socket.send(value);
         sending.offset += value.length;
@@ -95,6 +99,45 @@ export class Blobs extends EventEmitter {
         this.emit('progress', sending);
       }
     });
+  }
+
+  /**
+   * An internal method that is used if file.stream API is not available. As of
+   * writing in May 2021, this is applicable for Firefox for Android, Opera, and
+   * Internet Explorer
+   *
+   * @param file The browser-generated file object
+   * @param offset The offset, defaults to 0
+   * @param chunkSize Chunksize, defaults to 64<<10
+   * @returns An async interator that mimics the stream interface
+   */
+  private _read(file: File, offset: number = 0, chunkSize: number = 64 << 10) {
+    let _read = (file, offset) =>
+      new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = (e: ProgressEvent<FileReader>) => {
+          //@ts-ignore
+          resolve(new Uint8Array(e.target.result));
+        };
+
+        let end = offset + chunkSize;
+        let blob = file.slice(offset, end);
+        fr.readAsArrayBuffer(blob);
+      });
+
+    return {
+      current: 0,
+      last: file.size,
+      async read() {
+        let value = await _read(file, this.current);
+        if (this.current <= this.last) {
+          this.current += chunkSize;
+          return { done: false, value };
+        } else {
+          return { done: true };
+        }
+      },
+    };
   }
 
   receiveFile(contact, data: ArrayBuffer) {
