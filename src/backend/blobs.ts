@@ -1,9 +1,16 @@
-import { FileMessage } from './types';
 import { EventEmitter } from 'events';
+
+type FileMetadata = {
+  id: string;
+  name: string;
+  size: number;
+  mime_type: string;
+  lastModified?: number;
+}
 
 type PendingFile = {
   contactId: string;
-  msg: FileMessage;
+  meta: FileMetadata;
   file: File;
 };
 
@@ -64,7 +71,7 @@ export class Blobs extends EventEmitter {
    * @returns true if successful, false if file has been queued
    */
   sendFile(pendingFile: PendingFile) {
-    let { contactId, msg, file } = pendingFile;
+    let { contactId, meta, file } = pendingFile;
     return new Promise<boolean>(async (resolve, reject) => {
       let send = this._connections.get(contactId);
       if (!send || this._sending.get(contactId)) {
@@ -74,10 +81,10 @@ export class Blobs extends EventEmitter {
       send(
         new TextEncoder().encode(
           JSON.stringify({
-            id: msg.id,
-            name: msg.name,
-            size: msg.size,
-            type: msg.type,
+            id: meta.id,
+            name: meta.name,
+            size: meta.size,
+            type: meta.mime_type,
           })
         )
       );
@@ -88,7 +95,7 @@ export class Blobs extends EventEmitter {
         reader = this._read(file);
       }
       let sending = {
-        id: msg.id,
+        id: meta.id,
         offset: 0,
         progress: 0,
       };

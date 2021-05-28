@@ -297,7 +297,14 @@ export class Backchannel extends events.EventEmitter {
     };
     let contact = this.db.getContactById(contactId);
     await this._addMessage(msg, contact);
-    let sent = await this._blobs.sendFile({ contactId: contact.id, msg, file });
+    let meta = {
+      id: msg.id,
+      lastModified: msg.lastModified,
+      mime_type: msg.mime_type,
+      size: msg.size,
+      name: msg.name
+    }
+    let sent = await this._blobs.sendFile({ contactId: contact.id, meta, file });
     if (sent) {
       this._markMessageSent(msg.id, contact);
     }
