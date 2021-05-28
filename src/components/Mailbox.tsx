@@ -234,6 +234,7 @@ function FileDownloader(props: FileDownloaderProps) {
 
   let state = message.state;
   if (progress > -1 && progress < 1) state = FileState.PROGRESS;
+  if (progress === 1) state = FileState.SUCCESS
 
   let download = async () => {
     let data: Uint8Array = await backchannel.db.getBlob(message.id);

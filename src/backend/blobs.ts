@@ -85,7 +85,7 @@ export class Blobs extends EventEmitter {
         return resolve(false);
       }
 
-      this._sending.set(contactId, true)
+      this._sending.set(contactId, true);
 
       send(
         new TextEncoder().encode(
@@ -115,7 +115,7 @@ export class Blobs extends EventEmitter {
         if (done) {
           this.drainQueue(contactId);
           this.emit('sent', sending);
-          this._sending.set(contactId, false)
+          this._sending.set(contactId, false);
           resolve(true);
           return;
         }
@@ -124,9 +124,9 @@ export class Blobs extends EventEmitter {
           await send(value);
         } catch (err) {
           this.emit('error', sending);
-          this.addQueue(pendingFile)
+          this.addQueue(pendingFile);
           resolve(false);
-          this._sending.set(contactId, false)
+          this._sending.set(contactId, false);
           return;
         }
         sending.offset += value.length;
@@ -183,6 +183,7 @@ export class Blobs extends EventEmitter {
   receiveFile(contactId: string, data: ArrayBuffer) {
     if (!this._receiving.get(contactId)) {
       let r = JSON.parse(new TextDecoder('utf8').decode(data));
+      r.contactId = contactId
       r.offset = 0;
       r.progress = 0;
       r.data = new Uint8Array(r.size);

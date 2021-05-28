@@ -328,7 +328,7 @@ export class Backchannel extends events.EventEmitter {
       });
       this._updateFileState(
         msg.id,
-        contactId,
+        contact.id,
         sent ? FileState.SUCCESS : FileState.QUEUED
       );
     } catch (err) {
@@ -547,7 +547,6 @@ export class Backchannel extends events.EventEmitter {
     let res = await this.db.change(docId, (doc: Mailbox) => {
       doc.messages.push(msg);
     });
-    this.db.save(docId);
     return res;
   }
 
@@ -564,7 +563,6 @@ export class Backchannel extends events.EventEmitter {
       //@ts-ignore
       doc.messages[idx].state = state;
     });
-    this.db.save(docId);
     return res;
   }
 }
