@@ -1,6 +1,5 @@
 import { FileMessage, ContactId, MessageId, IContact } from './types';
 import { EventEmitter } from 'events';
-import { nextTick } from 'process';
 
 type PendingFile = {
   contact: IContact;
@@ -57,6 +56,11 @@ export class Blobs extends EventEmitter {
     this._sendQueue.set(contact.id, queue);
   }
 
+  /**
+   * Send a file to a contact. Will queue if contact is not currently online.
+   * @param pendingFile The pending file
+   * @returns true if successful, false if file has been queued
+   */
   sendFile(pendingFile: PendingFile) {
     let { contact, msg, file } = pendingFile;
     return new Promise<boolean>(async (resolve, reject) => {
@@ -140,6 +144,12 @@ export class Blobs extends EventEmitter {
     };
   }
 
+  /**
+   * Receive a file for a contact.
+   * @param contact The contact to send it to
+   * @param {ArrayBuffer} data The data we're receiving
+   * @returns
+   */
   receiveFile(contact, data: ArrayBuffer) {
     if (!this._receiving.get(contact.id)) {
       let r = JSON.parse(new TextDecoder('utf8').decode(data));
