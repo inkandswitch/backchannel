@@ -37,7 +37,6 @@ function multidevice(done) {
     let key = await generateKey();
 
     async function onSync() {
-
       android.connectToAllContacts();
 
       let alices_bob = alice.db.getContactById(petbob_id);
@@ -215,7 +214,6 @@ test('integration send multiple messages', async () => {
     contact: petalice_id,
     text: 'hey bob',
   };
-
 
   expect(alice.opened()).toBe(true);
   expect(bob.opened()).toBe(true);

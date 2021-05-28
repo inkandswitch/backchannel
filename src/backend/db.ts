@@ -67,7 +67,6 @@ export class Database<T> extends EventEmitter {
     await this.change(SYSTEM_ID, changeFn);
   }
 
-
   set root(doc: Automerge.Doc<System>) {
     this._frontends.set(SYSTEM_ID, doc);
   }
@@ -76,15 +75,14 @@ export class Database<T> extends EventEmitter {
     return this._frontends.get(SYSTEM_ID) as Automerge.Doc<System>;
   }
 
-
-  async getBlob(id: string) : Promise<Uint8Array> {
-    let maybeBlob = await this._idb.blobs.get(id)
-    if (maybeBlob) return maybeBlob.data
-    else return null
+  async getBlob(id: string): Promise<Uint8Array> {
+    let maybeBlob = await this._idb.blobs.get(id);
+    if (maybeBlob) return maybeBlob.data;
+    else return null;
   }
 
   saveBlob(id: string, data: Uint8Array) {
-    return this._idb.blobs.put({ id, data }, id)
+    return this._idb.blobs.put({ id, data }, id);
   }
 
   getContacts(): IContact[] {

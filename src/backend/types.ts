@@ -27,6 +27,7 @@ export interface IMessage {
   target: ContactId;
   timestamp: string;
   incoming?: boolean;
+  sent: boolean;
 }
 
 export interface TextMessage extends IMessage {

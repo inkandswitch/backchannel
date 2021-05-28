@@ -7,6 +7,7 @@ import Backchannel from '../backend';
 import { color, fontSize } from './tokens';
 import { timestampToDate } from './util';
 import { Instructions } from '../components';
+import { FileProgress } from '../backend/blobs';
 
 let backchannel = Backchannel();
 const PADDING_CHAT = 12;
@@ -63,15 +64,22 @@ export default function Mailbox(props: Props) {
       }
     };
 
-    backchannel.on('progress', (progress) => {
-      console.log('progress', progress)
-    })
-    backchannel.on('download', (receiving) => {
-    })
     backchannel.db.on('patch', onMessage);
 
+    let onProgress = (progress: FileProgress) => {
+      console.log('progress', progress);
+    };
+    let onDownload = (receiving: FileProgress) => {
+      console.log('download finished');
+    };
+
+    backchannel.on('progress', onProgress);
+    backchannel.on('download', onDownload);
+
     return function cleanup() {
-      backchannel.removeListener('message', onMessage);
+      backchannel.db.removeListener('patch', onMessage);
+      backchannel.removeListener('download', onDownload);
+      backchannel.removeListener('progress', onProgress);
     };
   }, [contactId, contact]);
 
@@ -91,9 +99,9 @@ export default function Mailbox(props: Props) {
     const files = e.dataTransfer.files;
     if (files.length !== 0) {
       for (let i = 0; i < files.length; i++) {
-        backchannel.sendFile(contactId, files[i]).then(msg => {
-          console.log('message sent!')
-        })
+        backchannel.sendFile(contactId, files[i]).then((file: FileMessage) => {
+          console.log('sent?', file.sent);
+        });
       }
     }
   }
@@ -140,21 +148,22 @@ export default function Mailbox(props: Props) {
           `}
         >
           {messages.map((message) => {
-            let download = () => { }
+            // TODO: ugly
+            message.download = () => {};
             if (message.type === MessageType.FILE) {
-              let fileMsg = message as FileMessage
-              download = async () => {
-                let data: Uint8Array = await backchannel.db.getBlob(message.id)
+              let fileMsg = message as FileMessage;
+              message.download = async () => {
+                let data: Uint8Array = await backchannel.db.getBlob(message.id);
                 if (data) {
-                  const blob = new Blob([data], {type: fileMsg.mime_type});
-                  let a = document.createElement('a')
-                  document.body.appendChild(a)
+                  const blob = new Blob([data], { type: fileMsg.mime_type });
+                  let a = document.createElement('a');
+                  document.body.appendChild(a);
                   a.href = URL.createObjectURL(blob);
                   a.download = fileMsg.name;
                   a.click();
-                  document.body.removeChild(a)
+                  document.body.removeChild(a);
                 }
-              }
+              };
             }
             message.incoming = contactId !== message.target;
             return (
@@ -176,9 +185,11 @@ export default function Mailbox(props: Props) {
                     padding: 18px;
                     border-radius: 1px;
                   `}
-                  onClick={download}
+                  onClick={message.download}
                 >
-                  {message.type === MessageType.TEXT ? message.text : message.name}
+                  {message.type === MessageType.TEXT
+                    ? message.text
+                    : message.name}
                 </div>{' '}
                 <div
                   css={css`
