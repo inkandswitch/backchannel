@@ -15,9 +15,11 @@ export type FileProgress = {
   size: number;
 };
 
+export type SendFn = (msg: Uint8Array) => void;
+
 export class Blobs extends EventEmitter {
   private _sending: Map<string, boolean> = new Map<string, boolean>();
-  private _sockets: Map<string, WebSocket> = new Map<string, WebSocket>();
+  private _connections: Map<string, SendFn> = new Map<string, SendFn>();
   private _sendQueue: Map<string, Array<PendingFile>> = new Map<
     string,
     Array<PendingFile>
@@ -35,7 +37,7 @@ export class Blobs extends EventEmitter {
   }
 
   removePeer(contact: IContact) {
-    this._sockets.delete(contact.id);
+    this._connections.delete(contact.id);
   }
 
   hasPendingFiles(contactId: ContactId) {
@@ -43,8 +45,8 @@ export class Blobs extends EventEmitter {
     return pending && pending.length > 0;
   }
 
-  addPeer(contact: IContact, socket: WebSocket) {
-    this._sockets.set(contact.id, socket);
+  addPeer(contact: IContact, fn: SendFn) {
+    this._connections.set(contact.id, fn);
     this.drainQueue(contact.id);
   }
 
@@ -64,12 +66,12 @@ export class Blobs extends EventEmitter {
   sendFile(pendingFile: PendingFile) {
     let { contact, msg, file } = pendingFile;
     return new Promise<boolean>(async (resolve, reject) => {
-      let socket = this._sockets.get(contact.id);
-      if (!socket || this._sending.get(contact.id)) {
+      let send = this._connections.get(contact.id);
+      if (!send || this._sending.get(contact.id)) {
         this.addQueue(pendingFile);
         return resolve(false);
       }
-      socket.send(
+      send(
         new TextEncoder().encode(
           JSON.stringify({
             id: msg.id,
@@ -97,7 +99,7 @@ export class Blobs extends EventEmitter {
           resolve(true);
           return;
         }
-        await socket.send(value);
+        await send(value);
         sending.offset += value.length;
         sending.progress = sending.offset / file.size;
         this.emit('progress', sending);

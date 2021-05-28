@@ -421,7 +421,10 @@ export class Backchannel extends events.EventEmitter {
     contact: IContact,
     peerId: string
   ) {
-    this._blobs.addPeer(contact, socket);
+    let send = (msg: Uint8Array) => {
+      socket.send(msg)
+    }
+    this._blobs.addPeer(contact, send);
     let onmessage = (e) => {
       this._blobs.receiveFile(contact, e.data);
     };
