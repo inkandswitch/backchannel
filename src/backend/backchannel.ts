@@ -80,7 +80,7 @@ export class Backchannel extends events.EventEmitter {
     });
 
     this._blobs.on('error', (p: FileProgress) => {
-      this.log('got error in blobs', p);
+      this.emit('error', p);
     });
 
     this._blobs.on('sent', (p: FileProgress) => {
@@ -88,7 +88,6 @@ export class Backchannel extends events.EventEmitter {
     });
 
     this._blobs.on('download', (p: FileProgress) => {
-      this._updateFileState(p.id, p.contactId, FileState.SUCCESS);
       this.db.saveBlob(p.id, p.data);
       this.emit('download', p);
     });
@@ -326,10 +325,10 @@ export class Backchannel extends events.EventEmitter {
         meta,
         file,
       });
-      this._updateFileState(
+      await this._updateFileState(
         msg.id,
         contact.id,
-        sent ? FileState.SUCCESS : FileState.QUEUED
+        sent ? FileState.SUCCESS : FileState.ERROR
       );
     } catch (err) {
       this._updateFileState(msg.id, contactId, FileState.ERROR);
@@ -407,7 +406,7 @@ export class Backchannel extends events.EventEmitter {
         send
       );
 
-      // Setup onmessage eevent
+      // Setup onmessage event
       let onmessage = async (e) => {
         let syncMsg = await this._decrypt(e.data, contact);
         gotAutomergeSyncMsg(syncMsg);
@@ -460,7 +459,8 @@ export class Backchannel extends events.EventEmitter {
   ) {
     let send = async (msg: Uint8Array) => {
       let encoded = await this._encrypt(msg, contact);
-      socket.send(encoded);
+      if (isOpen(socket)) socket.send(encoded);
+      else throw new Error('SOCKET CLOSED');
     };
 
     this._blobs.addPeer(contact.id, send);
@@ -565,4 +565,8 @@ export class Backchannel extends events.EventEmitter {
     });
     return res;
   }
+}
+
+function isOpen(ws) {
+  return ws.readyState === ws.OPEN;
 }

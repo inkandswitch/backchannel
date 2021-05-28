@@ -61,11 +61,13 @@ export default function Mailbox(props: Props) {
   }, [contactId]);
 
   useEffect(() => {
+    function refreshMessages() {
+      let messages = backchannel.getMessagesByContactId(contactId);
+      setMessages(messages);
+    }
+
     let onMessage = ({ docId }) => {
-      if (contact && docId === contact.discoveryKey) {
-        let messages = backchannel.getMessagesByContactId(contactId);
-        setMessages(messages);
-      }
+      if (contact && docId === contact.discoveryKey) refreshMessages();
     };
 
     backchannel.db.on('patch', onMessage);
@@ -77,12 +79,13 @@ export default function Mailbox(props: Props) {
     backchannel.on('progress', onMessagesChanged);
     backchannel.on('download', onMessagesChanged);
     backchannel.on('sent', onMessagesChanged);
+    backchannel.on('error', refreshMessages);
 
     return function cleanup() {
       backchannel.db.removeListener('patch', onMessage);
       backchannel.removeListener('download', onMessagesChanged);
       backchannel.removeListener('progress', onMessagesChanged);
-      backchannel.removeListener('sent', onMessagesChanged);
+      backchannel.removeListener('error', refreshMessages);
     };
   }, [contactId, contact]);
 
@@ -102,9 +105,7 @@ export default function Mailbox(props: Props) {
     const files = e.dataTransfer.files;
     if (files.length !== 0) {
       for (let i = 0; i < files.length; i++) {
-        backchannel.sendFile(contactId, files[i]).then((file: FileMessage) => {
-          console.log('state', file.state);
-        });
+        backchannel.sendFile(contactId, files[i]);
       }
     }
   }
@@ -233,8 +234,10 @@ function FileDownloader(props: FileDownloaderProps) {
   let { progress, message } = props;
 
   let state = message.state;
-  if (progress > -1 && progress < 1) state = FileState.PROGRESS;
-  if (progress === 1) state = FileState.SUCCESS
+  if (state !== FileState.ERROR) {
+    if (progress > -1 && progress < 1) state = FileState.PROGRESS;
+    if (progress === 1) state = FileState.SUCCESS;
+  }
 
   let download = async () => {
     let data: Uint8Array = await backchannel.db.getBlob(message.id);

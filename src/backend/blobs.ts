@@ -46,7 +46,7 @@ export class Blobs extends EventEmitter {
     let toSend = this._sendQueue.get(contactId);
     if (!toSend) return;
     let pending = toSend.shift();
-    if (pending) await this.sendFile(pending);
+    if (pending) this.sendFile(pending);
   }
 
   removePeer(contactId: string) {
@@ -55,12 +55,11 @@ export class Blobs extends EventEmitter {
 
   hasPendingFiles(contactId: string) {
     let pending = this._sendQueue.get(contactId);
-    return pending && pending.length > 0;
+    return pending && pending.length > 0 ? true : false;
   }
 
   addPeer(contactId: string, fn: SendFn) {
     this._connections.set(contactId, fn);
-    this.drainQueue(contactId);
   }
 
   addQueue(pendingFile: PendingFile) {
@@ -80,7 +79,8 @@ export class Blobs extends EventEmitter {
     let { contactId, meta, file } = pendingFile;
     return new Promise<boolean>(async (resolve, reject) => {
       let send = this._connections.get(contactId);
-      if (!send || this._sending.get(contactId)) {
+      if (!send) return reject();
+      if (this._sending.get(contactId)) {
         this.addQueue(pendingFile);
         return resolve(false);
       }
@@ -113,21 +113,17 @@ export class Blobs extends EventEmitter {
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
-          this.drainQueue(contactId);
-          this.emit('sent', sending);
           this._sending.set(contactId, false);
-          resolve(true);
-          return;
+          this.emit('sent', sending);
+          this.drainQueue(contactId);
+          return resolve(true);
         }
 
         try {
           await send(value);
         } catch (err) {
-          this.emit('error', sending);
-          this.addQueue(pendingFile);
-          resolve(false);
           this._sending.set(contactId, false);
-          return;
+          return reject(false);
         }
         sending.offset += value.length;
         sending.progress = sending.offset / file.size;
@@ -183,7 +179,7 @@ export class Blobs extends EventEmitter {
   receiveFile(contactId: string, data: ArrayBuffer) {
     if (!this._receiving.get(contactId)) {
       let r = JSON.parse(new TextDecoder('utf8').decode(data));
-      r.contactId = contactId
+      r.contactId = contactId;
       r.offset = 0;
       r.progress = 0;
       r.data = new Uint8Array(r.size);
