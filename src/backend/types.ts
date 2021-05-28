@@ -27,11 +27,17 @@ export interface IMessage {
   target: ContactId;
   timestamp: string;
   incoming?: boolean;
-  sent: boolean;
 }
 
 export interface TextMessage extends IMessage {
   text?: string;
+}
+
+export enum FileState {
+  QUEUED = 0,
+  ERROR = 1,
+  SUCCESS = 2,
+  PROGRESS = 3,
 }
 
 export interface FileMessage extends IMessage {
@@ -39,4 +45,5 @@ export interface FileMessage extends IMessage {
   name: string;
   mime_type?: string;
   lastModified: number;
+  state: FileState;
 }

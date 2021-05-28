@@ -82,9 +82,11 @@ export class Blobs extends EventEmitter {
       let send = this._connections.get(contactId);
       if (!send || this._sending.get(contactId)) {
         this.addQueue(pendingFile);
-        this.log('adding to queue', pendingFile);
         return resolve(false);
       }
+
+      this._sending.set(contactId, true)
+
       send(
         new TextEncoder().encode(
           JSON.stringify({
@@ -113,11 +115,20 @@ export class Blobs extends EventEmitter {
         if (done) {
           this.drainQueue(contactId);
           this.emit('sent', sending);
-          this.log('sent', sending);
+          this._sending.set(contactId, false)
           resolve(true);
           return;
         }
-        await send(value);
+
+        try {
+          await send(value);
+        } catch (err) {
+          this.emit('error', sending);
+          this.addQueue(pendingFile)
+          resolve(false);
+          this._sending.set(contactId, false)
+          return;
+        }
         sending.offset += value.length;
         sending.progress = sending.offset / file.size;
         this.emit('progress', sending);

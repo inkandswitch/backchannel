@@ -18,6 +18,7 @@ import {
   TextMessage,
   FileMessage,
   IMessage,
+  FileState,
   MessageType,
 } from './types';
 import { Wormhole } from './wormhole';
@@ -27,6 +28,13 @@ import { ReceiveSyncMsg } from './AutomergeDiscovery';
 export enum ERROR {
   UNREACHABLE = 404,
   PEER = 500,
+}
+
+export enum FileStates {
+  QUEUED = 0,
+  ERROR = 1,
+  SUCCESS = 2,
+  PROGRESS = 3,
 }
 
 export type BackchannelSettings = {
@@ -71,12 +79,16 @@ export class Backchannel extends events.EventEmitter {
       this.emit('progress', p);
     });
 
+    this._blobs.on('error', (p: FileProgress) => {
+      this.log('got error in blobs', p);
+    });
+
     this._blobs.on('sent', (p: FileProgress) => {
-      this._markMessageSent(p.id, p.contactId);
       this.emit('sent', p);
     });
 
     this._blobs.on('download', (p: FileProgress) => {
+      this._updateFileState(p.id, p.contactId, FileState.SUCCESS);
       this.db.saveBlob(p.id, p.data);
       this.emit('download', p);
     });
@@ -280,7 +292,6 @@ export class Backchannel extends events.EventEmitter {
       text: text,
       type: MessageType.TEXT,
       timestamp: Date.now().toString(),
-      sent: true, // all text messages are marked sent right now
     };
     this.log('sending message', msg);
     let contact = this.db.getContactById(contactId);
@@ -298,7 +309,7 @@ export class Backchannel extends events.EventEmitter {
       size: file.size,
       lastModified: file.lastModified,
       name: file.name,
-      sent: false,
+      state: FileState.QUEUED,
     };
     let contact = this.db.getContactById(contactId);
     await this._addMessage(msg, contact);
@@ -309,13 +320,19 @@ export class Backchannel extends events.EventEmitter {
       size: msg.size,
       name: msg.name,
     };
-    let sent = await this._blobs.sendFile({
-      contactId: contact.id,
-      meta,
-      file,
-    });
-    if (sent) {
-      this._markMessageSent(msg.id, contact.id);
+    try {
+      let sent = await this._blobs.sendFile({
+        contactId: contact.id,
+        meta,
+        file,
+      });
+      this._updateFileState(
+        msg.id,
+        contactId,
+        sent ? FileState.SUCCESS : FileState.QUEUED
+      );
+    } catch (err) {
+      this._updateFileState(msg.id, contactId, FileState.ERROR);
     }
     return msg;
   }
@@ -357,9 +374,8 @@ export class Backchannel extends events.EventEmitter {
    * @param {FileMessage} msg
    * @returns true if there are pending files, false if no pending files
    */
-  didFileError(msg: FileMessage): boolean {
-    if (msg.sent) return false;
-    return !this._blobs.hasPendingFiles(msg.target);
+  hasPendingFiles(msg: FileMessage): boolean {
+    return this._blobs.hasPendingFiles(msg.target);
   }
 
   /**
@@ -535,13 +551,18 @@ export class Backchannel extends events.EventEmitter {
     return res;
   }
 
-  private async _markMessageSent(msgId: MessageId, contactId: ContactId) {
+  private async _updateFileState(
+    msgId: MessageId,
+    contactId: ContactId,
+    state: FileState
+  ) {
     let contact = this.db.getContactById(contactId);
     if (!contact) return;
     let docId = contact.discoveryKey;
     let res = await this.db.change(docId, (doc: Mailbox) => {
       let idx = doc.messages.findIndex((message) => message.id === msgId);
-      doc.messages[idx].sent = true;
+      //@ts-ignore
+      doc.messages[idx].state = state;
     });
     this.db.save(docId);
     return res;

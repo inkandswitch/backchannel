@@ -1,7 +1,12 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState, useEffect } from 'react';
 import { css } from '@emotion/react/macro';
-import { ContactId, MessageType, FileMessage } from '../backend/types';
+import {
+  FileState,
+  ContactId,
+  MessageType,
+  FileMessage,
+} from '../backend/types';
 import { Button, TopBar, UnderlineInput } from './';
 import Backchannel from '../backend';
 import { color, fontSize } from './tokens';
@@ -98,7 +103,7 @@ export default function Mailbox(props: Props) {
     if (files.length !== 0) {
       for (let i = 0; i < files.length; i++) {
         backchannel.sendFile(contactId, files[i]).then((file: FileMessage) => {
-          console.log('sent?', file.sent);
+          console.log('state', file.state);
         });
       }
     }
@@ -222,26 +227,13 @@ export default function Mailbox(props: Props) {
   );
 }
 
-enum FileStates {
-  QUEUED = 0,
-  ERROR = 1,
-  SUCCESS = 2,
-  PROGRESS = 3,
-}
-
 type FileDownloaderProps = { progress: number; message: FileMessage };
 
 function FileDownloader(props: FileDownloaderProps) {
   let { progress, message } = props;
 
-  let state = message.sent ? FileStates.SUCCESS : FileStates.QUEUED;
-
-  // outgoing
-  if (!message.incoming) {
-    // did the file fail to send?
-    if (backchannel.didFileError(message)) state = FileStates.ERROR;
-  }
-  if (progress > -1 && progress < 1) state = FileStates.PROGRESS;
+  let state = message.state;
+  if (progress > -1 && progress < 1) state = FileState.PROGRESS;
 
   let download = async () => {
     let data: Uint8Array = await backchannel.db.getBlob(message.id);
@@ -259,13 +251,13 @@ function FileDownloader(props: FileDownloaderProps) {
 
   let element = null;
   switch (state) {
-    case FileStates.QUEUED:
+    case FileState.QUEUED:
       element = 'spinner';
       break;
-    case FileStates.ERROR:
+    case FileState.ERROR:
       element = 'error';
       break;
-    case FileStates.PROGRESS:
+    case FileState.PROGRESS:
       element = (
         <div
           css={css`
