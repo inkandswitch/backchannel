@@ -66,20 +66,19 @@ export default function Mailbox(props: Props) {
 
     backchannel.db.on('patch', onMessage);
 
-    let onProgress = (progress: FileProgress) => {
+    let onMessagesChanged = (progress: FileProgress) => {
       console.log('progress', progress);
     };
-    let onDownload = (receiving: FileProgress) => {
-      console.log('download finished');
-    };
 
-    backchannel.on('progress', onProgress);
-    backchannel.on('download', onDownload);
+    backchannel.on('progress', onMessagesChanged);
+    backchannel.on('download', onMessagesChanged);
+    backchannel.on('sent', onMessagesChanged);
 
     return function cleanup() {
       backchannel.db.removeListener('patch', onMessage);
-      backchannel.removeListener('download', onDownload);
-      backchannel.removeListener('progress', onProgress);
+      backchannel.removeListener('download', onMessagesChanged);
+      backchannel.removeListener('progress', onMessagesChanged);
+      backchannel.removeListener('sent', onMessagesChanged);
     };
   }, [contactId, contact]);
 
