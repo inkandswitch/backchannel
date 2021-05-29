@@ -63,7 +63,8 @@ export class Backchannel extends events.EventEmitter {
 
     this.db.once('open', () => {
       let documentIds = this.db.documents;
-      this.relay = this.db.settings && this.db.settings.relay || _settings.relay;
+      this.relay =
+        (this.db.settings && this.db.settings.relay) || _settings.relay;
       this.log('Connecting to relay', this.relay);
       this.log(`Joining ${documentIds.length} documentIds`);
       this._client = this._createClient(this.relay, documentIds);
