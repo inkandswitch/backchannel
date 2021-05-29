@@ -28,7 +28,9 @@ export default function Mailbox(props: Props) {
   let [contact, setContact] = useState(
     backchannel.db.getContactById(contactId)
   );
-  let [connected, setConnected] = useState(contact && contact.isConnected);
+  let [connected, setConnected] = useState(
+    contact && backchannel.db.isConnected(contact)
+  );
   let [progress, setProgress] = useState({});
 
   useEffect(() => {

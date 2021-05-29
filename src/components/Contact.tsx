@@ -31,8 +31,8 @@ export default function Contact({ contactId }: Props) {
   //eslint-disable-next-line
   let [_, setLocation] = useLocation();
   useEffect(() => {
-    backchannel.connectToContactId(contactId)
-  }, [contactId])
+    backchannel.connectToContactId(contactId);
+  }, [contactId]);
 
   async function handleAddContact(e) {
     e.preventDefault();
