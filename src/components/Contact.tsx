@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { css } from '@emotion/react/macro';
 import { useLocation } from 'wouter';
 
@@ -30,6 +30,9 @@ export default function Contact({ contactId }: Props) {
   let [errorMsg, setErrorMsg] = useState('');
   //eslint-disable-next-line
   let [_, setLocation] = useLocation();
+  useEffect(() => {
+    backchannel.connectToContactId(contactId)
+  }, [contactId])
 
   async function handleAddContact(e) {
     e.preventDefault();

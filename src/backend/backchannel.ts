@@ -95,7 +95,7 @@ export class Backchannel extends events.EventEmitter {
     this.db.once('open', () => {
       let documentIds = this.db.documents;
       let relay = this.db.settings && this.db.settings.relay;
-      if (!this.db.settings.relay) {
+      if (!relay) {
         relay = _settings.relay;
         this.db.changeRoot((doc: System) => {
           doc.settings = { relay };
