@@ -87,6 +87,20 @@ test('editMoniker', async () => {
   expect(karen.moniker).toBe('karen');
 });
 
+test('deleteContact', async () => {
+  let bob_id = await db.addContact(
+    crypto.randomBytes(32).toString('hex'),
+    'bob'
+  );
+
+  let bob = db.getContactById(bob_id);
+  expect(bob.moniker).toBe('bob');
+
+  await db.deleteContact(bob.id);
+
+  expect(() => db.getContactById(bob_id)).toThrowError();
+});
+
 test('save/load', async () => {
   let bob_id = await db.addContact(
     crypto.randomBytes(32).toString('hex'),
