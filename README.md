@@ -1,5 +1,7 @@
 # Backchannel
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/b91ac61c-abc1-40d0-9563-e05c189190ae/deploy-status)](https://app.netlify.com/sites/gallant-lewin-1c93b0/deploys)
+
 Backchannel is a cross platform progressive web application combining novel
 out-of-band identity verification techniques with a modernised pet name address book system. 
 
