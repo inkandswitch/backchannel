@@ -20,8 +20,8 @@ export default function App() {
     <div
       css={css`
         background: ${color.primary};
-        max-width: ${viewport.maxWidth}px;
-        max-height: min(130vw, ${viewport.maxHeight}px);
+        max-width: max(100vh, ${viewport.maxWidth}px);
+        max-height: max(100vh, ${viewport.maxHeight}px);
         height: 100%;
         margin: auto;
       `}
