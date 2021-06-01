@@ -62,3 +62,8 @@ css={css`
 `}
 */
 export const fontSize = [10, 12, 14, 24];
+
+export const viewport = {
+  maxWidth: 500,
+  maxHeight: 650,
+};

@@ -3,7 +3,7 @@ import React from 'react';
 import { Route } from 'wouter';
 import { css } from '@emotion/react/macro';
 
-import { color } from './components/tokens';
+import { color, viewport } from './components/tokens';
 import Mailbox from './components/Mailbox';
 import ContactList from './components/ContactList';
 import Contact from './components/Contact';
@@ -20,8 +20,8 @@ export default function App() {
     <div
       css={css`
         background: ${color.primary};
-        max-width: 500px;
-        max-height: min(130vw, 650px);
+        max-width: ${viewport.maxWidth}px;
+        max-height: min(130vw, ${viewport.maxHeight}px);
         height: 100%;
         margin: auto;
       `}
