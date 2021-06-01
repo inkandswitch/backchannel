@@ -19,11 +19,14 @@
     <div id="install"></div>
     <div id="root"> </div>
 
-    <script type="application/javascript"> 
+    <script type="module"> 
       /* Only register a service worker if it's supported */
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js');
-      }
+      // This is the service worker with the Cache-first network
+
+      import 'https://cdn.jsdelivr.net/npm/@pwabuilder/pwaupdate';
+
+      const el = document.createElement('pwa-update');
+      document.body.appendChild(el);
     </script>
     <script type="module"> 
       // TODO: this should be part of the bundle instead and shouldn't be
