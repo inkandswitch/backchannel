@@ -14,10 +14,25 @@
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/icon-192x.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>Backchannel</title>
+    <style type="text/css">
+      body {
+        background-color:white; 
+        margin:0; 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+      }
+
+      @media (min-width:801px) { 
+        #root {
+          margin: auto;
+          max-width: 500px; 
+          max-height: min(130vw, 650px);
+        }
+      }
+    </style>
   </head>
-  <body style="background:white; margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;">
+  <body>
     <div id="install"></div>
-    <div id="root"> </div>
+    <div id="root"></div>
 
     <script type="module"> 
       /* Only register a service worker if it's supported */
