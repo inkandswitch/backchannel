@@ -174,6 +174,14 @@ export class Database<T> extends EventEmitter {
     syncer.updatePeers();
   }
 
+  async deleteContact(id: ContactId): Promise<void> {
+    this.log('deleteContact', id);
+    await this.change(SYSTEM_ID, (doc: System) => {
+      let idx = doc.contacts.findIndex((c) => c.id === id);
+      delete doc.contacts[idx];
+    });
+  }
+
   /**
    * Add a contact.
    */
