@@ -107,6 +107,8 @@ server, run
 * [Cade Diehm](https://shiba.computer/)
 * Peter van Hardenberg, @pvh
 * سلمان الجماز, @saljam
+* Herb Caudill, @herbcaudill
+* Martin Kleppman, @ept
 
 # License
 
