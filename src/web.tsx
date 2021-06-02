@@ -12,3 +12,22 @@ export async function copyToClipboard(code: string): Promise<boolean> {
     return false;
   }
 }
+
+export async function forceScreenSize(width, height) {
+  let isStandardsCompliantPlatform = window.matchMedia(
+    '(display-mode: standalone)'
+  ).matches;
+  //@ts-ignore
+  let isIOS = window.navigator?.standalone === true;
+  let installedApp = isStandardsCompliantPlatform || isIOS;
+  console.log(installedApp);
+
+  if (installedApp) {
+    console.log('resizing', width, height);
+    window.resizeTo(width, height);
+
+    window.addEventListener('resize', () => {
+      window.resizeTo(width, height);
+    });
+  }
+}

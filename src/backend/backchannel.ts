@@ -56,6 +56,7 @@ export class Backchannel extends events.EventEmitter {
   private _open: boolean;
   private log: debug;
   private _blobs: Blobs;
+  private relay: string;
 
   /**
    * Create a new backchannel client. Each instance represents a user opening
@@ -94,21 +95,16 @@ export class Backchannel extends events.EventEmitter {
 
     this.db.once('open', () => {
       let documentIds = this.db.documents;
-      let relay = this.db.settings && this.db.settings.relay;
-      if (!relay) {
-        relay = _settings.relay;
-        this.db.changeRoot((doc: System) => {
-          doc.settings = { relay };
-        });
-      }
-      this.log('Connecting to relay', relay);
+      this.relay =
+        (this.db.settings && this.db.settings.relay) || _settings.relay;
+      this.log('Connecting to relay', this.relay);
       this.log(`Joining ${documentIds.length} documentIds`);
       let allDocuments = [];
       documentIds.forEach((docId) => {
         allDocuments.push(`automerge-${docId}`);
         allDocuments.push(`files-${docId}`);
       });
-      this._client = this._createClient(relay, documentIds);
+      this._client = this._createClient(this.relay, documentIds)
       this._wormhole = new Wormhole(this._client);
       this._emitOpen();
     });
@@ -146,7 +142,7 @@ export class Backchannel extends events.EventEmitter {
   }
 
   get settings() {
-    return this.db.settings;
+    return { ...this.db.settings, relay: this.relay };
   }
 
   private _emitOpen() {
