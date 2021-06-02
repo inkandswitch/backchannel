@@ -104,7 +104,7 @@ export class Backchannel extends events.EventEmitter {
         allDocuments.push(`automerge-${docId}`);
         allDocuments.push(`files-${docId}`);
       });
-      this._client = this._createClient(this.relay, documentIds)
+      this._client = this._createClient(this.relay, documentIds);
       this._wormhole = new Wormhole(this._client);
       this._emitOpen();
     });
