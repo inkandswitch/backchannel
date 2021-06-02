@@ -72,12 +72,11 @@ export default function Mailbox(props: Props) {
       if (contact && docId === contact.discoveryKey) refreshMessages();
     };
 
-    backchannel.db.on('patch', onMessage);
-
     let onMessagesChanged = (progress: FileProgress) => {
       setProgress({ ...progress, [progress.id]: progress.progress });
     };
 
+    backchannel.db.on('patch', onMessage);
     backchannel.on('progress', onMessagesChanged);
     backchannel.on('download', onMessagesChanged);
     backchannel.on('sent', onMessagesChanged);
@@ -85,8 +84,9 @@ export default function Mailbox(props: Props) {
 
     return function cleanup() {
       backchannel.db.removeListener('patch', onMessage);
-      backchannel.removeListener('download', onMessagesChanged);
       backchannel.removeListener('progress', onMessagesChanged);
+      backchannel.removeListener('download', onMessagesChanged);
+      backchannel.removeListener('sent', onMessagesChanged);
       backchannel.removeListener('error', refreshMessages);
     };
   }, [contactId, contact]);
