@@ -120,9 +120,19 @@ export default function AddContact({ view, object }: Props) {
 
   async function onClickShareURL() {
     let url = `${window.location.origin}/redeem/contact#${code}`
-    const copySuccess = await copyToClipboard(url);
-    if (copySuccess) {
-      setMessage('Code copied!');
+    if (navigator.share) {
+      navigator.share({
+        title: 'backchannel',
+        text: 'lets talk on backchannel.',
+        url,
+      })
+        .then(() => console.log('Successful share'))
+        .catch((error) => console.log('Error sharing', error));
+    } else {
+      const copySuccess = await copyToClipboard(url);
+      if (copySuccess) {
+        setMessage('Code copied!');
+      }
     }
   }
 
