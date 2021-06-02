@@ -239,3 +239,40 @@ test('integration send multiple messages', async () => {
   let bobs = bob.getMessagesByContactId(petalice_id);
   expect(alices).toStrictEqual(bobs);
 });
+
+test.only('purge devices', (done) => {
+  multidevice(({ android, alice, bob }) => {
+    // oops, lost my android.
+
+    alice._client.disconnectServer();
+
+    alice._client.on('server.disconnect', () => {
+      let tasks = [];
+      alice.devices.forEach((d) => {
+        tasks.push(alice.db.deleteContact(d.id));
+      });
+
+      alice.contacts.forEach((c) => {
+        tasks.push(
+          //@ts-ignore
+          alice.db.changeRoot((doc: System) => {
+            doc.contacts.forEach((c) => {
+              c.key = null;
+              c.discoveryKey = null;
+            });
+          })
+        );
+      });
+
+      Promise.all(tasks).then(() => {
+        expect(alice.devices.length).toBe(0);
+
+        alice.contacts.forEach((contact) => {
+          expect(contact.discoveryKey).toBe(null);
+          expect(contact.key).toBe(null);
+        });
+        done();
+      });
+    });
+  });
+});

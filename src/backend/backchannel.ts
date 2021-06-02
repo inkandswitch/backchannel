@@ -221,6 +221,7 @@ export class Backchannel extends events.EventEmitter {
 
   async _addContactDocument(contact: IContact) {
     if (contact.device) return Promise.resolve();
+    if (!contact.key) return Promise.resolve();
     let docId = await this.db.addDocument(contact, (doc: Mailbox) => {
       doc.messages = [];
     });
@@ -337,8 +338,7 @@ export class Backchannel extends events.EventEmitter {
    * @param {IContact} contact The contact to connect to
    */
   connectToContact(contact: IContact) {
-    if (!contact || !contact.discoveryKey)
-      throw new Error('contact.discoveryKey required');
+    if (!contact || !contact.discoveryKey || contact.isConnected) return;
     this._client.join('automerge-' + contact.discoveryKey);
     this._client.join('files-' + contact.discoveryKey);
   }
