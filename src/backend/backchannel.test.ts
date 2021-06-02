@@ -103,6 +103,8 @@ beforeEach((done) => {
 
       petalice_id = await bob.addContact(doc);
       await bob.editMoniker(petalice_id, 'alice');
+      alice.connectToAllContacts();
+      bob.connectToAllContacts();
     }
 
     alice.once('open', () => {
