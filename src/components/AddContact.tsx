@@ -67,6 +67,7 @@ export default function AddContact({ view, object }: Props) {
 
   let onError = (err: Error) => {
     console.error('got error from backend', err);
+    setIsConnecting(false)
     setErrorMsg(err.message);
   };
 
@@ -85,7 +86,6 @@ export default function AddContact({ view, object }: Props) {
       }
     } catch (err) {
       onError(err);
-      setCode('');
       generateCode();
     }
   }
@@ -107,7 +107,8 @@ export default function AddContact({ view, object }: Props) {
     } catch (err) {
       console.log('got error', err);
       onError(err);
-      setCode('');
+      if (view === 'redeem') setCode('');
+      else generateCode()
     }
   }
 
@@ -135,20 +136,12 @@ export default function AddContact({ view, object }: Props) {
             text-align: center;
           `}
         >
-          <div
-            css={css`
-              font-size: 22px;
-              font-weight: 200;
-              display: flex;
-              justify-content: center;
-              flex-direction: column;
-              align-items: center;
-              letter-spacing: 1.1;
-              margin: 2em 0;
-            `}
-          >
             {view === 'generate' && (
-              <>
+              <React.Fragment>
+                <Instructions>
+                  Share this code with a correspondant you trust to open a
+                  backchannel and add them as a contact:
+                </Instructions>
                 <CodeDisplayOrInput>
                   {code}
                   <Button
@@ -161,13 +154,14 @@ export default function AddContact({ view, object }: Props) {
                     Share code
                   </Button>
                 </CodeDisplayOrInput>
-                <IconWithMessage icon={Spinner} text="Waiting for other side" />
-              </>
+                <BottomActions>
+                  <IconWithMessage icon={Spinner} text="Waiting for other side" />
+                </BottomActions>
+              </React.Fragment>
             )}
             {view === 'redeem' && (
               <IconWithMessage icon={Spinner} text="Connecting" />
             )}
-          </div>
         </ContentWithTopNav>
       </Page>
     );
@@ -211,9 +205,10 @@ export default function AddContact({ view, object }: Props) {
             </Instructions>
             <CodeDisplayOrInput>
               {code ? code : <Spinner />}
+              <Message>{errorMsg}</Message>
             </CodeDisplayOrInput>
             <BottomActions>
-              <Message>{errorMsg || message}</Message>
+              <Message>{message}</Message>
 
               <Button
                 variant="transparent"
