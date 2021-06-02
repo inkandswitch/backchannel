@@ -105,7 +105,7 @@ export default function AddContact({ view, object }: Props) {
 
   useEffect(() => {
     // get code on initial page load
-    if (view === 'generate' && !code && !errorMsg) {
+    if (view === 'generate' && !code && !errorMsg.length) {
       generateCode();
     }
     if (view === 'redeem') {
@@ -141,7 +141,7 @@ export default function AddContact({ view, object }: Props) {
     }
   }
 
-  if (isConnecting && !errorMsg) {
+  if (isConnecting && !errorMsg.length) {
     return (
       <Page>
         <TopBar />
