@@ -16,29 +16,6 @@ import Settings, {
   RelaySettings,
 } from './components/Settings';
 
-const PwaUpdate = () => {
-  //@ts-ignore
-  let el = <pwa-update />;
-  return (
-    <div
-      css={css`
-        pwa-update::part(updateToast) {
-          background: ${color.codeShareBackground};
-          color: ${color.codeShareToggleText};
-          display: block;
-          font-size: ${fontSize[1]}px;
-        }
-
-        pwa-update::part(offlineToast) {
-          display: none;
-        }
-      `}
-    >
-      {el}
-    </div>
-  );
-};
-
 export default function App() {
   return (
     <div
@@ -87,7 +64,6 @@ export default function App() {
         <ContactList />
       </Route>
       <NetworkError />
-      <PwaUpdate />
     </div>
   );
 }

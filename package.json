@@ -19,7 +19,6 @@
     "@emotion/babel-plugin": "^11.3.0",
     "@emotion/react": "^11.1.5",
     "@localfirst/relay-client": "^3.2.0",
-    "@pwabuilder/pwaupdate": "^0.2.0",
     "automerge": "^1.0.1-preview.3",
     "bip39": "^3.0.4",
     "bson": "^4.4.0",
