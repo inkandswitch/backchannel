@@ -59,21 +59,24 @@ export default class AutomergeDiscovery extends EventEmitter {
     return true;
   }
 
+  _onmessage(peer) {
+    return (msg: Uint8Array) => {
+      msg = new Uint8Array(msg);
+      this._receive(peer, msg as BinarySyncMessage);
+    };
+  }
+
   addPeer(id: string, peer: Peer): ReceiveSyncMsg {
+    let exists = this._peers.get(id)
+    if (exists) this.removePeer(id)
+    this.log('adding peer', id);
     peer.state = Backend.initSyncState();
     this._peers.set(id, peer);
 
     // HELLO!
     this.log('sending hello');
     this._updatePeer(peer);
-
-    return (msg: Uint8Array) => {
-      let peer = this._peers.get(id);
-      if (!peer) return;
-      msg = new Uint8Array(msg);
-      this._receive(peer, msg as BinarySyncMessage);
-      this._updatePeer(peer);
-    };
+    return this._onmessage(peer)
   }
 
   change(change: Change): BinaryChange {
@@ -134,6 +137,7 @@ export default class AutomergeDiscovery extends EventEmitter {
       let changes = Backend.getChanges(newDoc, Backend.getHeads(oldDoc));
       this._sendToRenderer(patch, changes);
     }
+    this.updatePeers();
     return patch;
   }
 }
