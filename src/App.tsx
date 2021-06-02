@@ -2,8 +2,9 @@
 import React from 'react';
 import { Route } from 'wouter';
 import { css } from '@emotion/react/macro';
+import '@pwabuilder/pwaupdate';
 
-import { color } from './components/tokens';
+import { color, fontSize, viewport } from './components/tokens';
 import Mailbox from './components/Mailbox';
 import ContactList from './components/ContactList';
 import Contact from './components/Contact';
@@ -15,15 +16,47 @@ import Settings, {
   RelaySettings,
 } from './components/Settings';
 
+const PwaUpdate = () => {
+  //@ts-ignore
+  let el = <pwa-update />;
+  return (
+    <div
+      css={css`
+        pwa-update::part(updateToast) {
+          background: ${color.codeShareBackground};
+          color: ${color.codeShareToggleText};
+          display: block;
+          font-size: ${fontSize[1]}px;
+        }
+
+        pwa-update::part(offlineToast) {
+          display: none;
+        }
+      `}
+    >
+      {el}
+    </div>
+  );
+};
+
 export default function App() {
   return (
     <div
       css={css`
         background: ${color.primary};
-        max-width: 500px;
-        max-height: min(130vw, 650px);
         height: 100%;
-        margin: auto;
+
+        @media (min-width: 400px) {
+          max-width: 100vw;
+          max-height: 100vh;
+          height: 100%;
+        }
+
+        @media (min-width: 801px) {
+          margin: auto;
+          max-width: ${viewport.maxWidth}px;
+          max-height: min(130vw, ${viewport.maxHeight}px);
+        }
       `}
     >
       <Route path="/redeem/:object">
@@ -54,6 +87,7 @@ export default function App() {
         <ContactList />
       </Route>
       <NetworkError />
+      <PwaUpdate />
     </div>
   );
 }

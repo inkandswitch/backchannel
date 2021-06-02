@@ -1,0 +1,33 @@
+{
+  "short_name": "Backchannel",
+  "name": "Backchannel",
+  "display": "fullscreen",
+  "background_color": "#1E00D6",
+  "theme_color": "#1E00D6",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon-192px.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon-512px.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+      "src": "/maskable_icon_x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/maskable_icon_x192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/"
+}
