@@ -2,9 +2,8 @@
 import React from 'react';
 import { Route } from 'wouter';
 import { css } from '@emotion/react/macro';
-import '@pwabuilder/pwaupdate';
 
-import { color, fontSize, viewport } from './components/tokens';
+import { color, viewport } from './components/tokens';
 import Mailbox from './components/Mailbox';
 import ContactList from './components/ContactList';
 import Contact from './components/Contact';
