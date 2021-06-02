@@ -347,7 +347,7 @@ export class Database<T> extends EventEmitter {
         );
 
       let newFrontend = Automerge.Frontend.applyPatch(frontend, patch);
-      let tasks = []
+      let tasks = [];
       changes.forEach(async (c) => {
         tasks.push(this._idb.storeChange(docId, c));
       });
@@ -356,7 +356,7 @@ export class Database<T> extends EventEmitter {
         if (docId === SYSTEM_ID && this.onContactListChange)
           this.onContactListChange(patch);
         else this.emit('patch', { docId, patch });
-      })
+      });
     });
     this.log('Document hydrated', doc);
     return docId;
