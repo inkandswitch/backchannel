@@ -41,7 +41,7 @@ export default function AddContact({ view, object }: Props) {
   //eslint-disable-next-line
   let [location, setLocation] = useLocation();
 
-  let sharable = navigator.share
+  let sharable = navigator.share;
 
   // Set user feedback message to disappear if necessary
   useEffect(() => {
@@ -177,15 +177,17 @@ export default function AddContact({ view, object }: Props) {
                 >
                   Copy code
                 </Button>
-                {sharable && <Button
-                  variant="transparent"
-                  onClick={onClickShareURL}
-                  css={css`
-                    margin-top: 24px;
-                  `}
-                >
-                  Share
-                </Button>}
+                {sharable && (
+                  <Button
+                    variant="transparent"
+                    onClick={onClickShareURL}
+                    css={css`
+                      margin-top: 24px;
+                    `}
+                  >
+                    Share
+                  </Button>
+                )}
               </CodeDisplayOrInput>
               <BottomActions>
                 <IconWithMessage icon={Spinner} text="Waiting for other side" />
@@ -244,26 +246,28 @@ export default function AddContact({ view, object }: Props) {
               <Message>{message}</Message>
 
               <Button
-                  variant="transparent"
-                  onClick={onClickCopy}
-                  css={css`
-                    margin: 24px;
-                    width: 100%;
-                  `}
-                >
-                  Copy code
-                </Button>
-
-              {sharable && <Button
                 variant="transparent"
-                onClick={onClickShareURL}
+                onClick={onClickCopy}
                 css={css`
-                  margin-bottom:24px;
+                  margin: 24px;
                   width: 100%;
                 `}
               >
-                Share
-              </Button>}
+                Copy code
+              </Button>
+
+              {sharable && (
+                <Button
+                  variant="transparent"
+                  onClick={onClickShareURL}
+                  css={css`
+                    margin-bottom: 24px;
+                    width: 100%;
+                  `}
+                >
+                  Share
+                </Button>
+              )}
               <EnterBackchannelButton onClick={onClickRedeem} />
             </BottomActions>
           </React.Fragment>
