@@ -1,6 +1,8 @@
 /** @jsxImportSource @emotion/react */
 import React, { useEffect, useState } from 'react';
 import { Button } from './';
+import { forceScreenSize } from '../web';
+import { viewport } from './tokens';
 
 export default function InstallButton() {
   let [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -17,6 +19,7 @@ export default function InstallButton() {
 
     window.addEventListener('appinstalled', (event) => {
       setDeferredPrompt(null);
+      forceScreenSize(viewport.maxWidth, viewport.maxHeight);
     });
   });
   if (!deferredPrompt) return null;
