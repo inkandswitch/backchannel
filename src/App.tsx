@@ -26,10 +26,11 @@ const PwaUpdate = () => {
           background: ${color.codeShareBackground};
           color: ${color.codeShareToggleText};
           display: block;
+          font-size: ${fontSize[1]}px;
         }
 
         pwa-update::part(offlineToast) {
-          background: ${color.primary};
+          display: none;
         }
       `}
     >
