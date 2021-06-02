@@ -107,7 +107,7 @@ export class Backchannel extends events.EventEmitter {
       this._client = this._createClient(this.relay, documentIds);
       this._wormhole = new Wormhole(this._client);
       this._emitOpen();
-  });
+    });
     this.log = debug('bc:backchannel');
   }
 
