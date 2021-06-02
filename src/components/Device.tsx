@@ -41,7 +41,7 @@ function Done() {
 
 export default function Devices({ deviceId }: Props) {
   let [loading, setLoading] = useState(true);
-  let [device, ] = useState(backchannel.db.getContactById(deviceId));
+  let [device] = useState(backchannel.db.getContactById(deviceId));
 
   useEffect(() => {
     backchannel.on('CONTACT_LIST_SYNC', () => {
