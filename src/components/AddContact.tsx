@@ -39,12 +39,18 @@ export default function AddContact({ view, object }: Props) {
   let [errorMsg, setErrorMsg] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   //eslint-disable-next-line
-  let [_, setLocation] = useLocation();
+  let [location, setLocation] = useLocation();
 
   useEffect(() => {
     // get code on initial page load
     if (view === 'generate' && !code && !errorMsg) {
       generateCode();
+    }
+    if (view === 'redeem') {
+      let maybeCode = window.location.hash
+      if (maybeCode.length > 1) {
+        redeemCode(maybeCode.slice(1))
+      }
     }
   });
 
@@ -84,9 +90,7 @@ export default function AddContact({ view, object }: Props) {
     }
   }
 
-  // Enter backchannel from 'input' code view
-  async function onClickRedeem(e) {
-    e.preventDefault();
+  async function redeemCode(code) {
     try {
       setIsConnecting(true);
       let key: Key = await backchannel.accept(code);
@@ -107,8 +111,15 @@ export default function AddContact({ view, object }: Props) {
     }
   }
 
-  async function onClickCopy() {
-    const copySuccess = await copyToClipboard(code);
+  // Enter backchannel from 'input' code view
+  async function onClickRedeem(e) {
+    e.preventDefault();
+    await redeemCode(code)
+  }
+
+  async function onClickShareURL() {
+    let url = `${window.location.origin}/redeem/contact#${code}`
+    const copySuccess = await copyToClipboard(url);
     if (copySuccess) {
       setMessage('Code copied!');
     }
@@ -142,12 +153,12 @@ export default function AddContact({ view, object }: Props) {
                   {code}
                   <Button
                     variant="transparent"
-                    onClick={onClickCopy}
+                    onClick={onClickShareURL}
                     css={css`
                       margin-top: 24px;
                     `}
                   >
-                    Copy code
+                    Share code
                   </Button>
                 </CodeDisplayOrInput>
                 <IconWithMessage icon={Spinner} text="Waiting for other side" />
@@ -174,7 +185,7 @@ export default function AddContact({ view, object }: Props) {
           `}
         >
           <Toggle href={`/generate/${object}`} isActive={view === 'generate'}>
-            Generate code
+            My code
           </Toggle>
           <Toggle href={`/redeem/${object}`} isActive={view === 'redeem'}>
             Enter code
@@ -200,18 +211,20 @@ export default function AddContact({ view, object }: Props) {
             </Instructions>
             <CodeDisplayOrInput>
               {code ? code : <Spinner />}
-              <Button
-                variant="transparent"
-                onClick={onClickCopy}
-                css={css`
-                  margin-top: 24px;
-                `}
-              >
-                Copy code
-              </Button>
             </CodeDisplayOrInput>
             <BottomActions>
               <Message>{errorMsg || message}</Message>
+
+              <Button
+                variant="transparent"
+                onClick={onClickShareURL}
+                css={css`
+                  margin: 24px;
+                  width: 100%;
+                `}
+              >
+                Share code
+              </Button>
               <EnterBackchannelButton onClick={onClickRedeem} />
             </BottomActions>
           </React.Fragment>

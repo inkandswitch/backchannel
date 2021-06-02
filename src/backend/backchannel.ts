@@ -176,7 +176,7 @@ export class Backchannel extends events.EventEmitter {
       setTimeout(() => {
         reject(
           new Error(
-            `It took more than 20 seconds to find ${code}. Try again with a different code.`
+            `This code has expired. Try again with a different one.`
           )
         );
       }, TWENTY_SECONDS);
