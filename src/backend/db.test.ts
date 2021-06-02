@@ -2,6 +2,7 @@ import { Database } from './db';
 import crypto from 'crypto';
 import Automerge from 'automerge';
 import { Mailbox } from './backchannel';
+import { TextMessage } from './types';
 
 let db: Database<Mailbox>;
 let dbname;
@@ -122,7 +123,7 @@ test('save/load', async () => {
         target: bob.id,
         text: 'hello friend',
         timestamp: Date.now().toString(),
-      },
+      } as TextMessage,
     ];
   });
 
@@ -130,6 +131,7 @@ test('save/load', async () => {
   //@ts-ignore
   let doc: Automerge.Doc<Mailbox> = db.getDocument(docId);
   expect(doc.messages.length).toBe(1);
+  //@ts-ignore
   expect(doc.messages[0].text).toBe('hello friend');
 
   db.change(docId, (doc: Mailbox) => {
@@ -138,7 +140,7 @@ test('save/load', async () => {
       target: bob.id,
       text: 'peanuts',
       timestamp: Date.now().toString(),
-    });
+    } as TextMessage);
   });
 
   db = null;
@@ -151,5 +153,6 @@ test('save/load', async () => {
   doc = db.getDocument(docId);
   expect(db.documents).toStrictEqual([docId]);
   expect(doc.messages.length).toBe(2);
+  //@ts-ignore
   expect(doc.messages[0].text).toBe('hello friend');
 });

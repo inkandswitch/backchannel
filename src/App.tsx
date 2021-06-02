@@ -2,9 +2,8 @@
 import React from 'react';
 import { Route } from 'wouter';
 import { css } from '@emotion/react/macro';
-import '@pwabuilder/pwaupdate';
 
-import { color, fontSize, viewport } from './components/tokens';
+import { color, viewport } from './components/tokens';
 import Mailbox from './components/Mailbox';
 import ContactList from './components/ContactList';
 import Contact from './components/Contact';
@@ -15,29 +14,6 @@ import Settings, {
   ClearAllSettings,
   RelaySettings,
 } from './components/Settings';
-
-const PwaUpdate = () => {
-  //@ts-ignore
-  let el = <pwa-update />;
-  return (
-    <div
-      css={css`
-        pwa-update::part(updateToast) {
-          background: ${color.codeShareBackground};
-          color: ${color.codeShareToggleText};
-          display: block;
-          font-size: ${fontSize[1]}px;
-        }
-
-        pwa-update::part(offlineToast) {
-          display: none;
-        }
-      `}
-    >
-      {el}
-    </div>
-  );
-};
 
 export default function App() {
   return (
@@ -87,7 +63,6 @@ export default function App() {
         <ContactList />
       </Route>
       <NetworkError />
-      <PwaUpdate />
     </div>
   );
 }

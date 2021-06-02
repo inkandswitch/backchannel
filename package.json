@@ -8,7 +8,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "deploy": "npm run build && npm run build:docs",
-    "relay": "cross-env DEBUG=* PORT=3001 node ./node_modules/@localfirst/relay/dist/start.js",
+    "relay": "cross-env DEBUG=* PORT=3001 node test/server.js",
     "lint": "prettier -c src",
     "format": "prettier -w src",
     "build:docs": "typedoc src/ --excludeExternals --excludePrivate --excludeInternal --out build/docs/api --readme docs/readme.md"
@@ -19,7 +19,6 @@
     "@emotion/babel-plugin": "^11.3.0",
     "@emotion/react": "^11.1.5",
     "@localfirst/relay-client": "^3.2.0",
-    "@pwabuilder/pwaupdate": "^0.2.0",
     "automerge": "^1.0.1-preview.3",
     "bip39": "^3.0.4",
     "bson": "^4.4.0",

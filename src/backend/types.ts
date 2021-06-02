@@ -1,6 +1,9 @@
-import { symmetric, EncryptedProtocolMessage } from './crypto';
 import { Backchannel as bc } from './backchannel';
 
+export enum MessageType {
+  FILE = 'file',
+  TEXT = 'text',
+}
 export type MessageId = string;
 export type ContactId = string;
 export type Code = string;
@@ -18,12 +21,29 @@ export interface IContact {
   isConnected?: boolean;
 }
 
-export class IMessage {
+export interface IMessage {
   id?: MessageId;
+  type: MessageType;
   target: ContactId;
   timestamp: string;
-  text?: string;
   incoming?: boolean;
-  filename?: string;
+}
+
+export interface TextMessage extends IMessage {
+  text?: string;
+}
+
+export enum FileState {
+  QUEUED = 0,
+  ERROR = 1,
+  SUCCESS = 2,
+  PROGRESS = 3,
+}
+
+export interface FileMessage extends IMessage {
+  size: number;
+  name: string;
   mime_type?: string;
+  lastModified: number;
+  state: FileState;
 }
