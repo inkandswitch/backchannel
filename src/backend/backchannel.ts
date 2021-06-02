@@ -392,10 +392,10 @@ export class Backchannel extends events.EventEmitter {
     try {
       // Set up send event
       let send = (msg: Uint8Array) => {
-        this._encrypt(msg, contact).then(encoded => {
-          this.log('sending', encoded)
+        this._encrypt(msg, contact).then((encoded) => {
+          this.log('sending', encoded);
           socket.send(encoded);
-        })
+        });
       };
       let gotAutomergeSyncMsg: ReceiveSyncMsg = this.db.onPeerConnect(
         peerId,
@@ -405,10 +405,10 @@ export class Backchannel extends events.EventEmitter {
 
       // Setup onmessage event
       let onmessage = (e) => {
-        this._decrypt(e.data, contact).then(syncMsg => {
-          this.log('onmessage', syncMsg)
+        this._decrypt(e.data, contact).then((syncMsg) => {
+          this.log('onmessage', syncMsg);
           gotAutomergeSyncMsg(syncMsg);
-        })
+        });
       };
       socket.addEventListener('message', onmessage);
 

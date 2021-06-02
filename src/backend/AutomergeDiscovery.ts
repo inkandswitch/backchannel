@@ -67,8 +67,8 @@ export default class AutomergeDiscovery extends EventEmitter {
   }
 
   addPeer(id: string, peer: Peer): ReceiveSyncMsg {
-    let exists = this._peers.get(id)
-    if (exists) this.removePeer(id)
+    let exists = this._peers.get(id);
+    if (exists) this.removePeer(id);
     this.log('adding peer', id);
     peer.state = Backend.initSyncState();
     this._peers.set(id, peer);
@@ -76,7 +76,7 @@ export default class AutomergeDiscovery extends EventEmitter {
     // HELLO!
     this.log('sending hello');
     this._updatePeer(peer);
-    return this._onmessage(peer)
+    return this._onmessage(peer);
   }
 
   change(change: Change): BinaryChange {
