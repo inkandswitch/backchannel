@@ -7,14 +7,19 @@ import { v4 as uuid } from 'uuid';
 import { serialize, deserialize } from 'bson';
 
 import { System, Database } from './db';
+import { FileProgress, Blobs } from './blobs';
 import {
   DocumentId,
   Key,
+  MessageId,
   Code,
   ContactId,
   IContact,
+  TextMessage,
+  FileMessage,
   IMessage,
-  DiscoveryKey,
+  FileState,
+  MessageType,
 } from './types';
 import { Wormhole } from './wormhole';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
@@ -23,6 +28,13 @@ import { ReceiveSyncMsg } from './AutomergeDiscovery';
 export enum ERROR {
   UNREACHABLE = 404,
   PEER = 500,
+}
+
+export enum FileStates {
+  QUEUED = 0,
+  ERROR = 1,
+  SUCCESS = 2,
+  PROGRESS = 3,
 }
 
 export type BackchannelSettings = {
@@ -41,8 +53,9 @@ export class Backchannel extends events.EventEmitter {
   public db: Database<Mailbox>;
   private _wormhole: Wormhole;
   private _client: Client;
-  private _open = true || false;
-  private log = debug;
+  private _open: boolean;
+  private log: debug;
+  private _blobs: Blobs;
   private relay: string;
 
   /**
@@ -61,12 +74,36 @@ export class Backchannel extends events.EventEmitter {
       this.onChangeContactList.bind(this)
     );
 
+    this._blobs = new Blobs();
+
+    this._blobs.on('progress', (p: FileProgress) => {
+      this.emit('progress', p);
+    });
+
+    this._blobs.on('error', (p: FileProgress) => {
+      this.emit('error', p);
+    });
+
+    this._blobs.on('sent', (p: FileProgress) => {
+      this.emit('sent', p);
+    });
+
+    this._blobs.on('download', (p: FileProgress) => {
+      this.db.saveBlob(p.id, p.data);
+      this.emit('download', p);
+    });
+
     this.db.once('open', () => {
       let documentIds = this.db.documents;
       this.relay =
         (this.db.settings && this.db.settings.relay) || _settings.relay;
       this.log('Connecting to relay', this.relay);
       this.log(`Joining ${documentIds.length} documentIds`);
+      let allDocuments = [];
+      documentIds.forEach((docId) => {
+        allDocuments.push(`automerge-${docId}`);
+        allDocuments.push(`files-${docId}`);
+      });
       this._client = this._createClient(this.relay, documentIds);
       this._wormhole = new Wormhole(this._client);
       this._emitOpen();
@@ -244,10 +281,11 @@ export class Backchannel extends events.EventEmitter {
    * @param {WebSocket} socket: the open socket for the contact
    */
   async sendMessage(contactId: ContactId, text: string) {
-    let msg: IMessage = {
+    let msg: TextMessage = {
       id: uuid(),
       target: contactId,
       text: text,
+      type: MessageType.TEXT,
       timestamp: Date.now().toString(),
     };
     this.log('sending message', msg);
@@ -256,16 +294,53 @@ export class Backchannel extends events.EventEmitter {
     return msg;
   }
 
+  async sendFile(contactId: ContactId, file: File): Promise<FileMessage> {
+    let msg: FileMessage = {
+      id: uuid(),
+      target: contactId,
+      timestamp: Date.now().toString(),
+      type: MessageType.FILE,
+      mime_type: file.type,
+      size: file.size,
+      lastModified: file.lastModified,
+      name: file.name,
+      state: FileState.QUEUED,
+    };
+    let contact = this.db.getContactById(contactId);
+    await this._addMessage(msg, contact);
+    let meta = {
+      id: msg.id,
+      lastModified: msg.lastModified,
+      mime_type: msg.mime_type,
+      size: msg.size,
+      name: msg.name,
+    };
+    try {
+      let sent = await this._blobs.sendFile({
+        contactId: contact.id,
+        meta,
+        file,
+      });
+      await this._updateFileState(
+        msg.id,
+        contact.id,
+        sent ? FileState.SUCCESS : FileState.ERROR
+      );
+    } catch (err) {
+      this._updateFileState(msg.id, contactId, FileState.ERROR);
+    }
+    return msg;
+  }
+
   /**
    * Start connecting to the contact.
    * @param {IContact} contact The contact to connect to
    */
   connectToContact(contact: IContact) {
-    if (!this._open) return;
-    this.log('joining', contact.discoveryKey);
     if (!contact || !contact.discoveryKey)
       throw new Error('contact.discoveryKey required');
-    this._client.join(contact.discoveryKey);
+    this._client.join('automerge-' + contact.discoveryKey);
+    this._client.join('files-' + contact.discoveryKey);
   }
 
   /**
@@ -290,13 +365,12 @@ export class Backchannel extends events.EventEmitter {
   }
 
   /**
-   * Leave a document and disconnect from peers.
-   * @param {IContact} contact The contact object
+   * Did the file message fail to send?
+   * @param {FileMessage} msg
+   * @returns true if there are pending files, false if no pending files
    */
-  disconnectFromContact(contact: IContact) {
-    if (!contact || !contact.discoveryKey)
-      throw new Error('contact.discoveryKey required');
-    this._client.leave(contact.discoveryKey);
+  hasPendingFiles(msg: FileMessage): boolean {
+    return this._blobs.hasPendingFiles(msg.target);
   }
 
   /**
@@ -310,37 +384,17 @@ export class Backchannel extends events.EventEmitter {
     this.emit('close');
   }
 
-  private async _onPeerConnect(
+  private automergeSocket(
     socket: WebSocket,
-    discoveryKey: DiscoveryKey,
+    contact: IContact,
     userName: string
   ) {
-    let onerror = (err) => {
-      let code = ERROR.PEER;
-      this.emit('error', err, code);
-      console.error('error', err);
-      console.trace(err);
-    };
-    socket.addEventListener('error', onerror);
-
-    if (discoveryKey.startsWith('wormhole')) {
-      return this.log('got connection to ', discoveryKey); // this is handled by wormhole.ts
-    }
-    let contact = this.db.getContactByDiscoveryKey(discoveryKey);
-    this.log('onPeerConnect', contact);
-    let encryptionKey = contact.key;
-
     try {
-      socket.binaryType = 'arraybuffer';
-      let send = (msg: Uint8Array) => {
-        symmetric
-          .encrypt(encryptionKey, Buffer.from(msg).toString('hex'))
-          .then((cipher) => {
-            let encoded = serialize(cipher);
-            socket.send(encoded);
-          });
+      // Set up send event
+      let send = async (msg: Uint8Array) => {
+        let encoded = await this._encrypt(msg, contact);
+        socket.send(encoded);
       };
-
       let peerId = contact.id + '#' + userName;
       let gotAutomergeSyncMsg: ReceiveSyncMsg = this.db.onPeerConnect(
         peerId,
@@ -348,28 +402,23 @@ export class Backchannel extends events.EventEmitter {
         send
       );
 
-      let onmessage = (e) => {
-        let decoded = deserialize(e.data) as EncryptedProtocolMessage;
-        symmetric.decrypt(encryptionKey, decoded).then((plainText) => {
-          const syncMsg = Uint8Array.from(Buffer.from(plainText, 'hex'));
-          gotAutomergeSyncMsg(syncMsg);
-        });
+      // Setup onmessage event
+      let onmessage = async (e) => {
+        let syncMsg = await this._decrypt(e.data, contact);
+        gotAutomergeSyncMsg(syncMsg);
       };
       socket.addEventListener('message', onmessage);
 
-      // localfirst/relay-client also has a peer.disconnect event
-      // but it is somewhat unreliable. this is better.
+      // HACK: localfirst/relay-client also has a peer.disconnect event
+      // but it is somewhat unreliable.
       let onclose = () => {
         let documentId = contact.discoveryKey;
         socket.removeEventListener('message', onmessage);
-        socket.removeEventListener('error', onerror);
         socket.removeEventListener('close', onclose);
-        let peerId = contact.id + '#' + userName;
         this.db.onDisconnect(documentId, peerId).then(() => {
           this.emit('contact.disconnected', { contact });
         });
       };
-
       socket.addEventListener('close', onclose);
 
       contact.isConnected = this.db.isConnected(contact);
@@ -382,6 +431,76 @@ export class Backchannel extends events.EventEmitter {
     } catch (err) {
       this.log('contact.error', err);
       this.emit('contact.error', err);
+    }
+  }
+
+  async _encrypt(msg: Uint8Array, contact: IContact): Promise<ArrayBuffer> {
+    let cipher = await symmetric.encrypt(
+      contact.key,
+      Buffer.from(msg).toString('hex')
+    );
+    return serialize(cipher);
+  }
+
+  async _decrypt(msg: ArrayBuffer, contact: IContact): Promise<Uint8Array> {
+    let decoded = deserialize(msg) as EncryptedProtocolMessage;
+    let plainText = await symmetric.decrypt(contact.key, decoded);
+    return Uint8Array.from(Buffer.from(plainText, 'hex'));
+  }
+
+  private async fileSocket(
+    socket: WebSocket,
+    contact: IContact,
+    peerId: string
+  ) {
+    let send = async (msg: Uint8Array) => {
+      let encoded = await this._encrypt(msg, contact);
+      if (isOpen(socket)) socket.send(encoded);
+      else throw new Error('SOCKET CLOSED');
+    };
+
+    this._blobs.addPeer(contact.id, send);
+    let onmessage = async (e) => {
+      let decoded = await this._decrypt(e.data, contact);
+      this._blobs.receiveFile(contact.id, decoded);
+    };
+
+    socket.addEventListener('message', onmessage);
+    socket.onclose = () => {
+      this._blobs.removePeer(contact.id);
+      socket.removeEventListener('message', onmessage);
+    };
+  }
+
+  private async _onPeerConnect(
+    socket: WebSocket,
+    documentId: DocumentId,
+    userName: string
+  ) {
+    let onerror = (err) => {
+      let code = ERROR.PEER;
+      this.emit('error', err, code);
+      console.error('error', err);
+      console.trace(err);
+    };
+    socket.addEventListener('error', onerror);
+
+    if (documentId.startsWith('wormhole')) {
+      return this.log('got connection to ', documentId); // this is handled by wormhole.ts
+    }
+
+    let discoveryKey = documentId.slice(documentId.indexOf('-') + 1);
+    let contact = this.db.getContactByDiscoveryKey(discoveryKey);
+    let peerId = contact.id + '#' + userName;
+
+    socket.binaryType = 'arraybuffer';
+    this.log('onpeer connect', documentId);
+    if (documentId.startsWith('files')) {
+      return this.fileSocket(socket, contact, peerId);
+    }
+
+    if (documentId.startsWith('automerge')) {
+      return this.automergeSocket(socket, contact, peerId);
     }
   }
 
@@ -424,7 +543,26 @@ export class Backchannel extends events.EventEmitter {
     let res = await this.db.change(docId, (doc: Mailbox) => {
       doc.messages.push(msg);
     });
-    this.db.save(docId);
     return res;
   }
+
+  private async _updateFileState(
+    msgId: MessageId,
+    contactId: ContactId,
+    state: FileState
+  ) {
+    let contact = this.db.getContactById(contactId);
+    if (!contact) return;
+    let docId = contact.discoveryKey;
+    let res = await this.db.change(docId, (doc: Mailbox) => {
+      let idx = doc.messages.findIndex((message) => message.id === msgId);
+      //@ts-ignore
+      doc.messages[idx].state = state;
+    });
+    return res;
+  }
+}
+
+function isOpen(ws) {
+  return ws.readyState === ws.OPEN;
 }

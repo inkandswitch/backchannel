@@ -1,12 +1,18 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState, useEffect } from 'react';
 import { css } from '@emotion/react/macro';
-import { ContactId } from '../backend/types';
+import {
+  FileState,
+  ContactId,
+  MessageType,
+  FileMessage,
+} from '../backend/types';
 import { Button, TopBar, UnderlineInput } from './';
 import Backchannel from '../backend';
 import { color, fontSize } from './tokens';
 import { timestampToDate } from './util';
 import { Instructions } from '../components';
+import { FileProgress } from '../backend/blobs';
 
 let backchannel = Backchannel();
 const PADDING_CHAT = 12;
@@ -22,19 +28,20 @@ export default function Mailbox(props: Props) {
   let [contact, setContact] = useState(
     backchannel.db.getContactById(contactId)
   );
-  let [connected, setConnected] = useState(contact && contact.isConnected);
+  let [connected, setConnected] = useState(
+    contact && backchannel.db.isConnected(contact)
+  );
+  let [progress, setProgress] = useState({});
 
   useEffect(() => {
     function onContact({ contact }) {
       if (contact.id === contactId) {
-        console.log('contact connected', contactId);
         setContact(contact);
         setConnected(true);
       }
     }
     function onContactDisconnected({ contact }) {
       if (contact.id === contactId) {
-        console.log('contact disconnected', contactId);
         setConnected(false);
       }
     }
@@ -56,16 +63,31 @@ export default function Mailbox(props: Props) {
   }, [contactId]);
 
   useEffect(() => {
+    function refreshMessages() {
+      let messages = backchannel.getMessagesByContactId(contactId);
+      setMessages(messages);
+    }
+
     let onMessage = ({ docId }) => {
-      if (contact && docId === contact.discoveryKey) {
-        let messages = backchannel.getMessagesByContactId(contactId);
-        setMessages(messages);
-      }
+      if (contact && docId === contact.discoveryKey) refreshMessages();
     };
+
+    let onMessagesChanged = (progress: FileProgress) => {
+      setProgress({ ...progress, [progress.id]: progress.progress });
+    };
+
     backchannel.db.on('patch', onMessage);
+    backchannel.on('progress', onMessagesChanged);
+    backchannel.on('download', onMessagesChanged);
+    backchannel.on('sent', onMessagesChanged);
+    backchannel.on('error', refreshMessages);
 
     return function cleanup() {
-      backchannel.removeListener('message', onMessage);
+      backchannel.db.removeListener('patch', onMessage);
+      backchannel.removeListener('progress', onMessagesChanged);
+      backchannel.removeListener('download', onMessagesChanged);
+      backchannel.removeListener('sent', onMessagesChanged);
+      backchannel.removeListener('error', refreshMessages);
     };
   }, [contactId, contact]);
 
@@ -80,6 +102,20 @@ export default function Mailbox(props: Props) {
     setMessageText(event.target.value);
   }
 
+  function handleDrop(e) {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files.length !== 0) {
+      for (let i = 0; i < files.length; i++) {
+        backchannel.sendFile(contactId, files[i]);
+      }
+    }
+  }
+
+  function onDragOver(event) {
+    event.preventDefault();
+  }
+
   return (
     <div
       css={css`
@@ -91,6 +127,8 @@ export default function Mailbox(props: Props) {
         position: relative;
         height: 100%;
       `}
+      onDragOver={onDragOver}
+      onDrop={handleDrop}
     >
       <TopBar
         title={`${contact ? contact.moniker : ''} ${
@@ -116,6 +154,7 @@ export default function Mailbox(props: Props) {
           `}
         >
           {messages.map((message) => {
+            // TODO: ugly
             message.incoming = contactId !== message.target;
             return (
               <li
@@ -137,8 +176,13 @@ export default function Mailbox(props: Props) {
                     border-radius: 1px;
                   `}
                 >
-                  <div></div>
-                  {message.text}
+                  {message.type === MessageType.TEXT && message.text}
+                  {message.type === MessageType.FILE && (
+                    <FileDownloader
+                      progress={progress[message.id]}
+                      message={message}
+                    />
+                  )}
                 </div>{' '}
                 <div
                   css={css`
@@ -182,6 +226,66 @@ export default function Mailbox(props: Props) {
           Send
         </Button>
       </form>
+    </div>
+  );
+}
+
+type FileDownloaderProps = { progress: number; message: FileMessage };
+
+function FileDownloader(props: FileDownloaderProps) {
+  let { progress, message } = props;
+
+  let state = message.state;
+  if (state !== FileState.ERROR) {
+    if (progress > -1 && progress < 1) state = FileState.PROGRESS;
+    if (progress === 1) state = FileState.SUCCESS;
+  }
+
+  let download = async () => {
+    let data: Uint8Array = await backchannel.db.getBlob(message.id);
+    // on the incoming side we only know it's erroring if this blob doesn't exist
+    if (data) {
+      const blob = new Blob([data], { type: message.mime_type });
+      let a = document.createElement('a');
+      document.body.appendChild(a);
+      a.href = URL.createObjectURL(blob);
+      a.download = message.name;
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
+  let element = null;
+  switch (state) {
+    case FileState.QUEUED:
+      element = 'spinner';
+      break;
+    case FileState.ERROR:
+      element = 'error';
+      break;
+    case FileState.PROGRESS:
+      element = (
+        <div
+          css={css`
+            background-color: ${color.border};
+            height: 10px;
+            width: ${progress * 100}%;
+          `}
+        />
+      );
+      break;
+    default:
+      element = message.incoming ? (
+        <div onClick={download}>download</div>
+      ) : (
+        'success'
+      );
+  }
+
+  return (
+    <div>
+      {message.name}
+      {element}
     </div>
   );
 }
