@@ -387,7 +387,7 @@ export class Backchannel extends events.EventEmitter {
   private automergeSocket(
     socket: WebSocket,
     contact: IContact,
-    userName: string
+    peerId: string
   ) {
     try {
       // Set up send event
@@ -395,7 +395,6 @@ export class Backchannel extends events.EventEmitter {
         let encoded = await this._encrypt(msg, contact);
         socket.send(encoded);
       };
-      let peerId = contact.id + '#' + userName;
       let gotAutomergeSyncMsg: ReceiveSyncMsg = this.db.onPeerConnect(
         peerId,
         contact,

@@ -59,6 +59,7 @@ export default function Mailbox(props: Props) {
 
     return function () {
       backchannel.removeListener('contact.connected', onContact);
+      backchannel.removeListener('contact.disconnected', onContactDisconnected);
     };
   }, [contactId]);
 
@@ -75,6 +76,8 @@ export default function Mailbox(props: Props) {
     let onMessagesChanged = (progress: FileProgress) => {
       setProgress({ ...progress, [progress.id]: progress.progress });
     };
+
+    refreshMessages();
 
     backchannel.db.on('patch', onMessage);
     backchannel.on('progress', onMessagesChanged);
