@@ -1,4 +1,4 @@
-const PROD = 'wss://attractive-moored-actor.glitch.me'
+const PROD = 'wss://attractive-moored-actor.glitch.me';
 const LOCAL = 'ws://localhost:3001';
 
 const config = {
