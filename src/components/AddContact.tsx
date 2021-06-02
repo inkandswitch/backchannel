@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { css } from '@emotion/react/macro';
 import { Link, useLocation } from 'wouter';
 
@@ -41,19 +41,6 @@ export default function AddContact({ view, object }: Props) {
   //eslint-disable-next-line
   let [location, setLocation] = useLocation();
 
-  useEffect(() => {
-    // get code on initial page load
-    if (view === 'generate' && !code && !errorMsg) {
-      generateCode();
-    }
-    if (view === 'redeem') {
-      let maybeCode = window.location.hash
-      if (maybeCode.length > 1) {
-        redeemCode(maybeCode.slice(1))
-      }
-    }
-  });
-
   // Set user feedback message to disappear if necessary
   useEffect(() => {
     if (message) {
@@ -76,7 +63,7 @@ export default function AddContact({ view, object }: Props) {
     setCode(event.target.value);
   }
 
-  async function generateCode() {
+  let generateCode = useCallback(async () => {
     try {
       const code: Code = await backchannel.getCode();
 
@@ -88,9 +75,10 @@ export default function AddContact({ view, object }: Props) {
       onError(err);
       generateCode();
     }
-  }
+  }, [])
 
-  async function redeemCode(code) {
+  let redeemCode = useCallback(async (code) => {
+    if (isConnecting) return
     try {
       setIsConnecting(true);
       let key: Key = await backchannel.accept(code);
@@ -110,7 +98,21 @@ export default function AddContact({ view, object }: Props) {
       if (view === 'redeem') setCode('');
       else generateCode()
     }
-  }
+  }, [generateCode, isConnecting, object, setLocation, view])
+
+  useEffect(() => {
+    // get code on initial page load
+    if (view === 'generate' && !code && !errorMsg) {
+      generateCode();
+    }
+    if (view === 'redeem') {
+      let maybeCode = window.location.hash
+      if (maybeCode.length > 1 && code !== maybeCode) {
+        redeemCode(maybeCode.slice(1))
+      }
+    }
+  }, [view, code, errorMsg, generateCode, redeemCode]);
+
 
   // Enter backchannel from 'input' code view
   async function onClickRedeem(e) {
