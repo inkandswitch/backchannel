@@ -175,9 +175,7 @@ export class Backchannel extends events.EventEmitter {
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
         reject(
-          new Error(
-            `This code has expired. Try again with a different one.`
-          )
+          new Error(`This code has expired. Try again with a different one.`)
         );
       }, TWENTY_SECONDS);
       try {
