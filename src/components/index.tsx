@@ -28,6 +28,7 @@ export function TopBar({
         padding: 18px 0;
         position: absolute;
         top: 0;
+        min-height: 40px;
         display: flex;
         flex-direction: row;
         align-items: center;

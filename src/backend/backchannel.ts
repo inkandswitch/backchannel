@@ -94,17 +94,10 @@ export class Backchannel extends events.EventEmitter {
     });
 
     this.db.once('open', () => {
-      let documentIds = this.db.documents;
       this.relay =
         (this.db.settings && this.db.settings.relay) || _settings.relay;
       this.log('Connecting to relay', this.relay);
-      this.log(`Joining ${documentIds.length} documentIds`);
-      let allDocuments = [];
-      documentIds.forEach((docId) => {
-        allDocuments.push(`automerge-${docId}`);
-        allDocuments.push(`files-${docId}`);
-      });
-      this._client = this._createClient(this.relay, documentIds);
+      this._client = this._createClient(this.relay);
       this._wormhole = new Wormhole(this._client);
       this._emitOpen();
     });
@@ -175,9 +168,7 @@ export class Backchannel extends events.EventEmitter {
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
         reject(
-          new Error(
-            `It took more than 20 seconds to find ${code}. Try again with a different code.`
-          )
+          new Error(`This code has expired. Try again with a different one.`)
         );
       }, TWENTY_SECONDS);
       try {
@@ -214,7 +205,7 @@ export class Backchannel extends events.EventEmitter {
     let moniker = catnames.random();
     let id = await this.db.addContact(key, moniker);
     let contact = this.db.getContactById(id);
-    this.log('root dot created', contact.discoveryKey);
+    this.log('adding contact', contact.discoveryKey, contact);
     await this._addContactDocument(contact);
     return contact.id;
   }

@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { css } from '@emotion/react/macro';
 import { Link, useLocation } from 'wouter';
 
@@ -39,14 +39,9 @@ export default function AddContact({ view, object }: Props) {
   let [errorMsg, setErrorMsg] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   //eslint-disable-next-line
-  let [_, setLocation] = useLocation();
+  let [location, setLocation] = useLocation();
 
-  useEffect(() => {
-    // get code on initial page load
-    if (view === 'generate' && !code && !errorMsg) {
-      generateCode();
-    }
-  });
+  let sharable = navigator.share;
 
   // Set user feedback message to disappear if necessary
   useEffect(() => {
@@ -61,6 +56,7 @@ export default function AddContact({ view, object }: Props) {
 
   let onError = (err: Error) => {
     console.error('got error from backend', err);
+    setIsConnecting(false);
     setErrorMsg(err.message);
   };
 
@@ -69,7 +65,7 @@ export default function AddContact({ view, object }: Props) {
     setCode(event.target.value);
   }
 
-  async function generateCode() {
+  let generateCode = useCallback(async () => {
     try {
       const code: Code = await backchannel.getCode();
 
@@ -79,33 +75,9 @@ export default function AddContact({ view, object }: Props) {
       }
     } catch (err) {
       onError(err);
-      setCode('');
       generateCode();
     }
-  }
-
-  // Enter backchannel from 'input' code view
-  async function onClickRedeem(e) {
-    e.preventDefault();
-    try {
-      setIsConnecting(true);
-      let key: Key = await backchannel.accept(code);
-      setIsConnecting(false);
-      if (object === 'device') {
-        let deviceId: ContactId = await backchannel.addDevice(key);
-        setErrorMsg('');
-        setLocation(`/device/${deviceId}`);
-      } else {
-        let cid: ContactId = await backchannel.addContact(key);
-        setErrorMsg('');
-        setLocation(`/contact/${cid}/add`);
-      }
-    } catch (err) {
-      console.log('got error', err);
-      onError(err);
-      setCode('');
-    }
-  }
+  }, []);
 
   async function onClickCopy() {
     const copySuccess = await copyToClipboard(code);
@@ -114,7 +86,71 @@ export default function AddContact({ view, object }: Props) {
     }
   }
 
-  if (isConnecting && !errorMsg) {
+  let redeemCode = useCallback(
+    async (code) => {
+      if (isConnecting) return;
+      try {
+        setIsConnecting(true);
+        let key: Key = await backchannel.accept(code);
+        setIsConnecting(false);
+        if (object === 'device') {
+          let deviceId: ContactId = await backchannel.addDevice(key);
+          setErrorMsg('');
+          setLocation(`/device/${deviceId}`);
+        } else {
+          let cid: ContactId = await backchannel.addContact(key);
+          setErrorMsg('');
+          setLocation(`/contact/${cid}/add`);
+        }
+      } catch (err) {
+        console.log('got error', err);
+        onError(err);
+        if (view === 'redeem') setCode('');
+        else generateCode();
+      }
+    },
+    [generateCode, isConnecting, object, setLocation, view]
+  );
+
+  useEffect(() => {
+    // get code on initial page load
+    if (view === 'generate' && !code && !errorMsg.length) {
+      generateCode();
+    }
+    if (view === 'redeem') {
+      let maybeCode = window.location.hash;
+      if (maybeCode.length > 1 && code !== maybeCode) {
+        redeemCode(maybeCode.slice(1));
+      }
+    }
+  }, [view, code, errorMsg, generateCode, redeemCode]);
+
+  // Enter backchannel from 'input' code view
+  async function onClickRedeem(e) {
+    e.preventDefault();
+    await redeemCode(code);
+  }
+
+  async function onClickShareURL() {
+    let url = `${window.location.origin}/redeem/contact#${code}`;
+    if (sharable) {
+      navigator
+        .share({
+          title: 'backchannel',
+          text: 'lets talk on backchannel.',
+          url,
+        })
+        .then(() => console.log('Successful share'))
+        .catch((error) => console.log('Error sharing', error));
+    } else {
+      const copySuccess = await copyToClipboard(url);
+      if (copySuccess) {
+        setMessage('Code copied!');
+      }
+    }
+  }
+
+  if (isConnecting && !errorMsg.length) {
     return (
       <Page>
         <TopBar />
@@ -124,39 +160,43 @@ export default function AddContact({ view, object }: Props) {
             text-align: center;
           `}
         >
-          <div
-            css={css`
-              font-size: 22px;
-              font-weight: 200;
-              display: flex;
-              justify-content: center;
-              flex-direction: column;
-              align-items: center;
-              letter-spacing: 1.1;
-              margin: 2em 0;
-            `}
-          >
-            {view === 'generate' && (
-              <>
-                <CodeDisplayOrInput>
-                  {code}
+          {view === 'generate' && (
+            <React.Fragment>
+              <Instructions>
+                Share this code with a correspondant you trust to open a
+                backchannel and add them as a contact:
+              </Instructions>
+              <CodeDisplayOrInput>
+                {code}
+                <Button
+                  variant="transparent"
+                  onClick={onClickCopy}
+                  css={css`
+                    margin-top: 24px;
+                  `}
+                >
+                  Copy code
+                </Button>
+                {sharable && (
                   <Button
                     variant="transparent"
-                    onClick={onClickCopy}
+                    onClick={onClickShareURL}
                     css={css`
                       margin-top: 24px;
                     `}
                   >
-                    Copy code
+                    Share
                   </Button>
-                </CodeDisplayOrInput>
+                )}
+              </CodeDisplayOrInput>
+              <BottomActions>
                 <IconWithMessage icon={Spinner} text="Waiting for other side" />
-              </>
-            )}
-            {view === 'redeem' && (
-              <IconWithMessage icon={Spinner} text="Connecting" />
-            )}
-          </div>
+              </BottomActions>
+            </React.Fragment>
+          )}
+          {view === 'redeem' && (
+            <IconWithMessage icon={Spinner} text="Connecting" />
+          )}
         </ContentWithTopNav>
       </Page>
     );
@@ -174,7 +214,7 @@ export default function AddContact({ view, object }: Props) {
           `}
         >
           <Toggle href={`/generate/${object}`} isActive={view === 'generate'}>
-            Generate code
+            My code
           </Toggle>
           <Toggle href={`/redeem/${object}`} isActive={view === 'redeem'}>
             Enter code
@@ -200,18 +240,34 @@ export default function AddContact({ view, object }: Props) {
             </Instructions>
             <CodeDisplayOrInput>
               {code ? code : <Spinner />}
+              <Message>{errorMsg}</Message>
+            </CodeDisplayOrInput>
+            <BottomActions>
+              <Message>{message}</Message>
+
               <Button
                 variant="transparent"
                 onClick={onClickCopy}
                 css={css`
-                  margin-top: 24px;
+                  margin: 24px;
+                  width: 100%;
                 `}
               >
                 Copy code
               </Button>
-            </CodeDisplayOrInput>
-            <BottomActions>
-              <Message>{errorMsg || message}</Message>
+
+              {sharable && (
+                <Button
+                  variant="transparent"
+                  onClick={onClickShareURL}
+                  css={css`
+                    margin-bottom: 24px;
+                    width: 100%;
+                  `}
+                >
+                  Share
+                </Button>
+              )}
               <EnterBackchannelButton onClick={onClickRedeem} />
             </BottomActions>
           </React.Fragment>
