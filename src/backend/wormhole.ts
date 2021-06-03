@@ -30,7 +30,12 @@ export class Wormhole {
     else return password.join('-');
   }
 
-  _codeToParts(code: string): [string, string] {
+  /**
+   * Turn a code into it's parts
+   * @param code
+   * @returns An array of two strings, [discoveryKey, password]
+   */
+  private _codeToParts(code: string): [string, string] {
     let parts = code.split('-');
     let nameplate = parts.shift();
     let discoveryKey = `wormhole-${nameplate}`;
@@ -76,7 +81,6 @@ export class Wormhole {
               );
               socket.send(serialize(encryptedMessage));
             } else {
-              this.log('got msg', msg);
               let decoded = deserialize(msg) as EncryptedProtocolMessage;
               try {
                 let plainText = await symmetric.decrypt(key, decoded);
