@@ -40,6 +40,11 @@ export class Wormhole {
   }
 
   async getNumericCode() {
+    // this is an experimental feature
+    // this is copied code from the bip library
+    // we generate the same indexes that are used in the 
+    // word-based code, but don't convert them to words. instead just
+    // return the indexes.
     let entropy = randomBytes(32);
     const entropyBits = bytesToBinary(Array.from(entropy));
     const checksumBits = deriveChecksumBits(entropy);
