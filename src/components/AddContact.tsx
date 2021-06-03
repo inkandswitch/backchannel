@@ -268,7 +268,7 @@ export default function AddContact({ view, object }: Props) {
                   Share
                 </Button>
               )}
-              <EnterBackchannelButton onClick={onClickRedeem} />
+              <EnterBackchannelButton object={object} onClick={onClickRedeem} />
             </BottomActions>
           </React.Fragment>
         )}
