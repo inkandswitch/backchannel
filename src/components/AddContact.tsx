@@ -41,7 +41,7 @@ export default function AddContact({ view, object }: Props) {
   //eslint-disable-next-line
   let [location, setLocation] = useLocation();
   //@ts-ignore
-  let useNumbers = new URLSearchParams(window.location.search).get('numbers')
+  let useNumbers = new URLSearchParams(window.location.search).get('numbers');
 
   let sharable = navigator.share;
 

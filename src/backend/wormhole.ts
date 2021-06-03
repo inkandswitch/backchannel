@@ -12,7 +12,7 @@ let VERSION = 1;
 let appid = 'backchannel/app/mailbox/v1';
 function lpad(str, padString, length) {
   while (str.length < length) {
-      str = padString + str;
+    str = padString + str;
   }
   return str;
 }
@@ -22,9 +22,7 @@ function bytesToBinary(bytes) {
 function deriveChecksumBits(entropyBuffer) {
   const ENT = entropyBuffer.length * 8;
   const CS = ENT / 32;
-  const hash = createHash('sha256')
-      .update(entropyBuffer)
-      .digest();
+  const hash = createHash('sha256').update(entropyBuffer).digest();
   return bytesToBinary(Array.from(hash)).slice(0, CS);
 }
 
@@ -46,14 +44,14 @@ export class Wormhole {
     const entropyBits = bytesToBinary(Array.from(entropy));
     const checksumBits = deriveChecksumBits(entropy);
     const bits = entropyBits + checksumBits;
-    const chunks = bits.match(/(.{1,11})/g)
+    const chunks = bits.match(/(.{1,11})/g);
     const code = chunks.map((binary) => {
-      const index = binaryToByte(binary) % 999
-      if (index < 10) return `00${index}`
-      if (index < 100) return `0${index}`
-      return index
-    })
-    return code.slice(0, 3).join('-')
+      const index = binaryToByte(binary) % 999;
+      if (index < 10) return `00${index}`;
+      if (index < 100) return `0${index}`;
+      return index;
+    });
+    return code.slice(0, 3).join('-');
   }
 
   async getCode(lang?: string) {
