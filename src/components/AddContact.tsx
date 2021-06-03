@@ -268,7 +268,7 @@ export default function AddContact({ view, object }: Props) {
                   Share
                 </Button>
               )}
-              <EnterBackchannelButton object={object} onClick={onClickRedeem} />
+              <EnterBackchannelButton onClick={onClickRedeem} />
             </BottomActions>
           </React.Fragment>
         )}
@@ -296,7 +296,6 @@ export default function AddContact({ view, object }: Props) {
             <BottomActions>
               <Message>{errorMsg || message}</Message>
               <EnterBackchannelButton
-                object={object}
                 onClick={onClickRedeem}
                 type="submit"
                 form="code-input"
@@ -345,7 +344,7 @@ function EnterBackchannelButton(props) {
           height: 22px;
         `}
       />
-      Add {props.object}
+      OK
     </Button>
   );
 }
