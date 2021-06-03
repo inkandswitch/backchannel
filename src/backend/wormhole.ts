@@ -95,7 +95,7 @@ export class Wormhole {
                 this.log('error', err);
                 reject(err);
               } finally {
-                socket.removeEventListneer('peer.connect', listener);
+                socket.removeEventListener('peer.connect', listener);
                 socket.removeEventListener('message', onmessage);
                 this.client.leave(discoveryKey);
                 socket.close();
