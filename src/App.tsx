@@ -7,7 +7,7 @@ import { color, viewport } from './components/tokens';
 import Mailbox from './components/Mailbox';
 import ContactList from './components/ContactList';
 import Contact from './components/Contact';
-import Devices from './components/Devices';
+import Device from './components/Device';
 import AddContact from './components/AddContact';
 import NetworkError from './components/Error';
 import Settings, {
@@ -52,7 +52,7 @@ export default function App() {
         <Settings />
       </Route>
       <Route path="/device/:did">
-        {(params) => <Devices deviceId={params.did} />}
+        {(params) => <Device deviceId={params.did} />}
       </Route>
       <Route path="/mailbox/:cid">
         {(params) => <Mailbox contactId={params.cid} />}
