@@ -155,6 +155,14 @@ export class Backchannel extends events.EventEmitter {
   }
 
   /**
+   * Create a one-time code for a new backchannel contact.
+   * @returns {Code} code The code to use in announce
+   */
+  getNumericCode(): Promise<Code> {
+    return this._wormhole.getNumericCode();
+  }
+
+  /**
    * Open a websocket connection to the magic wormhole service and accept the
    * code. Once the contact has been established, a contact will
    * then be created with an anonymous handle and the id returned.

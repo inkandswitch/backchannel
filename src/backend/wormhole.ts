@@ -1,5 +1,6 @@
 import { Client } from '@localfirst/relay-client';
 import { randomBytes } from 'crypto';
+import createHash from 'create-hash';
 import * as bip from 'bip39';
 import debug from 'debug';
 import { serialize, deserialize } from 'bson';
@@ -9,6 +10,27 @@ import english from './wordlist_en.json';
 
 let VERSION = 1;
 let appid = 'backchannel/app/mailbox/v1';
+function lpad(str, padString, length) {
+  while (str.length < length) {
+      str = padString + str;
+  }
+  return str;
+}
+function bytesToBinary(bytes) {
+  return bytes.map((x) => lpad(x.toString(2), '0', 8)).join('');
+}
+function deriveChecksumBits(entropyBuffer) {
+  const ENT = entropyBuffer.length * 8;
+  const CS = ENT / 32;
+  const hash = createHash('sha256')
+      .update(entropyBuffer)
+      .digest();
+  return bytesToBinary(Array.from(hash)).slice(0, CS);
+}
+
+function binaryToByte(bin) {
+  return parseInt(bin, 2);
+}
 
 export class Wormhole {
   client: Client;
@@ -17,6 +39,19 @@ export class Wormhole {
   constructor(client) {
     this.client = client;
     this.log = debug('bc:wormhole');
+  }
+
+  async getNumericCode() {
+    let entropy = randomBytes(16);
+    const entropyBits = bytesToBinary(Array.from(entropy));
+    const checksumBits = deriveChecksumBits(entropy);
+    const bits = entropyBits + checksumBits;
+    const chunks = bits.match(/(.{1,11})/g)
+    const code = chunks.map((binary) => {
+      const index = binaryToByte(binary);
+      return index
+    })
+    return code.slice(0, 3).join('-')
   }
 
   async getCode(lang?: string) {
