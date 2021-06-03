@@ -48,7 +48,9 @@ export class Wormhole {
     const bits = entropyBits + checksumBits;
     const chunks = bits.match(/(.{1,11})/g)
     const code = chunks.map((binary) => {
-      const index = binaryToByte(binary);
+      const index = binaryToByte(binary) % 999
+      if (index < 10) return `00${index}`
+      if (index < 100) return `0${index}`
       return index
     })
     return code.slice(0, 3).join('-')
