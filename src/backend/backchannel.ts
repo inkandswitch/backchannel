@@ -374,6 +374,29 @@ export class Backchannel extends events.EventEmitter {
   }
 
   /**
+   * Unlink this device. Delete all devices you're linked with.
+   * @returns
+   */
+  unlinkDevice(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      this._client.on('server.disconnect', () => {
+        let tasks = [];
+        this.devices.forEach((d) => {
+          tasks.push(this.db.deleteContact(d.id));
+        });
+
+        Promise.all(tasks)
+          .then((_) => {
+            this._client = this._createClient(this.relay);
+            resolve();
+          })
+          .catch(reject);
+      });
+      this._client.disconnectServer();
+    });
+  }
+
+  /**
    * Destroy this instance and delete the data. Disconnects from all websocket
    * clients.  Danger! Unrecoverable!
    */
