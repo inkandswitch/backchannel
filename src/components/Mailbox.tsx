@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { css } from '@emotion/react/macro';
 import { useLocation } from 'wouter';
 
@@ -37,6 +37,16 @@ export default function Mailbox(props: Props) {
   let [progress, setProgress] = useState({});
   //eslint-disable-next-line
   const [_, setLocation] = useLocation();
+  const bottomRef = useRef(null);
+
+  const scrollToBottom = () => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Whenever new messages are recieved, scroll down to show it.
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   useEffect(() => {
     function onContact({ contact }) {
@@ -51,7 +61,7 @@ export default function Mailbox(props: Props) {
       }
     }
 
-    let subscribeToConnections = async () => {
+    let subscribeToConnections = () => {
       let intendedContact = backchannel.db.getContactById(contactId);
       let messages = backchannel.getMessagesByContactId(contactId);
       setMessages(messages);
@@ -207,6 +217,7 @@ export default function Mailbox(props: Props) {
             );
           })}
         </ul>
+        <div ref={bottomRef} />
       </div>
       <form
         css={css`
@@ -228,6 +239,7 @@ export default function Mailbox(props: Props) {
               border-bottom: 2px solid ${color.border};
             }
           `}
+          autoFocus
           value={messageText}
           onChange={handleChange}
         />
