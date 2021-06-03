@@ -344,7 +344,7 @@ function EnterBackchannelButton(props) {
           height: 22px;
         `}
       />
-      OK
+      Enter Backchannel
     </Button>
   );
 }
