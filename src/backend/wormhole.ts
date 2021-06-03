@@ -42,7 +42,7 @@ export class Wormhole {
   }
 
   async getNumericCode() {
-    let entropy = randomBytes(16);
+    let entropy = randomBytes(32);
     const entropyBits = bytesToBinary(Array.from(entropy));
     const checksumBits = deriveChecksumBits(entropy);
     const bits = entropyBits + checksumBits;
