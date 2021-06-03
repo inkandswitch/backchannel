@@ -1,6 +1,8 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState, useEffect } from 'react';
 import { css } from '@emotion/react/macro';
+import { useLocation } from 'wouter';
+
 import {
   FileState,
   ContactId,
@@ -13,6 +15,7 @@ import { color, fontSize } from './tokens';
 import { timestampToDate } from './util';
 import { Instructions } from '../components';
 import { FileProgress } from '../backend/blobs';
+import { ReactComponent as Dots } from '../components/icons/Dots.svg';
 
 let backchannel = Backchannel();
 const PADDING_CHAT = 12;
@@ -32,6 +35,8 @@ export default function Mailbox(props: Props) {
     contact && backchannel.db.isConnected(contact)
   );
   let [progress, setProgress] = useState({});
+  //eslint-disable-next-line
+  const [_, setLocation] = useLocation();
 
   useEffect(() => {
     function onContact({ contact }) {
@@ -137,6 +142,7 @@ export default function Mailbox(props: Props) {
         title={`${contact ? contact.moniker : ''} ${
           contact && connected ? '🤠' : '😪'
         }`}
+        icon={<Dots onClick={() => setLocation(`/contact/${contact?.id}`)} />}
       />
       <div
         css={css`

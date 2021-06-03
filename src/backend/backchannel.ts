@@ -219,6 +219,16 @@ export class Backchannel extends events.EventEmitter {
     return contact.id;
   }
 
+  /**
+   * Delete a contact in the database
+   *
+   * @param {ContactId} id - The local id number for this contact
+   */
+  async deleteContact(id: ContactId): Promise<void> {
+    this.db.deleteContact(id);
+    this.log('deleting contact', id);
+  }
+
   async _addContactDocument(contact: IContact) {
     if (contact.device) return Promise.resolve();
     let docId = await this.db.addDocument(contact, (doc: Mailbox) => {
