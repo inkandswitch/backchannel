@@ -25,8 +25,11 @@ export default function ContactSettings(props: Props) {
   async function updateNickname(e) {
     e.preventDefault();
     try {
-      await backchannel.editMoniker(contact.id, nickname);
-      setContact(backchannel.db.getContactById(props.contactId));
+      const updatedContact = await backchannel.editMoniker(
+        contact.id,
+        nickname
+      );
+      setContact(updatedContact);
     } catch (err) {
       onError(err);
     }

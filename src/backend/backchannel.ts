@@ -197,11 +197,12 @@ export class Backchannel extends events.EventEmitter {
    * This updates the moniker for a given ccontact and saves the contact in the database
    * @param {ContactId} contactId The contact id to edit
    * @param {string} moniker The new moniker for this contact
-   * @returns
+   * @return {IContact} The new contact information
    */
-  async editMoniker(contactId: ContactId, moniker: string): Promise<void> {
+  async editMoniker(contactId: ContactId, moniker: string): Promise<IContact> {
     this.log('editmoniker', contactId, moniker);
-    return this.db.editMoniker(contactId, moniker);
+    await this.db.editMoniker(contactId, moniker);
+    return this.db.getContactById(contactId);
   }
 
   /**
