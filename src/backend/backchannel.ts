@@ -188,11 +188,12 @@ export class Backchannel extends events.EventEmitter {
    * This updates the moniker for a given ccontact and saves the contact in the database
    * @param {ContactId} contactId The contact id to edit
    * @param {string} moniker The new moniker for this contact
-   * @returns
+   * @return {IContact} The new contact information
    */
-  async editMoniker(contactId: ContactId, moniker: string): Promise<void> {
+  async editMoniker(contactId: ContactId, moniker: string): Promise<IContact> {
     this.log('editmoniker', contactId, moniker);
-    return this.db.editMoniker(contactId, moniker);
+    await this.db.editMoniker(contactId, moniker);
+    return this.db.getContactById(contactId);
   }
 
   /**
@@ -208,6 +209,16 @@ export class Backchannel extends events.EventEmitter {
     this.log('adding contact', contact.discoveryKey, contact);
     await this._addContactDocument(contact);
     return contact.id;
+  }
+
+  /**
+   * Delete a contact in the database
+   *
+   * @param {ContactId} id - The local id number for this contact
+   */
+  async deleteContact(id: ContactId): Promise<void> {
+    this.log('deleting contact', id);
+    return this.db.deleteContact(id);
   }
 
   async _addContactDocument(contact: IContact) {

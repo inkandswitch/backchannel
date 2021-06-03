@@ -47,7 +47,19 @@ export function TopBar({
         {children}
       </div>
       {icon ? (
-        icon
+        <div
+          css={css`
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+          `}
+        >
+          {icon}
+        </div>
       ) : (
         <div
           css={css`
@@ -108,6 +120,24 @@ export const ContentWithTopNav = (props) => (
     {...props}
   />
 );
+
+export function SettingsContent(props) {
+  return (
+    <div
+      css={css`
+        max-width: 210px;
+        display: flex;
+        flex-direction: column;
+        align-self: center;
+        row-gap: 10px;
+        justify-content: center;
+        margin-bottom: 60px;
+        flex: 1;
+      `}
+      {...props}
+    />
+  );
+}
 
 export const Content = (props) => (
   <div
