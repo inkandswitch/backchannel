@@ -227,6 +227,7 @@ export class Backchannel extends events.EventEmitter {
   async deleteContact(id: ContactId): Promise<void> {
     this.db.deleteContact(id);
     this.log('deleting contact', id);
+    return;
   }
 
   async _addContactDocument(contact: IContact) {

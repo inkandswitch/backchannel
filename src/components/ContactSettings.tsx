@@ -44,7 +44,7 @@ export default function ContactSettings(props: Props) {
     e.preventDefault();
     if (
       window.confirm(
-        'Permanently delete this contant? The messages will be gone forever.'
+        'Permanently delete this contact? The messages will be gone forever.'
       )
     ) {
       await backchannel.deleteContact(contact.id);
