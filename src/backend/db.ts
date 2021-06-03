@@ -143,7 +143,7 @@ export class Database<T> extends EventEmitter {
 
   /**
    * Is this contact currently connected to us? i.e., currently online and we
-   * have an open websocket connection with them
+   * have an open connection with them
    * @param {IContact} contact The contact object
    * @return {boolean} If the contact is currently connected
    */

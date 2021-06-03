@@ -378,6 +378,7 @@ export class Backchannel extends events.EventEmitter {
    * @returns
    */
   unlinkDevice(): Promise<void> {
+    this._client.disconnectServer();
     return new Promise<void>((resolve, reject) => {
       this._client.on('server.disconnect', () => {
         let tasks = [];
@@ -392,8 +393,11 @@ export class Backchannel extends events.EventEmitter {
           })
           .catch(reject);
       });
-      this._client.disconnectServer();
     });
+  }
+
+  lostMyDevice(contactId: ContactId): Promise<void> {
+
   }
 
   /**
