@@ -26,7 +26,7 @@ import TimerDisplay from './TimerDisplay';
 // Amount of milliseconds to show immediate user feedback
 const USER_FEEDBACK_TIMER = 5000;
 // Amount of seconds the user has to share code before it regenerates
-const CODE_REGENERATE_TIMER_SEC = 5;
+const CODE_REGENERATE_TIMER_SEC = 60;
 
 type CodeViewMode = 'redeem' | 'generate';
 let backchannel = Backchannel();
