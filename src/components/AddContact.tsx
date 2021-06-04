@@ -26,7 +26,7 @@ import TimerDisplay from './TimerDisplay';
 // Amount of milliseconds to show immediate user feedback
 const USER_FEEDBACK_TIMER = 5000;
 // Amount of seconds the user has to share code before it regenerates
-const CODE_REGENERATE_TIMER_SEC = 60;
+const CODE_REGENERATE_TIMER_SEC = 5;
 
 type CodeViewMode = 'redeem' | 'generate';
 let backchannel = Backchannel();
@@ -92,8 +92,8 @@ export default function AddContact({ view, object }: Props) {
       setErrorMsg('');
       setLocation(`/contact/${cid}/add`);
     } catch (err) {
-      onError(err);
-      generateCode();
+      console.error('got error from backend', err);
+      // TODO differentiate between an actual backend err (which should be displayed) vs the code timing out (which should happen quietly).
     }
   }, [useNumbers, setLocation]);
 
@@ -102,7 +102,9 @@ export default function AddContact({ view, object }: Props) {
     const timeout = setInterval(() => {
       setTimeRemainingSec((prevValue) =>
         prevValue === 0
-          ? (generateCode(), CODE_REGENERATE_TIMER_SEC)
+          ? (generateCode(),
+            console.log('generating code from timer'),
+            CODE_REGENERATE_TIMER_SEC)
           : prevValue - 1
       );
     }, 1000);
@@ -138,24 +140,32 @@ export default function AddContact({ view, object }: Props) {
         console.log('got error', err);
         onError(err);
         if (view === 'redeem') setCode('');
-        else generateCode();
+        else {
+          console.log('generating code from redeemCode');
+          generateCode();
+        }
       }
     },
     [generateCode, isConnecting, object, setLocation, view]
   );
 
+  // get code on initial page load
   useEffect(() => {
-    // get code on initial page load
-    if (view === 'generate' && !code && !errorMsg.length) {
+    if (view === 'generate' && !code) {
+      console.log('generating code from initial pageload');
       generateCode();
     }
+  }, [code, generateCode, view]);
+
+  // attempt to redeem code if it's in the url hash
+  useEffect(() => {
     if (view === 'redeem') {
       let maybeCode = window.location.hash;
       if (maybeCode.length > 1 && code !== maybeCode) {
         redeemCode(maybeCode.slice(1));
       }
     }
-  }, [view, code, errorMsg, generateCode, redeemCode]);
+  }, [view, code, redeemCode]);
 
   // Enter backchannel from 'input' code view
   async function onClickRedeem(e) {
