@@ -21,9 +21,12 @@ import { Key, Code, ContactId } from '../backend/types';
 import { color } from '../components/tokens';
 import { ReactComponent as EnterDoor } from './icons/EnterDoor.svg';
 import Backchannel from '../backend';
+import TimerDisplay from './TimerDisplay';
 
-// Amount of time to show immediate user feedback
-let USER_FEEDBACK_TIMER = 5000;
+// Amount of milliseconds to show immediate user feedback
+const USER_FEEDBACK_TIMER = 5000;
+// Amount of seconds the user has to share code before it regenerates
+const CODE_REGENERATE_TIMER_SEC = 60;
 
 type CodeViewMode = 'redeem' | 'generate';
 let backchannel = Backchannel();
@@ -38,6 +41,9 @@ export default function AddContact({ view, object }: Props) {
   let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
+  const [timeRemainingSec, setTimeRemainingSec] = useState<number>(
+    CODE_REGENERATE_TIMER_SEC
+  );
   //eslint-disable-next-line
   let [location, setLocation] = useLocation();
 
@@ -73,11 +79,32 @@ export default function AddContact({ view, object }: Props) {
         setCode(code);
         setErrorMsg('');
       }
+      // automatically start the connection and wait for other person to show up.
+      let key: Key = await backchannel.accept(
+        code,
+        (CODE_REGENERATE_TIMER_SEC + 2) * 1000 // be permissive, give extra time to redeem after timeout ends
+      );
+      let cid: ContactId = await backchannel.addContact(key);
+      setErrorMsg('');
+      setLocation(`/contact/${cid}/add`);
     } catch (err) {
       onError(err);
       generateCode();
     }
-  }, []);
+  }, [setLocation]);
+
+  // Decrement the timer, or restart it and generate a new code when it finishes.
+  useEffect(() => {
+    const timeout = setInterval(() => {
+      setTimeRemainingSec((prevValue) =>
+        prevValue === 0
+          ? (generateCode(), CODE_REGENERATE_TIMER_SEC)
+          : prevValue - 1
+      );
+    }, 1000);
+
+    return () => clearInterval(timeout);
+  }, [setTimeRemainingSec, generateCode]);
 
   async function onClickCopy() {
     const copySuccess = await copyToClipboard(code);
@@ -253,6 +280,16 @@ export default function AddContact({ view, object }: Props) {
                   width: 100%;
                 `}
               >
+                <div
+                  css={css`
+                    margin: 0 8px;
+                  `}
+                >
+                  <TimerDisplay
+                    totalTimeSec={CODE_REGENERATE_TIMER_SEC}
+                    timeRemainingSec={timeRemainingSec}
+                  />
+                </div>
                 Copy code
               </Button>
 
@@ -268,7 +305,6 @@ export default function AddContact({ view, object }: Props) {
                   Share
                 </Button>
               )}
-              <EnterBackchannelButton onClick={onClickRedeem} />
             </BottomActions>
           </React.Fragment>
         )}
