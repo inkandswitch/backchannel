@@ -46,6 +46,8 @@ export default function AddContact({ view, object }: Props) {
   );
   //eslint-disable-next-line
   let [location, setLocation] = useLocation();
+  //@ts-ignore
+  let useNumbers = new URLSearchParams(window.location.search).get('numbers');
 
   let sharable = navigator.share;
 
@@ -73,7 +75,9 @@ export default function AddContact({ view, object }: Props) {
 
   let generateCode = useCallback(async () => {
     try {
-      const code: Code = await backchannel.getCode();
+      const code: Code = useNumbers
+        ? await backchannel.getNumericCode()
+        : await backchannel.getCode();
 
       if (code) {
         setCode(code);
@@ -91,7 +95,7 @@ export default function AddContact({ view, object }: Props) {
       onError(err);
       generateCode();
     }
-  }, [setLocation]);
+  }, [useNumbers, setLocation]);
 
   // Decrement the timer, or restart it and generate a new code when it finishes.
   useEffect(() => {
