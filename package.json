@@ -32,6 +32,7 @@
     "react-chat-elements": "^10.14.0",
     "react-dom": "^17.0.2",
     "react-scripts": "4.0.3",
+    "react-sketch-canvas": "^5.3.3",
     "stream-browserify": "^3.0.0",
     "util": "^0.12.3",
     "uuid": "^8.3.2",

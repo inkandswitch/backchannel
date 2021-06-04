@@ -16,6 +16,8 @@ import { timestampToDate } from './util';
 import { Instructions } from '../components';
 import { FileProgress } from '../backend/blobs';
 import { ReactComponent as Dots } from '../components/icons/Dots.svg';
+import IndicatorDot, { StatusType } from './IndicatorDot';
+import * as storage from './storage';
 
 let backchannel = Backchannel();
 const PADDING_CHAT = 12;
@@ -134,6 +136,8 @@ export default function Mailbox(props: Props) {
     event.preventDefault();
   }
 
+  const nicknameDrawing = storage.getNicknameImage(contact?.moniker);
+
   return (
     <div
       css={css`
@@ -149,10 +153,39 @@ export default function Mailbox(props: Props) {
       onDrop={handleDrop}
     >
       <TopBar
-        title={`${contact ? contact.moniker : ''} ${
-          contact && connected ? '🤠' : '😪'
-        }`}
-        icon={<Dots onClick={() => setLocation(`/contact/${contact?.id}`)} />}
+        title={
+          <div
+            css={css`
+              display: flex;
+              flex-direction: row;
+              align-items: center;
+            `}
+          >
+            <IndicatorDot
+              css={css`
+                margin-right: 6px;
+              `}
+              status={
+                connected ? StatusType.CONNECTED : StatusType.DISCONNECTED
+              }
+            />
+            {nicknameDrawing ? (
+              <img
+                alt={`nickname for contact ${contact.id}`}
+                css={css`
+                  max-width: 200px;
+                `}
+                src={nicknameDrawing}
+              />
+            ) : (
+              contact?.moniker
+            )}
+          </div>
+        }
+        // TODO set location back to the contact settings rather than petname assigning page
+        icon={
+          <Dots onClick={() => setLocation(`/contact/${contact?.id}/add`)} />
+        }
       />
       <div
         css={css`
