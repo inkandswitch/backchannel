@@ -1,7 +1,9 @@
 /** @jsxImportSource @emotion/react */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { css } from '@emotion/react/macro';
 import { useLocation } from 'wouter';
+import CanvasDraw from 'react-canvas-draw';
+import crypto from 'crypto';
 
 import {
   Button,
@@ -18,7 +20,7 @@ import {
 } from './';
 import { color } from './tokens';
 import WormholePlaceholder from './images/WormholePlaceholder.png';
-import { ContactId } from '../backend/types';
+import { ContactId, IContact } from '../backend/types';
 import Backchannel from '../backend';
 
 let backchannel = Backchannel();
@@ -31,19 +33,38 @@ type Props = {
 
 export default function Contact({ contactId }: Props) {
   let [nickname, setNickname] = useState<string>('');
-  let [view, setView] = useState<ViewType>('write');
+  let [contact, setContact] = useState<IContact>();
+  let [view, setView] = useState<ViewType>('draw');
   let [errorMsg, setErrorMsg] = useState('');
   //eslint-disable-next-line
   let [_, setLocation] = useLocation();
+  const canvasRef = useRef(null);
+
+  async function handleSaveNicknameDrawing(e) {
+    e.preventDefault();
+    let drawingId = crypto.randomBytes(4).toString();
+    console.log('drawingID', drawingId);
+
+    var img = canvasRef.current.getSaveData();
+    localStorage.setItem(`saved-drawing-${drawingId}`, img);
+    const contact = await backchannel.editMoniker(contactId, drawingId);
+    setContact(contact);
+    canvasRef.current.clear();
+    // TODO
+    // setLocation(`/mailbox/${contactId}`);
+  }
+
   useEffect(() => {
     backchannel.connectToContactId(contactId);
   }, [contactId]);
 
-  async function handleAddContact(e) {
+  async function handleSaveNicknameText(e) {
     e.preventDefault();
     try {
-      await backchannel.editMoniker(contactId, nickname);
-      setLocation(`/mailbox/${contactId}`);
+      const contact = await backchannel.editMoniker(contactId, nickname);
+      setContact(contact);
+      // TODO
+      // setLocation(`/mailbox/${contactId}`);
     } catch (err) {
       onError(err);
     }
@@ -63,6 +84,7 @@ export default function Contact({ contactId }: Props) {
     console.error('got error from backend', err);
     setErrorMsg(err.message);
   };
+  console.log('my name is', contact?.moniker);
 
   return (
     <Page
@@ -77,6 +99,25 @@ export default function Contact({ contactId }: Props) {
         css={css`
           background: none;
         `}
+        title={
+          contact ? (
+            <CanvasDraw
+              disabled
+              saveData={localStorage.getItem(
+                `saved-drawing-${contact.moniker}`
+              )}
+              canvasWidth={100}
+              canvasHeight={40}
+              hideGrid
+              style={{
+                boxShadow:
+                  '0 13px 27px -5px rgba(50, 50, 93, 0.25),    0 8px 16px -8px rgba(0, 0, 0, 0.3)',
+              }}
+            />
+          ) : (
+            ''
+          )
+        }
       />
       <ContentWithTopNav
         css={css`
@@ -143,19 +184,25 @@ export default function Contact({ contactId }: Props) {
               <div
                 css={css`
                   background: white;
-                  padding: 50px 30px;
-                  width: 80%;
                 `}
               >
-                draw here
+                <CanvasDraw
+                  ref={canvasRef}
+                  canvasWidth={400}
+                  canvasHeight={80}
+                  brushRadius={4}
+                />{' '}
               </div>
             )}
           </CodeDisplayOrInput>
           <BottomActions>
             <Button
-              onClick={handleAddContact}
+              onClick={
+                view === 'write'
+                  ? handleSaveNicknameText
+                  : handleSaveNicknameDrawing
+              }
               type="submit"
-              disabled={view === 'draw'}
             >
               Confirm nickname
             </Button>

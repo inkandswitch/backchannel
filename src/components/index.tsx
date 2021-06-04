@@ -14,7 +14,7 @@ type TODO = any;
  */
 export function TopBar({
   backHref = '/',
-  title = '',
+  title = null,
   children = null,
   icon = null,
   ...props
