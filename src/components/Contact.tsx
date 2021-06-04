@@ -13,6 +13,8 @@ import {
   UnderlineInput,
   Page,
   TopBar,
+  Toggle,
+  ToggleWrapper,
 } from './';
 import { color } from './tokens';
 import WormholePlaceholder from './images/WormholePlaceholder.png';
@@ -21,12 +23,15 @@ import Backchannel from '../backend';
 
 let backchannel = Backchannel();
 
+type ViewType = 'write' | 'draw';
+
 type Props = {
   contactId: ContactId;
 };
 
 export default function Contact({ contactId }: Props) {
   let [nickname, setNickname] = useState<string>('');
+  let [view, setView] = useState<ViewType>('write');
   let [errorMsg, setErrorMsg] = useState('');
   //eslint-disable-next-line
   let [_, setLocation] = useLocation();
@@ -47,6 +52,11 @@ export default function Contact({ contactId }: Props) {
   function handleChange(event) {
     setErrorMsg('');
     setNickname(event.target.value);
+  }
+
+  function handleToggleClick(e) {
+    e.preventDefault();
+    setView(e.target.name);
   }
 
   let onError = (err: Error) => {
@@ -82,34 +92,72 @@ export default function Contact({ contactId }: Props) {
           `}
         >
           <CodeDisplayOrInput>
-            <div
+            <ToggleWrapper
               css={css`
-                background: white;
-                padding: 50px 30px;
+                margin-bottom: 12px;
+                background: ${color.nicknameToggleBackground};
               `}
             >
-              <UnderlineInput
+              <Toggle
+                name="write"
+                onClick={handleToggleClick}
+                isActive={view === 'write'}
+              >
+                Write
+              </Toggle>
+              <Toggle
+                name="draw"
+                onClick={handleToggleClick}
+                isActive={view === 'draw'}
+              >
+                Draw
+              </Toggle>
+            </ToggleWrapper>
+            {view === 'write' && (
+              <div
                 css={css`
-                  border-bottom: 2px solid ${color.borderInverse};
-                  color: ${color.textInverse};
-                  font-family: monospace;
-                  padding: 2px 0;
-
-                  &:focus {
-                    border-bottom: 2px solid ${color.borderInverseFocus};
-                    transition: 0.2s;
-                  }
+                  background: white;
+                  padding: 50px 30px;
                 `}
-                type="text"
-                onChange={handleChange}
-                placeholder="Contact nickname"
-                autoFocus
-              />
-            </div>
+              >
+                <UnderlineInput
+                  css={css`
+                    border-bottom: 2px solid ${color.borderInverse};
+                    color: ${color.textInverse};
+                    font-family: monospace;
+                    padding: 2px 0;
+
+                    &:focus {
+                      border-bottom: 2px solid ${color.borderInverseFocus};
+                      transition: 0.2s;
+                    }
+                  `}
+                  type="text"
+                  onChange={handleChange}
+                  placeholder="Contact nickname"
+                  autoFocus
+                />
+              </div>
+            )}
+            {view === 'draw' && (
+              <div
+                css={css`
+                  background: white;
+                  padding: 50px 30px;
+                  width: 80%;
+                `}
+              >
+                draw here
+              </div>
+            )}
           </CodeDisplayOrInput>
           <BottomActions>
-            <Button onClick={handleAddContact} type="submit">
-              Add Contact
+            <Button
+              onClick={handleAddContact}
+              type="submit"
+              disabled={view === 'draw'}
+            >
+              Confirm nickname
             </Button>
           </BottomActions>
         </form>

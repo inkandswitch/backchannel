@@ -397,3 +397,44 @@ export const UnderlineInput = (props) => (
     {...props}
   />
 );
+
+type ToggleProps = {
+  isActive: boolean;
+} & React.ComponentProps<typeof Link>;
+
+export function Toggle({ isActive = false, ...props }: ToggleProps) {
+  const ToggleStyle = css`
+    display: inline-block;
+    border: none;
+    margin: 0 6px;
+    text-decoration: none;
+    padding: 8px 14px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor:pointer;
+    color: ${
+      isActive ? color.codeShareToggleTextActive : color.codeShareToggleText
+    };
+    background: ${isActive ? color.codeShareToggleBackgroundActive : 'none'};
+    }
+  `;
+
+  return props.href ? (
+    <Link css={ToggleStyle} {...props} />
+  ) : (
+    <button css={ToggleStyle} {...props} />
+  );
+}
+
+export const ToggleWrapper = (props) => (
+  <div
+    css={css`
+      flex: 0 1 auto;
+      background: ${color.codeShareToggleBackground};
+      padding: 4px 0;
+      border-radius: 24px;
+    `}
+    {...props}
+  />
+);
