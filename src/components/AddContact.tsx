@@ -123,14 +123,15 @@ export default function AddContact({ view, object }: Props) {
       try {
         setIsConnecting(true);
         let key: Key = await backchannel.accept(code);
-        setIsConnecting(false);
         if (object === 'device') {
           let deviceId: ContactId = await backchannel.addDevice(key);
           setErrorMsg('');
+          setIsConnecting(false);
           setLocation(`/device/${deviceId}`);
         } else {
           let cid: ContactId = await backchannel.addContact(key);
           setErrorMsg('');
+          setIsConnecting(false);
           setLocation(`/contact/${cid}/add`);
         }
       } catch (err) {
