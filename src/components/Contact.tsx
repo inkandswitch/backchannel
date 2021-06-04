@@ -2,8 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { css } from '@emotion/react/macro';
 import { useLocation } from 'wouter';
-import CanvasDraw from 'react-canvas-draw';
-import crypto from 'crypto';
+import { ReactSketchCanvas } from 'react-sketch-canvas';
 
 import {
   Button,
@@ -22,6 +21,7 @@ import { color } from './tokens';
 import WormholePlaceholder from './images/WormholePlaceholder.png';
 import { ContactId, IContact } from '../backend/types';
 import Backchannel from '../backend';
+import * as storage from './storage';
 
 let backchannel = Backchannel();
 
@@ -42,16 +42,14 @@ export default function Contact({ contactId }: Props) {
 
   async function handleSaveNicknameDrawing(e) {
     e.preventDefault();
-    let drawingId = crypto.randomBytes(4).toString();
-    console.log('drawingID', drawingId);
 
-    var img = canvasRef.current.getSaveData();
-    localStorage.setItem(`saved-drawing-${drawingId}`, img);
+    const imgData = await canvasRef.current?.exportImage('png');
+    const drawingId = storage.setNicknameImage(imgData);
     const contact = await backchannel.editMoniker(contactId, drawingId);
+
     setContact(contact);
-    canvasRef.current.clear();
-    // TODO
-    // setLocation(`/mailbox/${contactId}`);
+    canvasRef.current.resetCanvas();
+    setLocation(`/mailbox/${contactId}`);
   }
 
   useEffect(() => {
@@ -63,8 +61,7 @@ export default function Contact({ contactId }: Props) {
     try {
       const contact = await backchannel.editMoniker(contactId, nickname);
       setContact(contact);
-      // TODO
-      // setLocation(`/mailbox/${contactId}`);
+      setLocation(`/mailbox/${contactId}`);
     } catch (err) {
       onError(err);
     }
@@ -84,7 +81,6 @@ export default function Contact({ contactId }: Props) {
     console.error('got error from backend', err);
     setErrorMsg(err.message);
   };
-  console.log('my name is', contact?.moniker);
 
   return (
     <Page
@@ -99,25 +95,6 @@ export default function Contact({ contactId }: Props) {
         css={css`
           background: none;
         `}
-        title={
-          contact ? (
-            <CanvasDraw
-              disabled
-              saveData={localStorage.getItem(
-                `saved-drawing-${contact.moniker}`
-              )}
-              canvasWidth={100}
-              canvasHeight={40}
-              hideGrid
-              style={{
-                boxShadow:
-                  '0 13px 27px -5px rgba(50, 50, 93, 0.25),    0 8px 16px -8px rgba(0, 0, 0, 0.3)',
-              }}
-            />
-          ) : (
-            ''
-          )
-        }
       />
       <ContentWithTopNav
         css={css`
@@ -175,6 +152,7 @@ export default function Contact({ contactId }: Props) {
                   `}
                   type="text"
                   onChange={handleChange}
+                  defaultValue={contact ? contact.moniker : ''}
                   placeholder="Contact nickname"
                   autoFocus
                 />
@@ -186,12 +164,14 @@ export default function Contact({ contactId }: Props) {
                   background: white;
                 `}
               >
-                <CanvasDraw
+                {' '}
+                <ReactSketchCanvas
+                  width="400"
+                  height="80"
+                  strokeWidth={4}
+                  strokeColor="black"
                   ref={canvasRef}
-                  canvasWidth={400}
-                  canvasHeight={80}
-                  brushRadius={4}
-                />{' '}
+                />
               </div>
             )}
           </CodeDisplayOrInput>
