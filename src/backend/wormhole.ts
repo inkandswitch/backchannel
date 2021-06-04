@@ -5,7 +5,6 @@ import * as bip from 'bip39';
 import debug from 'debug';
 import { serialize, deserialize } from 'bson';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
-import { Key } from './types';
 import english from './wordlist_en.json';
 
 let VERSION = 1;
@@ -71,16 +70,30 @@ export class Wormhole {
     else return password.join('-');
   }
 
-  async _symmetric(code: string): Promise<Key> {
+  /**
+   * Turn a code into it's parts
+   * @param code
+   * @returns An array of two strings, [discoveryKey, password]
+   */
+  private _codeToParts(code: string): [string, string] {
     let parts = code.split('-');
     let nameplate = parts.shift();
+    let discoveryKey = `wormhole-${nameplate}`;
     let password = parts.join('-');
+    return [discoveryKey, password];
+  }
+
+  leave(code: string) {
+    let [discoveryKey] = this._codeToParts(code);
+    this.client.leave(discoveryKey);
+  }
+
+  async accept(code: string): Promise<string> {
+    let [discoveryKey, password] = this._codeToParts(code);
     return new Promise((resolve, reject) => {
-      let discoveryKey = `wormhole-${nameplate}`;
+      let listener = onPeerConnect.bind(this);
       this.log('joining', discoveryKey);
-      this.client
-        .join(discoveryKey)
-        .on('peer.connect', onPeerConnect.bind(this));
+      this.client.join(discoveryKey).on('peer.connect', listener);
 
       function onPeerConnect({ socket, documentId }) {
         this.log('onPeerConnect', documentId);
@@ -91,7 +104,7 @@ export class Wormhole {
 
           socket.binaryType = 'arraybuffer';
           socket.send(outboundString);
-          let key: Key = null;
+          let key: string = null;
 
           let onmessage = async (e) => {
             let msg = e.data;
@@ -108,7 +121,6 @@ export class Wormhole {
               );
               socket.send(serialize(encryptedMessage));
             } else {
-              this.log('got msg', msg);
               let decoded = deserialize(msg) as EncryptedProtocolMessage;
               try {
                 let plainText = await symmetric.decrypt(key, decoded);
@@ -127,7 +139,8 @@ export class Wormhole {
                 this.log('error', err);
                 reject(err);
               } finally {
-                socket.removeEventListener('onmessage', onmessage);
+                socket.removeEventListener('peer.connect', listener);
+                socket.removeEventListener('message', onmessage);
                 this.client.leave(discoveryKey);
                 socket.close();
               }
@@ -137,9 +150,5 @@ export class Wormhole {
         }
       }
     });
-  }
-
-  async accept(code): Promise<Key> {
-    return this._symmetric(code);
   }
 }

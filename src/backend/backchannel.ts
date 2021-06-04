@@ -171,18 +171,21 @@ export class Backchannel extends events.EventEmitter {
    * @param {number} timeout The timeout before giving up, default 20 seconds
    * @returns {ContactId} The ID of the contact in the database
    */
-  async accept(code: Code, timeout = 20000): Promise<ContactId> {
+  async accept(code: Code, timeout = 60000): Promise<ContactId> {
+    let sanitizedCode = code.toLowerCase().trim();
     let TWENTY_SECONDS = timeout;
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
+        this._wormhole.leave(sanitizedCode);
         reject(
           new Error(`This code has expired. Try again with a different one.`)
         );
       }, TWENTY_SECONDS);
       try {
-        let key: Key = await this._wormhole.accept(code.toLowerCase().trim());
+        let key: Key = await this._wormhole.accept(sanitizedCode);
         return resolve(key);
       } catch (err) {
+        this._wormhole.leave(sanitizedCode);
         reject(
           new Error(
             'Secure connection failed. Did you type the code correctly? Try again.'
