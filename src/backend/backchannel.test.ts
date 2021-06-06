@@ -73,7 +73,7 @@ function multidevice(done) {
       let prom1 = android.addDevice(key, 'my windows laptop');
 
       Promise.all([prom1, prom2]).then(([alice_id, _android_id]) => {
-        android_id = _android_id
+        android_id = _android_id;
         android.once('CONTACT_LIST_SYNC', () => {
           onSync();
         });
@@ -245,22 +245,21 @@ test('integration send multiple messages', async () => {
 test('unlink device', (done) => {
   multidevice(({ android, alice, bob }) => {
     // oops, lost my android.
-    alice.unlinkDevice().then(_ => {
+    alice.unlinkDevice().then((_) => {
       expect(alice.devices.length).toBe(0);
       done();
     });
   });
 });
 
-
 test.only('lost my device', (done) => {
   multidevice(({ android, alice, bob }) => {
     // oops, lost my android.
-    alice.lostmyDevice(android_id).then(_ => {
+    alice.db.lostMyDevice(android_id).then((_) => {
       android.on('CONTACT_LIST_SYNC', () => {
         expect(android.devices.length).toBe(0);
         expect(android.contacts.length).toBe(0);
-      })
+      });
       done();
     });
   });

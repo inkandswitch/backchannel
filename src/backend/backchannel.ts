@@ -396,10 +396,6 @@ export class Backchannel extends events.EventEmitter {
     });
   }
 
-  lostMyDevice(contactId: ContactId): Promise<void> {
-
-  }
-
   /**
    * Destroy this instance and delete the data. Disconnects from all websocket
    * clients.  Danger! Unrecoverable!

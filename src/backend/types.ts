@@ -3,6 +3,8 @@ import { Backchannel as bc } from './backchannel';
 export enum MessageType {
   FILE = 'file',
   TEXT = 'text',
+  TOMBSTONE = 'tombstone',
+  ACK = 'ack',
 }
 export type MessageId = string;
 export type ContactId = string;
