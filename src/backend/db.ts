@@ -94,23 +94,22 @@ export class Database<T> extends EventEmitter {
     this.log('got error', err);
     throw new Error(err);
   }
+
   /**
    * When a peer connects, call this function
-   * @param contact The contact that connected
-   * @param send A function for sending data
-   * @returns A function to call when messages come in
+   * @param peerId
+   * @param docId
+   * @param send
+   * @returns
    */
-  onPeerConnect(
-    peerId: string,
-    contact: IContact,
-    send: Function
-  ): ReceiveSyncMsg {
-    let docId: string = this.getDocumentId(contact);
+  onPeerConnect(peerId: string, docId: string, send: Function): ReceiveSyncMsg {
     let syncer = this._syncer(docId);
-    if (!syncer)
+    if (!syncer) {
+      console.log(this._syncers, docId);
       throw new Error(
-        'No syncer exists for this peer, this should never happen.'
+        `No syncer exists for this ${docId}, this should never happen.`
       );
+    }
     this.log('adding peer', peerId);
     let peer = {
       id: peerId,
@@ -148,8 +147,7 @@ export class Database<T> extends EventEmitter {
    * @return {boolean} If the contact is currently connected
    */
   isConnected(contact: IContact): boolean {
-    let docId = this.getDocumentId(contact);
-    let doc = this._syncers.get(docId);
+    let doc = this._syncers.get(contact.discoveryKey);
     if (!doc) return false;
     let match = doc.peers.filter((p) => {
       return p.id.startsWith(contact.id);
@@ -157,12 +155,10 @@ export class Database<T> extends EventEmitter {
     return match.length > 0;
   }
 
-  getDocumentId(contact: IContact): string {
-    if (contact.device) {
-      return SYSTEM_ID;
-    } else {
-      return contact.discoveryKey;
-    }
+  getDocumentIds(contact: IContact): string[] {
+    let ids = [contact.discoveryKey];
+    if (contact.device) ids.push(SYSTEM_ID);
+    return ids;
   }
 
   /**
@@ -173,7 +169,7 @@ export class Database<T> extends EventEmitter {
   async change(docId: DocumentId, changeFn: Automerge.ChangeFn<System | T>) {
     let doc = this._frontends.get(docId);
     const [newDoc, changeData] = Automerge.Frontend.change(doc, changeFn);
-    this.log('changing', docId, changeData);
+    this.log('changing', docId);
     this._frontends.set(docId, newDoc);
     let syncer = this._syncer(docId);
     if (!syncer)
@@ -218,13 +214,6 @@ export class Database<T> extends EventEmitter {
     return id;
   }
 
-  addDocument(
-    contact: IContact,
-    changeFn: Automerge.ChangeFn<T>
-  ): Promise<DocumentId> {
-    return this._addDocument(contact.discoveryKey, changeFn);
-  }
-
   /**
    * Open the database. This is called automatically when you create the
    * instance and you don't need to call it.
@@ -258,7 +247,7 @@ export class Database<T> extends EventEmitter {
       // NEW INSTANCE!
       this.log('new contact list. changing', SYSTEM_ID);
       //@ts-ignore
-      await this._addDocument(SYSTEM_ID, (doc: System) => {
+      await this.addDocument(SYSTEM_ID, (doc: System) => {
         doc.contacts = [];
         doc.settings = {};
       });
@@ -318,7 +307,7 @@ export class Database<T> extends EventEmitter {
     return this._syncers.get(docId);
   }
 
-  private async _addDocument(
+  async addDocument(
     docId: DocumentId,
     changeFn: Automerge.ChangeFn<T>
   ): Promise<DocumentId> {
@@ -335,6 +324,7 @@ export class Database<T> extends EventEmitter {
     backend: Automerge.BackendState
   ): Promise<DocumentId> {
     this._frontends.set(docId, frontend);
+    console.log('creating syncer', docId);
     let syncer = new AutomergeDiscovery(docId, backend);
     this._syncers.set(docId, syncer);
     let doc = this._frontends.get(docId);
@@ -360,7 +350,7 @@ export class Database<T> extends EventEmitter {
   }
 
   private async _loadDocument(docId: DocumentId): Promise<DocumentId> {
-    this.log('loadDocument', docId);
+    console.log('loadDocument', docId);
     let doc = await this._idb.getDoc(docId);
     let state = doc.serializedDoc
       ? Backend.load(doc.serializedDoc)

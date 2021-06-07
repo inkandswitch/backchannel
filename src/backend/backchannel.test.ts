@@ -69,14 +69,16 @@ function multidevice(done) {
     }
 
     android.once('server.connect', () => {
-      let prom2 = alice.addDevice(key, 'my android');
-      let prom1 = android.addDevice(key, 'my windows laptop');
+      console.log('creatind device', key);
+      let prom2 = alice.addContact(key, true);
+      let prom1 = android.addContact(key, true);
 
       Promise.all([prom1, prom2]).then(([alice_id, _android_id]) => {
         android_id = _android_id;
         android.once('CONTACT_LIST_SYNC', () => {
           onSync();
         });
+        console.log('connecting to contacts');
         android.connectToAllContacts();
         alice.connectToAllContacts();
         bob.connectToAllContacts();
@@ -158,7 +160,7 @@ test('integration send a message', async () => {
   expect(bob.opened()).toBe(true);
 
   await alice.sendMessage(outgoing.contact, outgoing.text);
-  let docId = bob.db.getDocumentId(bob.db.getContactById(petalice_id));
+  let docId = bob.db.getContactById(petalice_id).discoveryKey;
   await patched(bob, docId);
   let messages = bob.getMessagesByContactId(petalice_id);
   expect(messages.length).toBe(1);
@@ -181,7 +183,7 @@ test('presence', (done) => {
   bob.destroy();
 });
 
-test('adds and syncs contacts with another device', (done) => {
+test.only('adds and syncs contacts with another device', (done) => {
   multidevice(({ android, alice, bob }) => {
     done();
   });
@@ -234,7 +236,7 @@ test('integration send multiple messages', async () => {
   await bob.sendMessage(response.contact, response.text);
   await p;
 
-  docId = alice.db.getDocumentId(alice.db.getContactById(petbob_id));
+  docId = alice.db.getContactById(petbob_id).discoveryKey;
   let alices = alice.getMessagesByContactId(petbob_id);
   expect(alices[0].text).toBe(outgoing.text);
   expect(alices[1].text).toBe(response.text);
@@ -252,7 +254,7 @@ test('unlink device', (done) => {
   });
 });
 
-test.only('lost my device', (done) => {
+test.skip('lost my device', (done) => {
   multidevice(({ android, alice, bob }) => {
     // oops, lost my android.
     alice.db.lostMyDevice(android_id).then((_) => {
