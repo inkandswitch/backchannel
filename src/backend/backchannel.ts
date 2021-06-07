@@ -54,8 +54,8 @@ export class Backchannel extends events.EventEmitter {
   private _wormhole: Wormhole;
   private _client: Client;
   private _open: boolean;
-  private log: debug;
   private _blobs: Blobs;
+  private log: debug;
   private relay: string;
 
   /**
@@ -93,6 +93,25 @@ export class Backchannel extends events.EventEmitter {
       this.emit('download', p);
     });
 
+    this.db.on('patch', ({ docId, patch, changes }) => {
+      changes.forEach((c) => {
+        let change = Automerge.decodeChange(c);
+        if (change.message === MessageType.TOMBSTONE) {
+          this.log('got', change.message);
+          let contact = this.db.getContactByDiscoveryKey(docId);
+          let msg = {
+            type: MessageType.ACK,
+            timestamp: Date.now().toString(),
+            target: contact.id,
+          };
+          this._addMessage(msg, contact).then(() => {
+            this.log('destroying');
+            this.destroy();
+          });
+        }
+      });
+    });
+
     this.db.once('open', () => {
       let documentIds = this.db.documents;
       this.relay =
@@ -119,7 +138,6 @@ export class Backchannel extends events.EventEmitter {
     });
 
     Promise.all(tasks).then(() => {
-      this.connectToAllContacts();
       this.emit('CONTACT_LIST_SYNC');
     });
   }
@@ -215,7 +233,6 @@ export class Backchannel extends events.EventEmitter {
 
   async _addContactDocument(contact: IContact) {
     let docId = contact.discoveryKey;
-    console.log('creating contact', docId);
     await this.db.addDocument(docId, (doc: Mailbox) => {
       doc.messages = [];
     });
@@ -236,6 +253,7 @@ export class Backchannel extends events.EventEmitter {
       );
       return doc.messages;
     } catch (err) {
+      console.trace(err);
       throw new Error('Error getting messages, this should never happen.');
     }
   }
@@ -254,6 +272,19 @@ export class Backchannel extends events.EventEmitter {
 
   listContacts() {
     return this.contacts;
+  }
+
+  async lostMyDevice(contactId: ContactId) {
+    let contact = this.db.getContactById(contactId);
+    if (!contact.device) throw new Error('Not a device.');
+
+    let msg: IMessage = {
+      type: MessageType.TOMBSTONE,
+      target: contactId,
+      timestamp: Date.now().toString(),
+    };
+    await this._addMessage(msg, contact);
+    return msg;
   }
 
   /**
@@ -477,7 +508,6 @@ export class Backchannel extends events.EventEmitter {
             default:
               // automerge document
               let fn = listeners[syncMsg.msgType];
-              console.log('got msg', syncMsg.msgType);
               if (fn) fn(syncMsg.msg);
               break;
           }
@@ -541,7 +571,6 @@ export class Backchannel extends events.EventEmitter {
 
     client.on('peer.connect', ({ socket, documentId, userName }) => {
       this._onPeerConnect(socket, documentId, userName);
-      console.log('on peer connect', documentId);
     });
 
     return client;
@@ -549,9 +578,14 @@ export class Backchannel extends events.EventEmitter {
 
   private async _addMessage(msg: IMessage, contact: IContact) {
     let docId = contact.discoveryKey;
-    let res = await this.db.change(docId, (doc: Mailbox) => {
-      doc.messages.push(msg);
-    });
+    let changeMessage = msg.type;
+    let res = await this.db.change(
+      docId,
+      (doc: Mailbox) => {
+        doc.messages.push(msg);
+      },
+      changeMessage
+    );
     return res;
   }
 

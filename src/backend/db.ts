@@ -5,10 +5,11 @@ import { v4 as uuid } from 'uuid';
 import { Backend } from 'automerge';
 
 import * as crypto from './crypto';
-import { Key, ContactId, IContact } from './types';
+import { Key, ContactId, IContact, MessageType } from './types';
 import AutomergeDiscovery from './AutomergeDiscovery';
 import { DB } from './automerge-db';
 import { ReceiveSyncMsg } from './AutomergeDiscovery';
+import { randomBytes } from 'crypto';
 
 type DocumentId = string;
 
@@ -44,7 +45,7 @@ export class Database<T> extends EventEmitter {
     super();
     this.onContactListChange = onContactListChange;
     this._idb = new DB(dbname);
-    this.log = debug('bc:db');
+    this.log = debug(`bc:db:${randomBytes(4).toString('hex')}`);
     this.open().then(() => {
       this._opened = true;
       this.log('open');
@@ -105,7 +106,6 @@ export class Database<T> extends EventEmitter {
   onPeerConnect(peerId: string, docId: string, send: Function): ReceiveSyncMsg {
     let syncer = this._syncer(docId);
     if (!syncer) {
-      console.log(this._syncers, docId);
       throw new Error(
         `No syncer exists for this ${docId}, this should never happen.`
       );
@@ -126,7 +126,7 @@ export class Database<T> extends EventEmitter {
   async onDisconnect(docId, peerId): Promise<void> {
     this.log('onDisconnect', docId);
     let doc = this._syncer(docId);
-    if (!doc) doc = this._syncer(SYSTEM_ID);
+    if (!doc) return;
     let peer = doc.getPeer(peerId);
     if (!peer) return;
     await this._idb.storeSyncState(docId, peerId, peer.state);
@@ -136,7 +136,10 @@ export class Database<T> extends EventEmitter {
   getDocument(docId: DocumentId): Automerge.Doc<System | T> {
     this.log('getting document', docId);
     let syncer = this._syncers.get(docId);
-    if (!syncer) throw new Error('No doc for docId ' + docId);
+    if (!syncer) {
+      this.log('error: no doc for docId' + docId);
+      throw new Error('No doc for docId ' + docId);
+    }
     return this._frontends.get(docId);
   }
 
@@ -166,10 +169,17 @@ export class Database<T> extends EventEmitter {
    * @param docId The document ID
    * @param changeFn The Automerge change function to change the document.
    */
-  async change(docId: DocumentId, changeFn: Automerge.ChangeFn<System | T>) {
+  async change(
+    docId: DocumentId,
+    changeFn: Automerge.ChangeFn<System | T>,
+    message?: string
+  ) {
     let doc = this._frontends.get(docId);
-    const [newDoc, changeData] = Automerge.Frontend.change(doc, changeFn);
-    this.log('changing', docId);
+    const [newDoc, changeData] = Automerge.Frontend.change(
+      doc,
+      message,
+      changeFn
+    );
     this._frontends.set(docId, newDoc);
     let syncer = this._syncer(docId);
     if (!syncer)
@@ -296,6 +306,8 @@ export class Database<T> extends EventEmitter {
 
   async destroy() {
     this._opened = false;
+    this._syncers.clear();
+    this._frontends.clear();
     return this._idb.destroy();
   }
 
@@ -318,39 +330,7 @@ export class Database<T> extends EventEmitter {
     return this._loadDocument(docId);
   }
 
-  private async _hyrateDocument(
-    docId: string,
-    frontend: Automerge.Doc<T | System>,
-    backend: Automerge.BackendState
-  ): Promise<DocumentId> {
-    this._frontends.set(docId, frontend);
-    console.log('creating syncer', docId);
-    let syncer = new AutomergeDiscovery(docId, backend);
-    this._syncers.set(docId, syncer);
-    let doc = this._frontends.get(docId);
-
-    syncer.on('patch', ({ docId, patch, changes }) => {
-      let frontend = this._frontends.get(docId);
-      if (!frontend)
-        throw new Error(
-          `No frontend for docId ${docId} .. this should not be happening!`
-        );
-
-      let newFrontend = Automerge.Frontend.applyPatch(frontend, patch);
-      changes.forEach(async (c) => {
-        await this._idb.storeChange(docId, c);
-      });
-      this._frontends.set(docId, newFrontend);
-      if (docId === SYSTEM_ID && this.onContactListChange)
-        this.onContactListChange(patch);
-      else this.emit('patch', { docId, patch });
-    });
-    this.log('Document hydrated', doc);
-    return docId;
-  }
-
   private async _loadDocument(docId: DocumentId): Promise<DocumentId> {
-    console.log('loadDocument', docId);
     let doc = await this._idb.getDoc(docId);
     let state = doc.serializedDoc
       ? Backend.load(doc.serializedDoc)
@@ -361,7 +341,31 @@ export class Database<T> extends EventEmitter {
       Automerge.Frontend.init(),
       patch
     );
-    return this._hyrateDocument(docId, frontend, backend);
+    this._frontends.set(docId, frontend);
+    let syncer = new AutomergeDiscovery(docId, backend);
+    this._syncers.set(docId, syncer);
+
+    syncer.on('patch', ({ docId, patch, changes }) => {
+      let frontend = this._frontends.get(docId);
+      if (!frontend) {
+        return this.error(
+          new Error(
+            `No frontend for docId ${docId} .. this should not be happening!`
+          )
+        );
+      }
+
+      let newFrontend = Automerge.Frontend.applyPatch(frontend, patch);
+      changes.forEach(async (c) => {
+        await this._idb.storeChange(docId, c);
+      });
+      this._frontends.set(docId, newFrontend);
+      if (docId === SYSTEM_ID && this.onContactListChange)
+        this.onContactListChange(patch);
+      else this.emit('patch', { docId, patch, changes });
+    });
+    this.log('Document loaded', docId, frontend);
+    return docId;
   }
 
   private _hydrateContact(contact: IContact): IContact {

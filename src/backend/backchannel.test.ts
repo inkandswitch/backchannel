@@ -68,27 +68,29 @@ function multidevice(done) {
       });
     }
 
-    android.once('server.connect', () => {
-      console.log('creatind device', key);
-      let prom2 = alice.addContact(key, true);
-      let prom1 = android.addContact(key, true);
+    android.once('server.connect', async () => {
+      let _android_id = await alice.addContact(key, true);
+      let _alice_id = await android.addContact(key, true);
 
-      Promise.all([prom1, prom2]).then(([alice_id, _android_id]) => {
-        android_id = _android_id;
-        android.once('CONTACT_LIST_SYNC', () => {
+      android_id = _android_id;
+      let done = false;
+      let cb = () => {
+        if (done) return;
+        if (android.contacts.length === alice.contacts.length) {
+          done = true;
           onSync();
-        });
-        console.log('connecting to contacts');
-        android.connectToAllContacts();
-        alice.connectToAllContacts();
-        bob.connectToAllContacts();
-      });
+        }
+      };
+      android.on('CONTACT_LIST_SYNC', cb);
+      alice.on('CONTACT_LIST_SYNC', cb);
+      android.connectToContactId(_alice_id);
+      alice.connectToContactId(_android_id);
     });
   });
 }
 
-function createDevice(): Backchannel {
-  let dbname = randomBytes(16).toString('hex');
+function createDevice(name?: string): Backchannel {
+  let dbname = name || randomBytes(16).toString('hex');
   return new Backchannel(dbname, { relay: `ws://localhost:${port}` });
 }
 
@@ -183,7 +185,7 @@ test('presence', (done) => {
   bob.destroy();
 });
 
-test.only('adds and syncs contacts with another device', (done) => {
+test('adds and syncs contacts with another device', (done) => {
   multidevice(({ android, alice, bob }) => {
     done();
   });
@@ -254,15 +256,15 @@ test('unlink device', (done) => {
   });
 });
 
-test.skip('lost my device', (done) => {
+test.only('lost my device', (done) => {
   multidevice(({ android, alice, bob }) => {
     // oops, lost my android.
-    alice.db.lostMyDevice(android_id).then((_) => {
-      android.on('CONTACT_LIST_SYNC', () => {
+    alice.lostMyDevice(android_id).then((_) => {
+      android.on('close', () => {
         expect(android.devices.length).toBe(0);
         expect(android.contacts.length).toBe(0);
+        done();
       });
-      done();
     });
   });
 });
