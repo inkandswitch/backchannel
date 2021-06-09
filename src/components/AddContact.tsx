@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import React, { useEffect, useState, useCallback } from 'react';
 import { css } from '@emotion/react/macro';
-import { Link, useLocation } from 'wouter';
+import { useLocation } from 'wouter';
 
 import { copyToClipboard } from '../web';
 import {
@@ -16,6 +16,8 @@ import {
   Spinner,
   IconWithMessage,
   TopBar,
+  Toggle,
+  ToggleWrapper,
 } from '../components';
 import { Key, Code, ContactId } from '../backend/types';
 import { color } from '../components/tokens';
@@ -247,21 +249,14 @@ export default function AddContact({ view, object }: Props) {
   return (
     <Page>
       <TopBar>
-        <div
-          css={css`
-            flex: 0 1 auto;
-            background: ${color.codeShareToggleBackground};
-            padding: 4px 0;
-            border-radius: 24px;
-          `}
-        >
+        <ToggleWrapper>
           <Toggle href={`/generate/${object}`} isActive={view === 'generate'}>
             My code
           </Toggle>
           <Toggle href={`/redeem/${object}`} isActive={view === 'redeem'}>
             Enter code
           </Toggle>
-        </div>
+        </ToggleWrapper>
         <div
           css={css`
             width: 50px;
@@ -356,34 +351,6 @@ export default function AddContact({ view, object }: Props) {
         )}
       </ContentWithTopNav>
     </Page>
-  );
-}
-
-type ToggleProps = {
-  isActive: boolean;
-} & React.ComponentProps<typeof Link>;
-
-function Toggle({ isActive = false, ...props }: ToggleProps) {
-  return (
-    <Link
-      css={css`
-        display: inline-block;
-        margin: 0 6px;
-        text-decoration: none;
-        padding: 8px 14px;
-        border-radius: 16px;
-        font-size: 12px;
-        font-weight: 600;
-        color: ${
-          isActive ? color.codeShareToggleTextActive : color.codeShareToggleText
-        };
-        background: ${
-          isActive ? color.codeShareToggleBackgroundActive : 'none'
-        };
-        }
-      `}
-      {...props}
-    />
   );
 }
 
