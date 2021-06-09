@@ -268,7 +268,7 @@ export class Database<T> extends EventEmitter {
 
   /**
    * Update an existing contact in the database. The contact object should have
-   * an `id`. The only valid property you can change is the moniker.
+   * an `id`. The only valid properties you can change are the moniker and avatar.
    * @param {ContactId} id - The id of the contact to update
    * @param {string} moniker - The contact's new moniker
    */
@@ -278,6 +278,21 @@ export class Database<T> extends EventEmitter {
       if (!contacts.length)
         this.error(new Error('Could not find contact with id=' + id));
       contacts[0].moniker = moniker;
+    });
+  }
+
+  /**
+   * Update an existing contact in the database. The contact object should have
+   * an `id`. The only valid properties you can change are the moniker and avatar.
+   * @param {ContactId} id - The id of the contact to update
+   * @param {string} avatar - Stringified image of the contact's new avatar.
+   */
+  editAvatar(id: ContactId, avatar: string): Promise<void> {
+    return this.change(SYSTEM_ID, (doc: System) => {
+      let contacts = doc.contacts.filter((c) => c.id === id);
+      if (!contacts.length)
+        this.error(new Error('Could not find contact with id=' + id));
+      contacts[0].avatar = avatar;
     });
   }
 

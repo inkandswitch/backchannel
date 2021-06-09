@@ -17,7 +17,6 @@ import { Instructions } from '../components';
 import { FileProgress } from '../backend/blobs';
 import { ReactComponent as Dots } from '../components/icons/Dots.svg';
 import IndicatorDot, { StatusType } from './IndicatorDot';
-import * as storage from './storage';
 
 let backchannel = Backchannel();
 const PADDING_CHAT = 12;
@@ -136,8 +135,6 @@ export default function Mailbox(props: Props) {
     event.preventDefault();
   }
 
-  const nicknameDrawing = storage.getNicknameImage(contact?.moniker);
-
   return (
     <div
       css={css`
@@ -169,13 +166,13 @@ export default function Mailbox(props: Props) {
                 connected ? StatusType.CONNECTED : StatusType.DISCONNECTED
               }
             />
-            {nicknameDrawing ? (
+            {contact.avatar ? (
               <img
                 alt={`nickname for contact ${contact.id}`}
                 css={css`
                   max-width: 200px;
                 `}
-                src={nicknameDrawing}
+                src={contact.avatar}
               />
             ) : (
               contact?.moniker

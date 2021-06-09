@@ -205,6 +205,28 @@ test('editMoniker syncs between two devices', (done) => {
   });
 });
 
+test('editAvatar syncs between two devices', (done) => {
+  multidevice(async ({ android, alice }) => {
+    let newBobImage =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZIAAABSCAYAAAB+HVL6AAABqElEQVR4nO3YQW3DQBRF0YEQJoYSCIEQKAmEMAgkQzCE6app1ZWlu7ArnSPN/m2+rjRjAkAwjh4AwP8mJAAkQgJAIiQAJEICQCIkACRCAkAiJAAkQgJAIiQAJEICQCIkACRCAkAiJLDT+/2ez+dzvl6vuW3b0XPgNIQEdrher3OM8Xm32+3oSXAaQgI7/I7IGGNeLpejJ8FpCAns8DckYzgd+OYaYIe/X1tCAj9cA+ywbdtcluUTkWVZjp4EpyEksNO6rvPxeMz7/T7XdT16DpyGkACQCAkAiZAAkAgJAImQAJAICQCJkACQCAkAiZAAkAgJAImQAJAICQCJkACQCAkAiZAAkAgJAImQAJAICQCJkACQCAkAiZAAkAgJAImQAJAICQCJkACQCAkAiZAAkAgJAImQAJAICQCJkACQCAkAiZAAkAgJAImQAJAICQCJkACQCAkAiZAAkAgJAImQAJAICQCJkACQCAkAiZAAkAgJAImQAJAICQCJkACQCAkAiZAAkAgJAImQAJAICQCJkACQCAkAiZAAkAgJAImQAJAICQCJkACQfAGg2eAA/gk6awAAAABJRU5ErkJggg==';
+
+    await android.editAvatar(petbob_id, newBobImage);
+
+    alice.once('CONTACT_LIST_SYNC', () => {
+      let bb = alice.db.getContactById(petbob_id);
+      let ba = android.db.getContactById(petbob_id);
+      expect(ba).toStrictEqual(bb);
+      done();
+    });
+
+    let b = android.db.getContactById(petbob_id);
+    expect(b.avatar).toStrictEqual(newBobImage);
+
+    let ba = alice.db.getContactById(petbob_id);
+    expect(ba.avatar).toStrictEqual(newBobImage);
+  });
+});
+
 test('integration send multiple messages', async () => {
   // OK, now let's send bob a message 'hello'
   let outgoing = {

@@ -202,9 +202,7 @@ export default function ContactList(props) {
                   latestMessage = latestMessages[contact.id];
                   latestMessageTime = timestampToDate(latestMessage.timestamp);
                 }
-                const nicknameDrawing = storage.getNicknameImage(
-                  contact?.moniker
-                );
+
                 let status = contact.isConnected
                   ? StatusType.CONNECTED
                   : StatusType.DISCONNECTED;
@@ -255,13 +253,13 @@ export default function ContactList(props) {
                             font-size: ${fontSize[2]};
                           `}
                         >
-                          {nicknameDrawing ? (
+                          {contact.avatar ? (
                             <img
                               alt={`nickname for contact ${contact.id}`}
                               css={css`
                                 max-width: 200px;
                               `}
-                              src={nicknameDrawing}
+                              src={contact.avatar}
                             />
                           ) : (
                             contact?.moniker
