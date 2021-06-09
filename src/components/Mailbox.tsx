@@ -17,6 +17,7 @@ import { Instructions } from '../components';
 import { FileProgress } from '../backend/blobs';
 import { ReactComponent as Dots } from '../components/icons/Dots.svg';
 import { ReactComponent as Paperclip } from '../components/icons/Paperclip.svg';
+import { ReactComponent as Paperplane } from '../components/icons/Paperplane.svg';
 
 let backchannel = Backchannel();
 const PADDING_CHAT = 12;
@@ -113,6 +114,10 @@ export default function Mailbox(props: Props) {
 
   async function sendMessage(e) {
     e.preventDefault();
+    if (messageText.trim() === '') {
+      setMessageText('');
+      return;
+    }
     let msg = await backchannel.sendMessage(contactId, messageText);
     setMessages(messages.concat(msg));
     setMessageText('');
@@ -122,15 +127,28 @@ export default function Mailbox(props: Props) {
     setMessageText(event.target.value);
   }
 
-  function handleDrop(e) {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = e.dataTransfer.files;
+  function uploadFiles(files: Array<File>) {
     if (files.length !== 0) {
       for (let i = 0; i < files.length; i++) {
         backchannel.sendFile(contactId, files[i]);
       }
     }
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    uploadFiles(files);
+  }
+
+  function handleFileChange(e) {
+    uploadFiles(e.target.files);
+    e.target.value = null;
+  }
+
+  function handleFileUploadClick(e) {
+    e.target.value = null;
   }
 
   function handleDragOver(event) {
@@ -255,6 +273,7 @@ export default function Mailbox(props: Props) {
           margin-block-end: 0;
           background: white;
           align-items: center;
+          padding: 12px 6px;
         `}
         onSubmit={sendMessage}
       >
@@ -273,8 +292,45 @@ export default function Mailbox(props: Props) {
           value={messageText}
           onChange={handleChange}
         />
-        <Button type="submit" disabled={!contact}>
-          Send
+        <div
+          css={css`
+            position: relative;
+            overflow: hidden;
+            margin: 10px;
+            &:hover {
+              svg {
+                fill: black;
+              }
+            }
+          `}
+        >
+          <Paperclip />
+          <input
+            css={css`
+              position: absolute;
+              top: 0;
+              left: 0;
+              margin: 0;
+              padding: 0;
+              opacity: 0;
+              cursor: pointer;
+            `}
+            type="file"
+            onChange={handleFileChange}
+            onClick={handleFileUploadClick}
+            disabled={!contact}
+          />
+        </div>
+
+        <Button
+          css={css`
+            box-shadow: none;
+            padding: 8px;
+          `}
+          type="submit"
+          disabled={!contact}
+        >
+          <Paperplane />
         </Button>
       </form>
     </div>
