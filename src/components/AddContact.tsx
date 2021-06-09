@@ -21,9 +21,12 @@ import { Key, Code, ContactId } from '../backend/types';
 import { color } from '../components/tokens';
 import { ReactComponent as EnterDoor } from './icons/EnterDoor.svg';
 import Backchannel from '../backend';
+import TimerDisplay from './TimerDisplay';
 
-// Amount of time to show immediate user feedback
-let USER_FEEDBACK_TIMER = 5000;
+// Amount of milliseconds to show immediate user feedback
+const USER_FEEDBACK_TIMER = 5000;
+// Amount of seconds the user has to share code before it regenerates
+const CODE_REGENERATE_TIMER_SEC = 60;
 
 type CodeViewMode = 'redeem' | 'generate';
 let backchannel = Backchannel();
@@ -38,6 +41,9 @@ export default function AddContact({ view, object }: Props) {
   let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
+  const [timeRemainingSec, setTimeRemainingSec] = useState<number>(
+    CODE_REGENERATE_TIMER_SEC
+  );
   //eslint-disable-next-line
   let [location, setLocation] = useLocation();
   //@ts-ignore
@@ -77,11 +83,34 @@ export default function AddContact({ view, object }: Props) {
         setCode(code);
         setErrorMsg('');
       }
+      // automatically start the connection and wait for other person to show up.
+      let key: Key = await backchannel.accept(
+        code,
+        (CODE_REGENERATE_TIMER_SEC + 2) * 1000 // be permissive, give extra time to redeem after timeout ends
+      );
+      let cid: ContactId = await backchannel.addContact(key);
+      setErrorMsg('');
+      setLocation(`/contact/${cid}/add`);
     } catch (err) {
-      onError(err);
-      generateCode();
+      console.error('got error from backend', err);
+      // TODO differentiate between an actual backend err (which should be displayed) vs the code timing out (which should happen quietly).
     }
-  }, [useNumbers]);
+  }, [useNumbers, setLocation]);
+
+  // Decrement the timer, or restart it and generate a new code when it finishes.
+  useEffect(() => {
+    const timeout = setInterval(() => {
+      setTimeRemainingSec((prevValue) =>
+        prevValue === 0
+          ? (generateCode(),
+            console.log('generating code from timer'),
+            CODE_REGENERATE_TIMER_SEC)
+          : prevValue - 1
+      );
+    }, 1000);
+
+    return () => clearInterval(timeout);
+  }, [setTimeRemainingSec, generateCode]);
 
   async function onClickCopy() {
     const copySuccess = await copyToClipboard(code);
@@ -96,38 +125,47 @@ export default function AddContact({ view, object }: Props) {
       try {
         setIsConnecting(true);
         let key: Key = await backchannel.accept(code);
-        setIsConnecting(false);
         if (object === 'device') {
           let deviceId: ContactId = await backchannel.addDevice(key);
           setErrorMsg('');
+          setIsConnecting(false);
           setLocation(`/device/${deviceId}`);
         } else {
           let cid: ContactId = await backchannel.addContact(key);
           setErrorMsg('');
+          setIsConnecting(false);
           setLocation(`/contact/${cid}/add`);
         }
       } catch (err) {
         console.log('got error', err);
         onError(err);
         if (view === 'redeem') setCode('');
-        else generateCode();
+        else {
+          console.log('generating code from redeemCode');
+          generateCode();
+        }
       }
     },
     [generateCode, isConnecting, object, setLocation, view]
   );
 
+  // get code on initial page load
   useEffect(() => {
-    // get code on initial page load
-    if (view === 'generate' && !code && !errorMsg.length) {
+    if (view === 'generate' && !code) {
+      console.log('generating code from initial pageload');
       generateCode();
     }
+  }, [code, generateCode, view]);
+
+  // attempt to redeem code if it's in the url hash
+  useEffect(() => {
     if (view === 'redeem') {
       let maybeCode = window.location.hash;
       if (maybeCode.length > 1 && code !== maybeCode) {
         redeemCode(maybeCode.slice(1));
       }
     }
-  }, [view, code, errorMsg, generateCode, redeemCode]);
+  }, [view, code, redeemCode]);
 
   // Enter backchannel from 'input' code view
   async function onClickRedeem(e) {
@@ -257,6 +295,16 @@ export default function AddContact({ view, object }: Props) {
                   width: 100%;
                 `}
               >
+                <div
+                  css={css`
+                    margin: 0 8px;
+                  `}
+                >
+                  <TimerDisplay
+                    totalTimeSec={CODE_REGENERATE_TIMER_SEC}
+                    timeRemainingSec={timeRemainingSec}
+                  />
+                </div>
                 Copy code
               </Button>
 
@@ -272,7 +320,6 @@ export default function AddContact({ view, object }: Props) {
                   Share
                 </Button>
               )}
-              <EnterBackchannelButton onClick={onClickRedeem} />
             </BottomActions>
           </React.Fragment>
         )}
