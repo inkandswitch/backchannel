@@ -259,12 +259,25 @@ test('unlink device', (done) => {
 test.only('lost my device', (done) => {
   multidevice(({ android, alice, bob }) => {
     // oops, lost my android.
+    console.log(android.devices, alice.devices);
     alice.lostMyDevice(android_id).then((_) => {
-      android.on('close', () => {
+      let pending = 2;
+      android.once('close', () => {
+        pending--;
+        if (pending > 0) return;
+        check();
+      });
+      alice.once('ack', () => {
+        pending--;
+        if (pending > 0) return;
+        check();
+      });
+
+      let check = () => {
         expect(android.devices.length).toBe(0);
         expect(android.contacts.length).toBe(0);
         done();
-      });
+      };
     });
   });
 });

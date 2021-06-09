@@ -6,7 +6,7 @@ import Automerge from 'automerge';
 import { v4 as uuid } from 'uuid';
 import { serialize, deserialize } from 'bson';
 
-import { System, Database } from './db';
+import { ContactList, Database } from './db';
 import { FileProgress, Blobs } from './blobs';
 import {
   DocumentId,
@@ -14,6 +14,7 @@ import {
   MessageId,
   Code,
   ContactId,
+  IDevice,
   IContact,
   TextMessage,
   FileMessage,
@@ -96,9 +97,15 @@ export class Backchannel extends events.EventEmitter {
     this.db.on('patch', ({ docId, patch, changes }) => {
       changes.forEach((c) => {
         let change = Automerge.decodeChange(c);
-        if (change.message === MessageType.TOMBSTONE) {
-          this.log('got', change.message);
+
+        if (change.message === MessageType.ACK) {
           let contact = this.db.getContactByDiscoveryKey(docId);
+          this.emit('ack', contact.id);
+        }
+
+        if (change.message === MessageType.TOMBSTONE) {
+          let contact = this.db.getContactByDiscoveryKey(docId);
+          let messages = this.getMessagesByContactId(contact.id);
           let msg = {
             type: MessageType.ACK,
             timestamp: Date.now().toString(),
@@ -149,7 +156,7 @@ export class Backchannel extends events.EventEmitter {
       this._wormhole = new Wormhole(this._client);
     }
     let ready = { ...this.db.root.settings, ...newSettings };
-    return this.db.changeRoot((doc: System) => {
+    return this.db.changeRoot((doc: ContactList) => {
       doc.settings = ready;
     });
   }
@@ -225,7 +232,12 @@ export class Backchannel extends events.EventEmitter {
    */
   async addContact(key: Key, device?: boolean): Promise<ContactId> {
     let moniker = catnames.random();
-    let id = await this.db.addContact(key, moniker, device ? 1 : 0);
+    let id;
+    if (device) {
+      id = await this.db.addDevice(key);
+    } else {
+      id = await this.db.addContact(key, moniker);
+    }
     let contact = this.db.getContactById(id);
     await this._addContactDocument(contact);
     return contact.id;
@@ -233,6 +245,7 @@ export class Backchannel extends events.EventEmitter {
 
   async _addContactDocument(contact: IContact) {
     let docId = contact.discoveryKey;
+    //@ts-ignore
     await this.db.addDocument(docId, (doc: Mailbox) => {
       doc.messages = [];
     });
@@ -263,11 +276,11 @@ export class Backchannel extends events.EventEmitter {
    * @returns An array of contacts
    */
   get contacts(): IContact[] {
-    return this.db.getContacts().filter((c) => c.device === 0);
+    return this.db.getContacts();
   }
 
-  get devices(): IContact[] {
-    return this.db.getContacts().filter((c) => c.device === 1);
+  get devices(): IDevice[] {
+    return this.db.devices;
   }
 
   listContacts() {
@@ -276,7 +289,6 @@ export class Backchannel extends events.EventEmitter {
 
   async lostMyDevice(contactId: ContactId) {
     let contact = this.db.getContactById(contactId);
-    if (!contact.device) throw new Error('Not a device.');
 
     let msg: IMessage = {
       type: MessageType.TOMBSTONE,
@@ -393,7 +405,7 @@ export class Backchannel extends events.EventEmitter {
       this._client.on('server.disconnect', () => {
         let tasks = [];
         this.devices.forEach((d) => {
-          tasks.push(this.db.deleteContact(d.id));
+          tasks.push(this.db.deleteDevice(d.id));
         });
 
         Promise.all(tasks)
@@ -579,7 +591,7 @@ export class Backchannel extends events.EventEmitter {
   private async _addMessage(msg: IMessage, contact: IContact) {
     let docId = contact.discoveryKey;
     let changeMessage = msg.type;
-    let res = await this.db.change(
+    let res = await this.db.change<Mailbox>(
       docId,
       (doc: Mailbox) => {
         doc.messages.push(msg);

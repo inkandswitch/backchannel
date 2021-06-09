@@ -5,7 +5,7 @@ import { v4 as uuid } from 'uuid';
 import { Backend } from 'automerge';
 
 import * as crypto from './crypto';
-import { Key, ContactId, IContact, MessageType } from './types';
+import { Key, ContactId, IContact, IDevice } from './types';
 import AutomergeDiscovery from './AutomergeDiscovery';
 import { DB } from './automerge-db';
 import { ReceiveSyncMsg } from './AutomergeDiscovery';
@@ -13,12 +13,22 @@ import { randomBytes } from 'crypto';
 
 type DocumentId = string;
 
-export interface System {
+enum System {
+  ContactList,
+  DeviceList,
+}
+
+export interface ContactList {
   contacts: Automerge.List<IContact>;
   settings: any;
 }
 
-const SYSTEM_ID = 'BACKCHANNEL_ROOT_DOCUMENT';
+export interface DeviceList {
+  devices: Automerge.List<IDevice>;
+}
+
+const CONTACT_LIST = 'BACKCHANNEL_ROOT_DOCUMENT';
+const DEVICE_LIST = 'BACKCHANNEL_DEVICE_LIST';
 
 export class Database<T> extends EventEmitter {
   public onContactListChange: Function;
@@ -27,12 +37,12 @@ export class Database<T> extends EventEmitter {
     DocumentId,
     AutomergeDiscovery
   >();
-  private _frontends: Map<DocumentId, Automerge.Doc<System | T>> = new Map<
+  private _frontends: Map<DocumentId, Automerge.Doc<unknown>> = new Map<
     DocumentId,
-    Automerge.Doc<System | T>
+    Automerge.Doc<unknown>
   >();
   private log: debug;
-
+  private dbname: string;
   private _opened: boolean;
   private _opening: boolean = false;
 
@@ -43,8 +53,8 @@ export class Database<T> extends EventEmitter {
    */
   constructor(dbname: string, onContactListChange?: Function) {
     super();
+    this.dbname = dbname;
     this.onContactListChange = onContactListChange;
-    this._idb = new DB(dbname);
     this.log = debug(`bc:db:${randomBytes(4).toString('hex')}`);
     this.open().then(() => {
       this._opened = true;
@@ -57,23 +67,35 @@ export class Database<T> extends EventEmitter {
    * Get an array of all document ids
    */
   get documents(): string[] {
-    return Array.from(this._syncers.keys()).filter((d) => d !== SYSTEM_ID);
+    return Array.from(this._syncers.keys()).filter(
+      (d) => d !== CONTACT_LIST && d !== DEVICE_LIST
+    );
   }
 
   get settings(): any {
     return this.root.settings;
   }
 
-  async changeRoot(changeFn: Automerge.ChangeFn<System>) {
-    await this.change(SYSTEM_ID, changeFn);
+  async changeRoot(changeFn: Automerge.ChangeFn<ContactList>) {
+    await this.change(CONTACT_LIST, changeFn);
   }
 
-  set root(doc: Automerge.Doc<System>) {
-    this._frontends.set(SYSTEM_ID, doc);
+  get all() {
+    return Array.from(this.root.contacts).concat(this.devices);
   }
 
-  get root(): Automerge.Doc<System> {
-    return this._frontends.get(SYSTEM_ID) as Automerge.Doc<System>;
+  set root(doc: Automerge.Doc<ContactList>) {
+    this._frontends.set(CONTACT_LIST, doc);
+  }
+
+  get root(): Automerge.Doc<ContactList> {
+    return this._frontends.get(CONTACT_LIST) as Automerge.Doc<ContactList>;
+  }
+
+  get devices(): IDevice[] {
+    let doc = this._frontends.get(DEVICE_LIST) as Automerge.Doc<DeviceList>;
+    console.log(doc.devices);
+    return doc.devices;
   }
 
   async getBlob(id: string): Promise<Uint8Array> {
@@ -133,7 +155,7 @@ export class Database<T> extends EventEmitter {
     doc.removePeer(peerId);
   }
 
-  getDocument(docId: DocumentId): Automerge.Doc<System | T> {
+  getDocument(docId: DocumentId): Automerge.Doc<unknown> {
     this.log('getting document', docId);
     let syncer = this._syncers.get(docId);
     if (!syncer) {
@@ -160,7 +182,7 @@ export class Database<T> extends EventEmitter {
 
   getDocumentIds(contact: IContact): string[] {
     let ids = [contact.discoveryKey];
-    if (contact.device) ids.push(SYSTEM_ID);
+    if (contact.device) ids.push(CONTACT_LIST);
     return ids;
   }
 
@@ -169,9 +191,9 @@ export class Database<T> extends EventEmitter {
    * @param docId The document ID
    * @param changeFn The Automerge change function to change the document.
    */
-  async change(
+  async change<J>(
     docId: DocumentId,
-    changeFn: Automerge.ChangeFn<System | T>,
+    changeFn: Automerge.ChangeFn<J>,
     message?: string
   ) {
     let doc = this._frontends.get(docId);
@@ -192,33 +214,54 @@ export class Database<T> extends EventEmitter {
     }
   }
 
+  async deleteDevice(id: ContactId): Promise<void> {
+    this.log('deleteContact', id);
+    await this.change<DeviceList>(DEVICE_LIST, (doc: DeviceList) => {
+      let idx = doc.devices.findIndex((c) => c.id === id);
+      delete doc.devices[idx];
+    });
+  }
+
   async deleteContact(id: ContactId): Promise<void> {
     this.log('deleteContact', id);
-    await this.change(SYSTEM_ID, (doc: System) => {
+    await this.change<ContactList>(CONTACT_LIST, (doc: ContactList) => {
       let idx = doc.contacts.findIndex((c) => c.id === id);
       delete doc.contacts[idx];
     });
   }
 
+  async addDevice(key: Key) {
+    let id = uuid();
+    let discoveryKey = await crypto.computeDiscoveryKey(key);
+    let device: IDevice = {
+      id,
+      device: 1,
+      key,
+      discoveryKey,
+    };
+    this.log('addDevice', key);
+    await this.change<DeviceList>(DEVICE_LIST, (doc: DeviceList) => {
+      doc.devices.push(device);
+    });
+    return id;
+  }
+
   /**
    * Add a contact.
    */
-  async addContact(
-    key: Key,
-    moniker: string,
-    device?: number
-  ): Promise<ContactId> {
+  async addContact(key: Key, moniker: string): Promise<ContactId> {
     let id = uuid();
     let discoveryKey = await crypto.computeDiscoveryKey(key);
     let contact: IContact = {
       id,
       key,
+      device: 0,
       moniker,
       discoveryKey,
-      device: device ? 1 : 0,
     };
-    this.log('addContact', key, moniker, device);
-    await this.change(SYSTEM_ID, (doc: System) => {
+    this.log('addContact', key, moniker);
+    //@ts-ignore
+    await this.change(CONTACT_LIST, (doc: ContactList) => {
       doc.contacts.push(contact);
     });
     return id;
@@ -237,14 +280,16 @@ export class Database<T> extends EventEmitter {
       });
     this._opening = true;
     if (this._opened) return;
-    await this._loadDocument(SYSTEM_ID);
+    this._idb = new DB(this.dbname);
+    await this._loadDocument(CONTACT_LIST);
     this.log('got contacts', this.root.contacts);
+    await this._loadDocument(DEVICE_LIST);
     if (this.root.contacts) {
       // LOAD EXISTING DOCUMENTS
       let c = 0;
-      this.log('loading contacts', this.root.contacts);
+      this.log('loading contacts+devices', this.all);
       let tasks = [];
-      this.root.contacts.forEach(async (contact) => {
+      this.all.forEach(async (contact) => {
         c++;
         let docId = contact.discoveryKey;
         this.log('loading', docId);
@@ -252,14 +297,20 @@ export class Database<T> extends EventEmitter {
       });
       this.log(`loaded ${c} existing docs`);
       this.log('got contacts:', this.root.contacts);
+      this.log('got devices:', this.devices);
       return Promise.all(tasks);
     } else {
       // NEW INSTANCE!
-      this.log('new contact list. changing', SYSTEM_ID);
+      this.log('new instance!');
       //@ts-ignore
-      await this.addDocument(SYSTEM_ID, (doc: System) => {
+      await this.addDocument(CONTACT_LIST, (doc: ContactList) => {
         doc.contacts = [];
         doc.settings = {};
+      });
+
+      //@ts-ignore
+      await this.addDocument(DEVICE_LIST, (doc: DeviceList) => {
+        doc.devices = [];
       });
       return;
     }
@@ -271,7 +322,7 @@ export class Database<T> extends EventEmitter {
    * @param {IContact} contact - The contact to update to the database
    */
   editMoniker(id: ContactId, moniker: string): Promise<void> {
-    return this.change(SYSTEM_ID, (doc: System) => {
+    return this.change<ContactList>(CONTACT_LIST, (doc: ContactList) => {
       let contacts = doc.contacts.filter((c) => c.id === id);
       if (!contacts.length)
         this.error(new Error('Could not find contact with id=' + id));
@@ -280,8 +331,9 @@ export class Database<T> extends EventEmitter {
   }
 
   getContactById(id: ContactId): IContact {
-    let contacts = this.root.contacts.filter((c) => c.id === id);
-    if (!contacts.length) this.error(new Error('No contact with id ' + id));
+    let contacts = this.all.filter((c) => c.id === id);
+    if (!contacts.length)
+      this.error(new Error('No contact or device with id ' + id));
     return this._hydrateContact(contacts[0]);
   }
 
@@ -290,9 +342,7 @@ export class Database<T> extends EventEmitter {
    * @param {string} discoveryKey - the discovery key for this contact
    */
   getContactByDiscoveryKey(discoveryKey: string): IContact {
-    let contacts = this.root.contacts.filter(
-      (c) => c.discoveryKey === discoveryKey
-    );
+    let contacts = this.all.filter((c) => c.discoveryKey === discoveryKey);
     if (!contacts.length) {
       this.error(
         new Error(
@@ -321,7 +371,7 @@ export class Database<T> extends EventEmitter {
 
   async addDocument(
     docId: DocumentId,
-    changeFn: Automerge.ChangeFn<T>
+    changeFn: Automerge.ChangeFn<System | T>
   ): Promise<DocumentId> {
     let doc = Automerge.change(Automerge.init('0000'), { time: 0 }, changeFn);
     let change = Automerge.Frontend.getLastLocalChange(doc);
@@ -346,7 +396,7 @@ export class Database<T> extends EventEmitter {
     this._syncers.set(docId, syncer);
 
     syncer.on('patch', ({ docId, patch, changes }) => {
-      let frontend = this._frontends.get(docId);
+      let frontend = this._frontends.get(docId) as Automerge.Doc<T>;
       if (!frontend) {
         return this.error(
           new Error(
@@ -355,12 +405,15 @@ export class Database<T> extends EventEmitter {
         );
       }
 
-      let newFrontend = Automerge.Frontend.applyPatch(frontend, patch);
+      let newFrontend: Automerge.Doc<T> = Automerge.Frontend.applyPatch(
+        frontend,
+        patch
+      );
       changes.forEach(async (c) => {
         await this._idb.storeChange(docId, c);
       });
       this._frontends.set(docId, newFrontend);
-      if (docId === SYSTEM_ID && this.onContactListChange)
+      if (docId === CONTACT_LIST && this.onContactListChange)
         this.onContactListChange(patch);
       else this.emit('patch', { docId, patch, changes });
     });

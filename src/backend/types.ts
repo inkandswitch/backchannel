@@ -19,8 +19,12 @@ export interface IContact {
   moniker?: string;
   discoveryKey?: DiscoveryKey; // -> hash of code
   key: Key; // -> shared secret key I've accepted with them
-  device: number;
   isConnected?: boolean;
+  device: number;
+}
+
+export interface IDevice extends IContact {
+  device: 1;
 }
 
 export interface IMessage {
