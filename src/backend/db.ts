@@ -40,9 +40,8 @@ export class Database<T> extends EventEmitter {
    *
    * @param {string} dbname The name of the database
    */
-  constructor(dbname: string, onContactListChange?: Function) {
+  constructor(dbname: string) {
     super();
-    this.onContactListChange = onContactListChange;
     this._idb = new DB(dbname);
     this.log = debug('bc:db');
     this.open().then(() => {
@@ -367,9 +366,11 @@ export class Database<T> extends EventEmitter {
         await this._idb.storeChange(docId, c);
       });
       this._frontends.set(docId, newFrontend);
-      if (docId === SYSTEM_ID && this.onContactListChange)
-        this.onContactListChange(patch);
-      else this.emit('patch', { docId, patch });
+      if (docId === SYSTEM_ID) {
+        if (changes.length) this.emit('CONTACT_LIST_CHANGE');
+      } else {
+        this.emit('patch', { docId, patch });
+      }
     });
     this.log('Document hydrated', doc);
     return docId;

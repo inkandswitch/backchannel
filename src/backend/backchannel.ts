@@ -69,10 +69,7 @@ export class Backchannel extends events.EventEmitter {
   constructor(dbName: string, _settings: BackchannelSettings) {
     super();
 
-    this.db = new Database<Mailbox>(
-      dbName,
-      this.onChangeContactList.bind(this)
-    );
+    this.db = new Database<Mailbox>(dbName);
 
     this._blobs = new Blobs();
 
@@ -92,6 +89,8 @@ export class Backchannel extends events.EventEmitter {
       this.db.saveBlob(p.id, p.data);
       this.emit('download', p);
     });
+
+    this.db.on('CONTACT_LIST_CHANGE', this.onChangeContactList.bind(this));
 
     this.db.once('open', () => {
       this.relay =
@@ -117,7 +116,6 @@ export class Backchannel extends events.EventEmitter {
     });
 
     Promise.all(tasks).then(() => {
-      this.connectToAllContacts();
       this.emit('CONTACT_LIST_SYNC');
     });
   }
