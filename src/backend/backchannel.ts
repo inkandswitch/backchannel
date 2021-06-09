@@ -116,6 +116,7 @@ export class Backchannel extends events.EventEmitter {
     });
 
     Promise.all(tasks).then(() => {
+      this.connectToAllContacts();
       this.emit('CONTACT_LIST_SYNC');
     });
   }
