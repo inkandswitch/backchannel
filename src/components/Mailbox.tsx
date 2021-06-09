@@ -9,13 +9,14 @@ import {
   MessageType,
   FileMessage,
 } from '../backend/types';
-import { Button, TopBar, UnderlineInput } from './';
+import { Button, Spinner, TopBar, UnderlineInput } from './';
 import Backchannel from '../backend';
 import { color, fontSize } from './tokens';
 import { timestampToDate } from './util';
 import { Instructions } from '../components';
 import { FileProgress } from '../backend/blobs';
 import { ReactComponent as Dots } from '../components/icons/Dots.svg';
+import { ReactComponent as Paperclip } from '../components/icons/Paperclip.svg';
 
 let backchannel = Backchannel();
 const PADDING_CHAT = 12;
@@ -35,6 +36,7 @@ export default function Mailbox(props: Props) {
     contact && backchannel.db.isConnected(contact)
   );
   let [progress, setProgress] = useState({});
+  const [isDragging, setIsDragging] = useState(false);
   //eslint-disable-next-line
   const [_, setLocation] = useLocation();
   const bottomRef = useRef(null);
@@ -122,6 +124,7 @@ export default function Mailbox(props: Props) {
 
   function handleDrop(e) {
     e.preventDefault();
+    setIsDragging(false);
     const files = e.dataTransfer.files;
     if (files.length !== 0) {
       for (let i = 0; i < files.length; i++) {
@@ -130,8 +133,16 @@ export default function Mailbox(props: Props) {
     }
   }
 
-  function onDragOver(event) {
+  function handleDragOver(event) {
     event.preventDefault();
+  }
+
+  function handleDragEnter() {
+    setIsDragging(true);
+  }
+
+  function handleDragExit() {
+    setIsDragging(false);
   }
 
   return (
@@ -144,8 +155,24 @@ export default function Mailbox(props: Props) {
         text-align: left;
         position: relative;
         height: 100%;
+
+        &:after {
+          ${isDragging &&
+          `position: absolute;
+            color: ${color.textBold};
+            content: '✨ Drop file anywhere ✨';
+            background: #2E1AE8CC;
+            width: 100%;
+            height: 50vh;
+            text-align: center;
+            padding-top: 50vh;
+            overflow: hidden;
+          `}
+        }
       `}
-      onDragOver={onDragOver}
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragExit={handleDragExit}
       onDrop={handleDrop}
     >
       <TopBar
@@ -161,7 +188,11 @@ export default function Mailbox(props: Props) {
           flex: 1 auto;
         `}
       >
-        <Instructions>
+        <Instructions
+          css={css`
+            margin-top: 24px;
+          `}
+        >
           Encrypted backchannel opened. From now on all exchanges with this
           contact will be displayed here.
         </Instructions>
@@ -173,7 +204,6 @@ export default function Mailbox(props: Props) {
           `}
         >
           {messages.map((message) => {
-            // TODO: ugly
             message.incoming = contactId !== message.target;
             return (
               <li
@@ -202,7 +232,7 @@ export default function Mailbox(props: Props) {
                       message={message}
                     />
                   )}
-                </div>{' '}
+                </div>
                 <div
                   css={css`
                     text-align: ${message.incoming ? 'left' : 'right'};
@@ -262,7 +292,7 @@ function FileDownloader(props: FileDownloaderProps) {
     if (progress === 1) state = FileState.SUCCESS;
   }
 
-  let download = async () => {
+  let handleDownloadClick = async () => {
     let data: Uint8Array = await backchannel.db.getBlob(message.id);
     // on the incoming side we only know it's erroring if this blob doesn't exist
     if (data) {
@@ -276,16 +306,91 @@ function FileDownloader(props: FileDownloaderProps) {
     }
   };
 
-  let element = null;
+  let statusIndicator = null;
   switch (state) {
     case FileState.QUEUED:
-      element = 'spinner';
+      statusIndicator = (
+        <Spinner
+          css={css`
+            width: 14px;
+            height: 14px;
+          `}
+        />
+      );
       break;
     case FileState.ERROR:
-      element = 'error';
+      statusIndicator = '❌';
       break;
-    case FileState.PROGRESS:
-      element = (
+    case FileState.SUCCESS:
+      // message.incoming ? 'recipient sees file ready to downlaod' : 'sender sees their file was correctly sent'
+      statusIndicator = message.incoming ? null : '✔';
+  }
+
+  return (
+    <>
+      <div
+        css={css`
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+        `}
+      >
+        <Button
+          css={css`
+            background: ${color.chatAttachmentBackground};
+            color: ${color.chatAttachmentText};
+            font-size: ${fontSize[0]}px;
+            border-radius: 16px;
+            padding: 4px 6px;
+            display: inline-flex;
+            flex-direction: row;
+            align-items: center;
+            overflow: hidden;
+            box-shadow: none;
+
+            ${!message.incoming &&
+            `
+            cursor: text;
+            user-select: text;
+            &:hover {
+              filter: none;
+            }
+            `}
+          `}
+          disabled={state === FileState.ERROR}
+          onClick={FileState.SUCCESS ? handleDownloadClick : null}
+        >
+          <Paperclip
+            css={css`
+              height: 16px;
+              width: 16px;
+              fill: white;
+              flex: 0 0 auto;
+              padding-right: 6px;
+            `}
+          />
+          <div
+            css={css`
+              overflow: hidden;
+              white-space: nowrap;
+              text-overflow: ellipsis;
+            `}
+          >
+            {message.name}
+          </div>
+          <div
+            css={css`
+              width: 14px;
+              font-size: 10px;
+              line-height: 10px;
+              margin: 0 4px;
+            `}
+          >
+            {statusIndicator}
+          </div>
+        </Button>
+      </div>
+      {message.state === FileState.PROGRESS && (
         <div
           css={css`
             background-color: ${color.border};
@@ -293,20 +398,7 @@ function FileDownloader(props: FileDownloaderProps) {
             width: ${progress * 100}%;
           `}
         />
-      );
-      break;
-    default:
-      element = message.incoming ? (
-        <div onClick={download}>download</div>
-      ) : (
-        'success'
-      );
-  }
-
-  return (
-    <div>
-      {message.name}
-      {element}
-    </div>
+      )}
+    </>
   );
 }
