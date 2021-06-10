@@ -94,7 +94,6 @@ export class Database<T> extends EventEmitter {
 
   get devices(): IDevice[] {
     let doc = this._frontends.get(DEVICE_LIST) as Automerge.Doc<DeviceList>;
-    console.log(doc.devices);
     return doc.devices;
   }
 

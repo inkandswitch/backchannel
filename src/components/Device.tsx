@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import React, { useEffect, useState } from 'react';
-import Backchannel from '../backend';
+import Backchannel, { EVENTS } from '../backend';
 import { css } from '@emotion/react/macro';
 import { useLocation } from 'wouter';
 
@@ -44,7 +44,8 @@ export default function Devices({ deviceId }: Props) {
   let [device] = useState(backchannel.db.getContactById(deviceId));
 
   useEffect(() => {
-    backchannel.on('CONTACT_LIST_SYNC', () => {
+    backchannel.on(EVENTS.CONTACT_LIST_SYNC, () => {
+      backchannel.connectToAllContacts()
       setLoading(false);
     });
 
@@ -57,15 +58,13 @@ export default function Devices({ deviceId }: Props) {
       }, 1000);
     };
 
-    backchannel.on('contact.connected', ({ contact }) => {
+    backchannel.on(EVENTS.CONTACT_CONNECTED, ({ contact }) => {
       if (contact.discoveryKey === device.discoveryKey) beginTimeout();
     });
 
     if (backchannel.db.isConnected(device)) beginTimeout();
+    else backchannel.connectToContact(device);
 
-    backchannel.devices.forEach((d) => {
-      backchannel.connectToContact(d);
-    });
   }, [device, loading, deviceId]);
 
   return (

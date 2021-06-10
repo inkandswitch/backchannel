@@ -92,7 +92,7 @@ export default function AddContact({ view, object }: Props) {
       let key: Key = await backchannel.accept(code);
       setIsConnecting(false);
       if (object === 'device') {
-        let deviceId: ContactId = await backchannel.db.addDevice(key);
+        let deviceId: ContactId = await backchannel.addDevice(key);
         setErrorMsg('');
         setLocation(`/device/${deviceId}`);
       } else {
