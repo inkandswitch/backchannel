@@ -1,7 +1,8 @@
 /** @jsxImportSource @emotion/react */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { css } from '@emotion/react/macro';
 import { useLocation } from 'wouter';
+import { ReactSketchCanvas } from 'react-sketch-canvas';
 
 import {
   Button,
@@ -13,13 +14,17 @@ import {
   UnderlineInput,
   Page,
   TopBar,
+  Toggle,
+  ToggleWrapper,
 } from './';
 import { color } from './tokens';
 import WormholePlaceholder from './images/WormholePlaceholder.png';
-import { ContactId } from '../backend/types';
+import { ContactId, IContact } from '../backend/types';
 import Backchannel from '../backend';
 
 let backchannel = Backchannel();
+
+type ViewType = 'write' | 'draw';
 
 type Props = {
   contactId: ContactId;
@@ -27,17 +32,43 @@ type Props = {
 
 export default function Contact({ contactId }: Props) {
   let [nickname, setNickname] = useState<string>('');
+  let [contact, setContact] = useState<IContact>();
+  let [view, setView] = useState<ViewType>('draw');
   let [errorMsg, setErrorMsg] = useState('');
   //eslint-disable-next-line
   let [_, setLocation] = useLocation();
+  const canvasRef = useRef(null);
+
+  async function handleSaveNicknameDrawing(e) {
+    e.preventDefault();
+
+    const imgData = await canvasRef.current?.exportImage('png');
+
+    try {
+      // Set the avatar image
+      let contact = await backchannel.editAvatar(contactId, imgData);
+      // Remove the moniker since we only want to show the avatar
+      contact = await backchannel.editMoniker(contactId, '');
+      setContact(contact);
+      canvasRef.current.resetCanvas();
+      setLocation(`/mailbox/${contactId}`);
+    } catch (err) {
+      onError(err);
+    }
+  }
+
   useEffect(() => {
     backchannel.connectToContactId(contactId);
   }, [contactId]);
 
-  async function handleAddContact(e) {
+  async function handleSaveNicknameText(e) {
     e.preventDefault();
     try {
-      await backchannel.editMoniker(contactId, nickname);
+      // Set the moniker
+      let contact = await backchannel.editMoniker(contactId, nickname);
+      // Remove the avatar
+      contact = await backchannel.editAvatar(contactId, null);
+      setContact(contact);
       setLocation(`/mailbox/${contactId}`);
     } catch (err) {
       onError(err);
@@ -47,6 +78,11 @@ export default function Contact({ contactId }: Props) {
   function handleChange(event) {
     setErrorMsg('');
     setNickname(event.target.value);
+  }
+
+  function handleToggleClick(e) {
+    e.preventDefault();
+    setView(e.target.name);
   }
 
   let onError = (err: Error) => {
@@ -75,18 +111,35 @@ export default function Contact({ contactId }: Props) {
       >
         <Message>{errorMsg}</Message>
         <Instructions></Instructions>
-        <form
-          css={css`
-            display: flex;
-            flex-direction: column;
-          `}
-        >
-          <CodeDisplayOrInput>
-            <div
+        <CodeDisplayOrInput>
+          <ToggleWrapper
+            css={css`
+              margin-bottom: 12px;
+              background: ${color.nicknameToggleBackground};
+            `}
+          >
+            <Toggle
+              name="write"
+              onClick={handleToggleClick}
+              isActive={view === 'write'}
+            >
+              Write
+            </Toggle>
+            <Toggle
+              name="draw"
+              onClick={handleToggleClick}
+              isActive={view === 'draw'}
+            >
+              Draw
+            </Toggle>
+          </ToggleWrapper>
+          {view === 'write' && (
+            <form
               css={css`
                 background: white;
                 padding: 50px 30px;
               `}
+              id="input-nickname"
             >
               <UnderlineInput
                 css={css`
@@ -102,17 +155,42 @@ export default function Contact({ contactId }: Props) {
                 `}
                 type="text"
                 onChange={handleChange}
+                defaultValue={contact ? contact.moniker : ''}
                 placeholder="Contact nickname"
                 autoFocus
               />
+            </form>
+          )}
+          {view === 'draw' && (
+            <div
+              css={css`
+                background: white;
+              `}
+            >
+              {' '}
+              <ReactSketchCanvas
+                width="400"
+                height="80"
+                strokeWidth={4}
+                strokeColor="black"
+                ref={canvasRef}
+              />
             </div>
-          </CodeDisplayOrInput>
-          <BottomActions>
-            <Button onClick={handleAddContact} type="submit">
-              Add Contact
-            </Button>
-          </BottomActions>
-        </form>
+          )}
+        </CodeDisplayOrInput>
+        <BottomActions>
+          <Button
+            onClick={
+              view === 'write'
+                ? handleSaveNicknameText
+                : handleSaveNicknameDrawing
+            }
+            type="submit"
+            form="input-nickname"
+          >
+            Confirm nickname
+          </Button>
+        </BottomActions>
       </ContentWithTopNav>
     </Page>
   );

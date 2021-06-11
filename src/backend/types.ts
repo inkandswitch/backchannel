@@ -17,6 +17,7 @@ export type Backchannel = bc;
 export interface IContact {
   id?: ContactId;
   moniker?: string;
+  avatar?: string; // -> stringified image representing this contact
   discoveryKey?: DiscoveryKey; // -> hash of code
   key: Key; // -> shared secret key I've accepted with them
   isConnected?: boolean;

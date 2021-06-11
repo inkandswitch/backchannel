@@ -49,6 +49,7 @@ export const color = {
   codeShareToggleBackground: rawColor.darkBlue2,
   codeShareToggleBackgroundActive: rawColor.white,
   codeShareToggleText: rawColor.white,
+  nicknameToggleBackground: rawColor.darkBlue,
   chatSecondaryText: rawColor.lightPurple,
   warningText: rawColor.white,
   warningBackground: rawColor.yellow,

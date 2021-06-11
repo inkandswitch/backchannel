@@ -86,10 +86,7 @@ export class Backchannel extends events.EventEmitter {
   constructor(dbName: string, _settings: BackchannelSettings) {
     super();
 
-    this.db = new Database<Mailbox>(
-      dbName,
-      this.onChangeContactList.bind(this)
-    );
+    this.db = new Database<Mailbox>(dbName);
 
     this._blobs = new Blobs();
 
@@ -146,6 +143,8 @@ export class Backchannel extends events.EventEmitter {
         }
       });
     });
+
+    this.db.on('CONTACT_LIST_CHANGE', this.onChangeContactList.bind(this));
 
     this.db.once('open', () => {
       this.relay =
@@ -246,7 +245,7 @@ export class Backchannel extends events.EventEmitter {
   }
 
   /**
-   * This updates the moniker for a given ccontact and saves the contact in the database
+   * This updates the moniker for a given contact and saves the contact in the database.
    * @param {ContactId} contactId The contact id to edit
    * @param {string} moniker The new moniker for this contact
    * @return {IContact} The new contact information
@@ -259,6 +258,18 @@ export class Backchannel extends events.EventEmitter {
 
   async addDevice(key: Key): Promise<ContactId> {
     return this._addContact(key, true);
+  }
+
+  /**
+   * This updates the avatar for a given contact.
+   * @param {ContactId} contactId The contact id to edit
+   * @param {string} avatar The new moniker for this contact
+   * @return {IContact} The new contact information
+   */
+  async editAvatar(contactId: ContactId, avatar: string): Promise<IContact> {
+    this.log('editAvatar,', contactId, avatar);
+    await this.db.editAvatar(contactId, avatar);
+    return this.db.getContactById(contactId);
   }
 
   /**
