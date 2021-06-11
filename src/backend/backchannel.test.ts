@@ -70,7 +70,7 @@ function multidevice(done) {
       });
     }
 
-    android.once('server.connect', async () => {
+    android.once(EVENTS.RELAY_CONNECT, async () => {
       let _android_id = await alice.addDevice(key);
       let _alice_id = await android.addDevice(key);
 
@@ -283,6 +283,7 @@ test('lost my device', (done) => {
         });
 
         let check = () => {
+          expect(alice.devices.length).toBe(0)
           let android_loaded = new Backchannel(android.db.dbname, { relay })
           android_loaded.on(EVENTS.OPEN, () => {
             expect(android_loaded.devices.length).toBe(0);

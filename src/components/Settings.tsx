@@ -17,6 +17,9 @@ export default function Settings() {
       <TopBar title="Settings" />
       <ContentWithTopNav>
         <SettingsContent>
+          <Link href="/settings/unlink">
+            <Button>Unlink Devices</Button>
+          </Link>
           <Link href="/generate/device">
             <Button>Syncronize Devices</Button>
           </Link>
@@ -133,7 +136,7 @@ export function ClearAllSettings() {
   );
 }
 
-function SettingsContent(props) {
+export function SettingsContent(props) {
   return (
     <div
       css={css`

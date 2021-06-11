@@ -7,7 +7,7 @@ import { color, viewport } from './components/tokens';
 import Mailbox from './components/Mailbox';
 import ContactList from './components/ContactList';
 import Contact from './components/Contact';
-import Device from './components/Device';
+import { UnlinkDevices, Device } from './components/Device';
 import AddContact from './components/AddContact';
 import NetworkError from './components/Error';
 import Settings, {
@@ -49,6 +49,9 @@ export default function App() {
       </Route>
       <Route path="/settings">
         <Settings />
+      </Route>
+      <Route path="/settings/unlink">
+        {(params) => <UnlinkDevices />}
       </Route>
       <Route path="/device/:did">
         {(params) => <Device deviceId={params.did} />}

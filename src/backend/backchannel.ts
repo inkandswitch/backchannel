@@ -37,7 +37,9 @@ export enum EVENTS {
   FILE_PROGRESS = 'progress',
   FILE_SENT = 'sent',
   FILE_DOWNLOAD = 'download',
-  CLOSE = 'close'
+  CLOSE = 'close',
+  RELAY_CONNECT = 'relay.connect',
+  RELAY_DISCONNECT = 'relay.disconnect'
 }
 
 export enum ERROR {
@@ -119,7 +121,9 @@ export class Backchannel extends events.EventEmitter {
 
         if (change.message === MessageType.ACK) {
           let contact = this.db.getContactByDiscoveryKey(docId);
-          this.emit(EVENTS.ACK, { contactId: contact.id, docId });
+          this.deleteDevice(contact.id).then(_ => {
+            this.emit(EVENTS.ACK, { contactId: contact.id, docId });
+          })
         }
 
         if (change.message === MessageType.TOMBSTONE) {
@@ -414,6 +418,18 @@ export class Backchannel extends events.EventEmitter {
     return this._blobs.hasPendingFiles(msg.target);
   }
 
+  async deleteContact(id: ContactId) {
+    let contact = this.db.getContactById(id)
+    this._client.leave(contact.discoveryKey)
+    await this.db.deleteContact(id)
+  }
+
+  async deleteDevice(id: ContactId) {
+    let contact = this.db.getContactById(id)
+    this._client.leave(contact.discoveryKey)
+    await this.db.deleteDevice(id)
+  }
+
   /**
    * Unlink this device. Delete all devices you're linked with.
    * @returns
@@ -424,7 +440,7 @@ export class Backchannel extends events.EventEmitter {
       this._client.on('server.disconnect', () => {
         let tasks = [];
         this.devices.forEach((d) => {
-          tasks.push(this.db.deleteDevice(d.id));
+          tasks.push(this.deleteDevice(d.id));
         });
 
         Promise.all(tasks)
@@ -588,14 +604,14 @@ export class Backchannel extends events.EventEmitter {
     });
 
     client.on('server.connect', () => {
-      this.emit('server.connect');
+      this.emit(EVENTS.RELAY_CONNECT);
       this.log('on server connect');
       this._open = true;
     });
 
     client.on('server.disconnect', () => {
       this.log('on server disconnect');
-      this.emit('server.disconnect');
+      this.emit(EVENTS.RELAY_DISCONNECT);
       this._open = false;
     });
 
