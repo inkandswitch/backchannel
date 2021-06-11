@@ -1,6 +1,8 @@
 /** @jsxImportSource @emotion/react */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { css } from '@emotion/react/macro';
+import { useLocation } from 'wouter';
+
 import {
   FileState,
   ContactId,
@@ -13,6 +15,7 @@ import { color, fontSize } from './tokens';
 import { timestampToDate } from './util';
 import { Instructions } from '../components';
 import { FileProgress } from '../backend/blobs';
+import { ReactComponent as Dots } from '../components/icons/Dots.svg';
 
 let backchannel = Backchannel();
 const PADDING_CHAT = 12;
@@ -32,6 +35,18 @@ export default function Mailbox(props: Props) {
     contact && backchannel.db.isConnected(contact)
   );
   let [progress, setProgress] = useState({});
+  //eslint-disable-next-line
+  const [_, setLocation] = useLocation();
+  const bottomRef = useRef(null);
+
+  const scrollToBottom = () => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Whenever new messages are recieved, scroll down to show it.
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   useEffect(() => {
     function onContact({ contact }) {
@@ -46,13 +61,12 @@ export default function Mailbox(props: Props) {
       }
     }
 
-    let subscribeToConnections = async () => {
+    let subscribeToConnections = () => {
       let intendedContact = backchannel.db.getContactById(contactId);
       let messages = backchannel.getMessagesByContactId(contactId);
       setMessages(messages);
       backchannel.on(EVENTS.CONTACT_CONNECTED, onContact);
       backchannel.on(EVENTS.CONTACT_DISCONNECTED, onContactDisconnected);
-      backchannel.connectToContact(intendedContact);
     };
 
     subscribeToConnections();
@@ -140,6 +154,7 @@ export default function Mailbox(props: Props) {
         title={`${contact ? contact.moniker : ''} ${
           contact && connected ? '🤠' : '😪'
         }`}
+        icon={<Dots onClick={() => setLocation(`/contact/${contact?.id}`)} />}
       />
       <div
         css={css`
@@ -204,6 +219,7 @@ export default function Mailbox(props: Props) {
             );
           })}
         </ul>
+        <div ref={bottomRef} />
       </div>
       <form
         css={css`
@@ -225,6 +241,7 @@ export default function Mailbox(props: Props) {
               border-bottom: 2px solid ${color.border};
             }
           `}
+          autoFocus
           value={messageText}
           onChange={handleChange}
         />

@@ -148,11 +148,10 @@ export class Backchannel extends events.EventEmitter {
     });
 
     this.db.once('open', () => {
-      let documentIds = this.db.documents;
       this.relay =
         (this.db.settings && this.db.settings.relay) || _settings.relay;
       this.log('Connecting to relay', this.relay);
-      this.log(`Joining ${documentIds.length} documentIds`);
+      let documentIds = this.db.documents;
       this._client = this._createClient(this.relay, documentIds);
       this._wormhole = new Wormhole(this._client);
       this.emit(EVENTS.OPEN);
@@ -206,6 +205,14 @@ export class Backchannel extends events.EventEmitter {
   }
 
   /**
+   * Create a one-time code for a new backchannel contact.
+   * @returns {Code} code The code to use in announce
+   */
+  getNumericCode(): Promise<Code> {
+    return this._wormhole.getNumericCode();
+  }
+
+  /**
    * Open a websocket connection to the magic wormhole service and accept the
    * code. Once the contact has been established, a contact will
    * then be created with an anonymous handle and the id returned.
@@ -214,20 +221,21 @@ export class Backchannel extends events.EventEmitter {
    * @param {number} timeout The timeout before giving up, default 20 seconds
    * @returns {ContactId} The ID of the contact in the database
    */
-  async accept(code: Code, timeout = 20000): Promise<ContactId> {
+  async accept(code: Code, timeout = 60000): Promise<ContactId> {
+    let sanitizedCode = code.toLowerCase().trim();
     let TWENTY_SECONDS = timeout;
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
+        this._wormhole.leave(sanitizedCode);
         reject(
-          new Error(
-            `It took more than 20 seconds to find ${code}. Try again with a different code.`
-          )
+          new Error(`This code has expired. Try again with a different one.`)
         );
       }, TWENTY_SECONDS);
       try {
-        let key: Key = await this._wormhole.accept(code.toLowerCase().trim());
+        let key: Key = await this._wormhole.accept(sanitizedCode);
         return resolve(key);
       } catch (err) {
+        this._wormhole.leave(sanitizedCode);
         reject(
           new Error(
             'Secure connection failed. Did you type the code correctly? Try again.'
@@ -241,11 +249,12 @@ export class Backchannel extends events.EventEmitter {
    * This updates the moniker for a given ccontact and saves the contact in the database
    * @param {ContactId} contactId The contact id to edit
    * @param {string} moniker The new moniker for this contact
-   * @returns
+   * @return {IContact} The new contact information
    */
-  async editMoniker(contactId: ContactId, moniker: string): Promise<void> {
+  async editMoniker(contactId: ContactId, moniker: string): Promise<IContact> {
     this.log('editmoniker', contactId, moniker);
-    return this.db.editMoniker(contactId, moniker);
+    await this.db.editMoniker(contactId, moniker);
+    return this.db.getContactById(contactId);
   }
 
   async addDevice(key: Key): Promise<ContactId> {
@@ -271,6 +280,7 @@ export class Backchannel extends events.EventEmitter {
       id = await this.db.addContact(key, moniker);
     }
     let contact = this.db.getContactById(id);
+    this.log('adding contact', contact.discoveryKey, contact);
     await this._addContactDocument(contact);
     return contact.id;
   }
@@ -432,6 +442,11 @@ export class Backchannel extends events.EventEmitter {
     return this._blobs.hasPendingFiles(msg.target);
   }
 
+  /**
+   * Delete a contact in the database
+   *
+   * @param {ContactId} id - The local id number for this contact
+   */
   async deleteContact(id: ContactId) {
     let contact = this.db.getContactById(id);
     this._client.leave(contact.discoveryKey);

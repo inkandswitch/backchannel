@@ -4,7 +4,13 @@ import { css } from '@emotion/react/macro';
 import { Link } from 'wouter';
 
 import config from '../backend/config';
-import { Button, Instructions, TopBar, UnderlineInput } from '.';
+import {
+  Button,
+  Instructions,
+  TopBar,
+  UnderlineInput,
+  SettingsContent,
+} from '.';
 import * as storage from './storage';
 import { Page, ContentWithTopNav } from './';
 import Backchannel from '../backend';
@@ -130,23 +136,5 @@ export function ClearAllSettings() {
         </SettingsContent>
       </ContentWithTopNav>
     </Page>
-  );
-}
-
-export function SettingsContent(props) {
-  return (
-    <div
-      css={css`
-        max-width: 210px;
-        display: flex;
-        flex-direction: column;
-        align-self: center;
-        row-gap: 10px;
-        justify-content: center;
-        margin-bottom: 60px;
-        flex: 1;
-      `}
-      {...props}
-    />
   );
 }

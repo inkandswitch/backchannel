@@ -14,6 +14,7 @@ import Settings, {
   ClearAllSettings,
   RelaySettings,
 } from './components/Settings';
+import ContactSettings from './components/ContactSettings';
 
 export default function App() {
   return (
@@ -56,6 +57,9 @@ export default function App() {
       </Route>
       <Route path="/mailbox/:cid">
         {(params) => <Mailbox contactId={params.cid} />}
+      </Route>
+      <Route path="/contact/:cid">
+        {(params) => <ContactSettings contactId={params.cid} />}
       </Route>
       <Route path="/contact/:cid/add">
         {(params) => <Contact contactId={params.cid} />}

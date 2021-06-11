@@ -318,7 +318,8 @@ export class Database<T> extends EventEmitter {
   /**
    * Update an existing contact in the database. The contact object should have
    * an `id`. The only valid property you can change is the moniker.
-   * @param {IContact} contact - The contact to update to the database
+   * @param {ContactId} id - The id of the contact to update
+   * @param {string} moniker - The contact's new moniker
    */
   editMoniker(id: ContactId, moniker: string): Promise<void> {
     return this.change<ContactList>(CONTACT_LIST, (doc: ContactList) => {

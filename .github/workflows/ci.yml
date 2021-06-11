@@ -38,7 +38,4 @@ jobs:
       run: npm run lint
 
     - name: Run the relay
-      run: node test/server.js &
-      
-    - name: Run the tests 
-      run: npm test
+      run: node test/server.js & npm test

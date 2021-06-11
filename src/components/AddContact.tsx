@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { css } from '@emotion/react/macro';
 import { Link, useLocation } from 'wouter';
 
@@ -21,9 +21,12 @@ import { Key, Code, ContactId } from '../backend/types';
 import { color } from '../components/tokens';
 import { ReactComponent as EnterDoor } from './icons/EnterDoor.svg';
 import Backchannel from '../backend';
+import TimerDisplay from './TimerDisplay';
 
-// Amount of time to show immediate user feedback
-let USER_FEEDBACK_TIMER = 5000;
+// Amount of milliseconds to show immediate user feedback
+const USER_FEEDBACK_TIMER = 5000;
+// Amount of seconds the user has to share code before it regenerates
+const CODE_REGENERATE_TIMER_SEC = 60;
 
 type CodeViewMode = 'redeem' | 'generate';
 let backchannel = Backchannel();
@@ -38,15 +41,15 @@ export default function AddContact({ view, object }: Props) {
   let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
+  const [timeRemainingSec, setTimeRemainingSec] = useState<number>(
+    CODE_REGENERATE_TIMER_SEC
+  );
   //eslint-disable-next-line
-  let [_, setLocation] = useLocation();
+  let [location, setLocation] = useLocation();
+  //@ts-ignore
+  let useNumbers = new URLSearchParams(window.location.search).get('numbers');
 
-  useEffect(() => {
-    // get code on initial page load
-    if (view === 'generate' && !code && !errorMsg) {
-      generateCode();
-    }
-  });
+  let sharable = navigator.share;
 
   // Set user feedback message to disappear if necessary
   useEffect(() => {
@@ -61,6 +64,7 @@ export default function AddContact({ view, object }: Props) {
 
   let onError = (err: Error) => {
     console.error('got error from backend', err);
+    setIsConnecting(false);
     setErrorMsg(err.message);
   };
 
@@ -69,43 +73,53 @@ export default function AddContact({ view, object }: Props) {
     setCode(event.target.value);
   }
 
-  async function generateCode() {
+  let generateCode = useCallback(async () => {
     try {
-      const code: Code = await backchannel.getCode();
+      const code: Code = useNumbers
+        ? await backchannel.getNumericCode()
+        : await backchannel.getCode();
 
       if (code) {
         setCode(code);
         setErrorMsg('');
       }
-    } catch (err) {
-      onError(err);
-      setCode('');
-      generateCode();
-    }
-  }
+      // automatically start the connection and wait for other person to show up.
+      let key: Key = await backchannel.accept(
+        code,
+        (CODE_REGENERATE_TIMER_SEC + 2) * 1000 // be permissive, give extra time to redeem after timeout ends
+      );
 
-  // Enter backchannel from 'input' code view
-  async function onClickRedeem(e) {
-    e.preventDefault();
-    try {
-      setIsConnecting(true);
-      let key: Key = await backchannel.accept(code);
-      setIsConnecting(false);
       if (object === 'device') {
         let deviceId: ContactId = await backchannel.addDevice(key);
         setErrorMsg('');
+        setIsConnecting(false);
         setLocation(`/device/${deviceId}`);
       } else {
         let cid: ContactId = await backchannel.addContact(key);
         setErrorMsg('');
+        setIsConnecting(false);
         setLocation(`/contact/${cid}/add`);
       }
     } catch (err) {
-      console.log('got error', err);
-      onError(err);
-      setCode('');
+      console.error('got error from backend', err);
+      // TODO differentiate between an actual backend err (which should be displayed) vs the code timing out (which should happen quietly).
     }
-  }
+  }, [useNumbers, setLocation, object]);
+
+  // Decrement the timer, or restart it and generate a new code when it finishes.
+  useEffect(() => {
+    const timeout = setInterval(() => {
+      setTimeRemainingSec((prevValue) =>
+        prevValue === 0
+          ? (generateCode(),
+            console.log('generating code from timer'),
+            CODE_REGENERATE_TIMER_SEC)
+          : prevValue - 1
+      );
+    }, 1000);
+
+    return () => clearInterval(timeout);
+  }, [setTimeRemainingSec, generateCode]);
 
   async function onClickCopy() {
     const copySuccess = await copyToClipboard(code);
@@ -114,7 +128,80 @@ export default function AddContact({ view, object }: Props) {
     }
   }
 
-  if (isConnecting && !errorMsg) {
+  let redeemCode = useCallback(
+    async (code) => {
+      if (isConnecting) return;
+      try {
+        setIsConnecting(true);
+        let key: Key = await backchannel.accept(code);
+        if (object === 'device') {
+          let deviceId: ContactId = await backchannel.addDevice(key);
+          setErrorMsg('');
+          setIsConnecting(false);
+          setLocation(`/device/${deviceId}`);
+        } else {
+          let cid: ContactId = await backchannel.addContact(key);
+          setErrorMsg('');
+          setIsConnecting(false);
+          setLocation(`/contact/${cid}/add`);
+        }
+      } catch (err) {
+        console.log('got error', err);
+        onError(err);
+        if (view === 'redeem') setCode('');
+        else {
+          console.log('generating code from redeemCode');
+          generateCode();
+        }
+      }
+    },
+    [generateCode, isConnecting, object, setLocation, view]
+  );
+
+  // get code on initial page load
+  useEffect(() => {
+    if (view === 'generate' && !code) {
+      console.log('generating code from initial pageload');
+      generateCode();
+    }
+  }, [code, generateCode, view]);
+
+  // attempt to redeem code if it's in the url hash
+  useEffect(() => {
+    if (view === 'redeem') {
+      let maybeCode = window.location.hash;
+      if (maybeCode.length > 1 && code !== maybeCode) {
+        redeemCode(maybeCode.slice(1));
+      }
+    }
+  }, [view, code, redeemCode]);
+
+  // Enter backchannel from 'input' code view
+  async function onClickRedeem(e) {
+    e.preventDefault();
+    await redeemCode(code);
+  }
+
+  async function onClickShareURL() {
+    let url = `${window.location.origin}/redeem/${object}#${code}`;
+    if (sharable) {
+      navigator
+        .share({
+          title: 'backchannel',
+          text: 'lets talk on backchannel.',
+          url,
+        })
+        .then(() => console.log('Successful share'))
+        .catch((error) => console.log('Error sharing', error));
+    } else {
+      const copySuccess = await copyToClipboard(url);
+      if (copySuccess) {
+        setMessage('Code copied!');
+      }
+    }
+  }
+
+  if (isConnecting && !errorMsg.length) {
     return (
       <Page>
         <TopBar />
@@ -124,39 +211,43 @@ export default function AddContact({ view, object }: Props) {
             text-align: center;
           `}
         >
-          <div
-            css={css`
-              font-size: 22px;
-              font-weight: 200;
-              display: flex;
-              justify-content: center;
-              flex-direction: column;
-              align-items: center;
-              letter-spacing: 1.1;
-              margin: 2em 0;
-            `}
-          >
-            {view === 'generate' && (
-              <>
-                <CodeDisplayOrInput>
-                  {code}
+          {view === 'generate' && (
+            <React.Fragment>
+              <Instructions>
+                Share this code with a correspondant you trust to open a
+                backchannel and add them as a contact:
+              </Instructions>
+              <CodeDisplayOrInput>
+                {code}
+                <Button
+                  variant="transparent"
+                  onClick={onClickCopy}
+                  css={css`
+                    margin-top: 24px;
+                  `}
+                >
+                  Copy code
+                </Button>
+                {sharable && (
                   <Button
                     variant="transparent"
-                    onClick={onClickCopy}
+                    onClick={onClickShareURL}
                     css={css`
                       margin-top: 24px;
                     `}
                   >
-                    Copy code
+                    Share
                   </Button>
-                </CodeDisplayOrInput>
+                )}
+              </CodeDisplayOrInput>
+              <BottomActions>
                 <IconWithMessage icon={Spinner} text="Waiting for other side" />
-              </>
-            )}
-            {view === 'redeem' && (
-              <IconWithMessage icon={Spinner} text="Connecting" />
-            )}
-          </div>
+              </BottomActions>
+            </React.Fragment>
+          )}
+          {view === 'redeem' && (
+            <IconWithMessage icon={Spinner} text="Connecting" />
+          )}
         </ContentWithTopNav>
       </Page>
     );
@@ -174,7 +265,7 @@ export default function AddContact({ view, object }: Props) {
           `}
         >
           <Toggle href={`/generate/${object}`} isActive={view === 'generate'}>
-            Generate code
+            My code
           </Toggle>
           <Toggle href={`/redeem/${object}`} isActive={view === 'redeem'}>
             Enter code
@@ -200,19 +291,31 @@ export default function AddContact({ view, object }: Props) {
             </Instructions>
             <CodeDisplayOrInput>
               {code ? code : <Spinner />}
+              <Message>{errorMsg}</Message>
+            </CodeDisplayOrInput>
+            <BottomActions>
+              <Message>{message}</Message>
+
               <Button
                 variant="transparent"
                 onClick={onClickCopy}
                 css={css`
-                  margin-top: 24px;
+                  margin: 24px;
+                  width: 100%;
                 `}
               >
+                <div
+                  css={css`
+                    margin: 0 8px;
+                  `}
+                >
+                  <TimerDisplay
+                    totalTimeSec={CODE_REGENERATE_TIMER_SEC}
+                    timeRemainingSec={timeRemainingSec}
+                  />
+                </div>
                 Copy code
               </Button>
-            </CodeDisplayOrInput>
-            <BottomActions>
-              <Message>{errorMsg || message}</Message>
-              <EnterBackchannelButton object={object} onClick={onClickRedeem} />
             </BottomActions>
           </React.Fragment>
         )}
