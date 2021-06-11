@@ -62,7 +62,6 @@ export default function Mailbox(props: Props) {
     }
 
     let subscribeToConnections = () => {
-      let intendedContact = backchannel.db.getContactById(contactId);
       let messages = backchannel.getMessagesByContactId(contactId);
       setMessages(messages);
       backchannel.on(EVENTS.CONTACT_CONNECTED, onContact);
