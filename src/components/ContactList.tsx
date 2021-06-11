@@ -120,7 +120,10 @@ export default function ContactList(props) {
     backchannel.on(EVENTS.CONTACT_CONNECTED, refreshContactList);
     backchannel.on(EVENTS.MESSAGE, refreshContactList);
     return function unsub() {
-      backchannel.removeListener(EVENTS.CONTACT_DISCONNECTED, refreshContactList);
+      backchannel.removeListener(
+        EVENTS.CONTACT_DISCONNECTED,
+        refreshContactList
+      );
       backchannel.removeListener(EVENTS.CONTACT_CONNECTED, refreshContactList);
       backchannel.removeListener(EVENTS.MESSAGE, refreshContactList);
     };

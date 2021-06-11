@@ -39,7 +39,7 @@ export enum EVENTS {
   FILE_DOWNLOAD = 'download',
   CLOSE = 'close',
   RELAY_CONNECT = 'relay.connect',
-  RELAY_DISCONNECT = 'relay.disconnect'
+  RELAY_DISCONNECT = 'relay.disconnect',
 }
 
 export enum ERROR {
@@ -116,14 +116,14 @@ export class Backchannel extends events.EventEmitter {
 
         if (change.message === MessageType.TEXT) {
           let contact = this.db.getContactByDiscoveryKey(docId);
-          this.emit(EVENTS.MESSAGE, { contactId: contact.id, docId })
+          this.emit(EVENTS.MESSAGE, { contactId: contact.id, docId });
         }
 
         if (change.message === MessageType.ACK) {
           let contact = this.db.getContactByDiscoveryKey(docId);
-          this.deleteDevice(contact.id).then(_ => {
+          this.deleteDevice(contact.id).then((_) => {
             this.emit(EVENTS.ACK, { contactId: contact.id, docId });
-          })
+          });
         }
 
         if (change.message === MessageType.TOMBSTONE) {
@@ -419,15 +419,15 @@ export class Backchannel extends events.EventEmitter {
   }
 
   async deleteContact(id: ContactId) {
-    let contact = this.db.getContactById(id)
-    this._client.leave(contact.discoveryKey)
-    await this.db.deleteContact(id)
+    let contact = this.db.getContactById(id);
+    this._client.leave(contact.discoveryKey);
+    await this.db.deleteContact(id);
   }
 
   async deleteDevice(id: ContactId) {
-    let contact = this.db.getContactById(id)
-    this._client.leave(contact.discoveryKey)
-    await this.db.deleteDevice(id)
+    let contact = this.db.getContactById(id);
+    this._client.leave(contact.discoveryKey);
+    await this.db.deleteDevice(id);
   }
 
   /**

@@ -17,9 +17,11 @@ export default function Settings() {
       <TopBar title="Settings" />
       <ContentWithTopNav>
         <SettingsContent>
-          <Link href="/settings/unlink">
-            <Button>Unlink Devices</Button>
-          </Link>
+          {backchannel.devices.length > 0 ? (
+            <Link href="/settings/unlink">
+              <Button>Unlink Devices</Button>
+            </Link>
+          ) : null}
           <Link href="/generate/device">
             <Button>Syncronize Devices</Button>
           </Link>
@@ -104,14 +106,9 @@ export function ClearAllSettings() {
       storage.remove(key);
     }
 
-    backchannel
-      .destroy()
-      .then(() => {
-        window.location.href = '/';
-      })
-      .catch((err) => {
-        console.error('error clearing db', err);
-      });
+    backchannel.destroy().catch((err) => {
+      console.error('error clearing db', err);
+    });
   }
 
   return (

@@ -46,7 +46,7 @@ export function Device({ deviceId }: Props) {
 
   useEffect(() => {
     backchannel.on(EVENTS.CONTACT_LIST_SYNC, () => {
-      backchannel.connectToAllContacts()
+      backchannel.connectToAllContacts();
       setLoading(false);
     });
 
@@ -65,7 +65,6 @@ export function Device({ deviceId }: Props) {
 
     if (backchannel.db.isConnected(device)) beginTimeout();
     else backchannel.connectToContact(device);
-
   }, [device, loading, deviceId]);
 
   return (
@@ -77,62 +76,67 @@ export function Device({ deviceId }: Props) {
           margin: auto;
         `}
       >
-        {loading ? <Spinner /> : <Done message={"Device Syncronized!"} />}
+        {loading ? <Spinner /> : <Done message={'Device Syncronized!'} />}
       </ContentWithTopNav>
     </Page>
   );
 }
 
-
 export function UnlinkDevices() {
-  let [ acks, setAcks ] = useState(0) 
-  let [ loading, setLoading ] = useState(false)
-  let [ devices, setDevices ] = useState(backchannel.devices.length)
+  let [acks, setAcks] = useState(0);
+  let [loading, setLoading] = useState(false);
+  let [devices] = useState(backchannel.devices.length);
 
   useEffect(() => {
-    backchannel.on(EVENTS.ACK, ({ contactId }) => {
-      setAcks(acks+1)
-    })
-  })
+    backchannel.on(EVENTS.ACK, () => {
+      setAcks(acks + 1);
+    });
+  });
 
   function unlinkButton() {
-    setLoading(true)
+    setLoading(true);
     // send tombstones
     for (let device of backchannel.devices) {
-      backchannel.lostMyDevice(device.id)
-        .then(() => {
-          console.log('message sent')
-        })
+      backchannel.lostMyDevice(device.id).then(() => {
+        console.log('message sent');
+      });
     }
   }
 
-  // the user shouldn't ever get here but just in case they refresh the page, 
+  // the user shouldn't ever get here but just in case they refresh the page,
   // here's a nice message for them to confirm success.
 
-  let body = <>
-    <Instructions>
-      This will unlink all devices and delete their data, including contacts
-      and messages. You will have to re-sync all your devices. All other
-      devices will lose their data except this one. Do you want to proceed?
-    </Instructions>
-    <SettingsContent>
-      <Button onClick={unlinkButton} variant="destructive">
-        Yes, unlink all devices
-      </Button>
-    </SettingsContent>
-  </>
-  if (devices === 0) body = <Done message={"You have no linked devices"} />
+  let body = (
+    <>
+      <Instructions>
+        This will unlink all devices and delete their data, including contacts
+        and messages. You will have to re-sync all your devices. All other
+        devices will lose their data except this one. Do you want to proceed?
+      </Instructions>
+      <SettingsContent>
+        <Button onClick={unlinkButton} variant="destructive">
+          Yes, unlink all devices
+        </Button>
+      </SettingsContent>
+    </>
+  );
+  if (devices === 0) body = <Done message={'You have no linked devices'} />;
   else if (loading) {
-    body = <Spinner />
+    body = <Spinner />;
     if (acks === devices) {
-      body = <Done message={"All devices unlinked!"} />
+      body = <Done message={'All devices unlinked!'} />;
     }
   }
 
   return (
     <Page align="center">
       <TopBar title="Unlink devices" backHref="/settings" />
-      <ContentWithTopNav>
+      <ContentWithTopNav
+        css={css`
+          justify-content: center;
+          margin: auto;
+        `}
+      >
         {body}
       </ContentWithTopNav>
     </Page>

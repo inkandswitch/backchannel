@@ -20,6 +20,10 @@ localStorage.setItem('debug', 'bc:*');
 serviceWorkerRegistration.register();
 forceScreenSize(viewport.maxWidth, viewport.maxHeight);
 
+backchannel.on(EVENTS.CLOSE, () => {
+  window.location.href = '/';
+});
+
 // TODO: Loading screen
 backchannel.once(EVENTS.OPEN, async () => {
   render(

@@ -50,9 +50,7 @@ export default function App() {
       <Route path="/settings">
         <Settings />
       </Route>
-      <Route path="/settings/unlink">
-        {(params) => <UnlinkDevices />}
-      </Route>
+      <Route path="/settings/unlink">{(params) => <UnlinkDevices />}</Route>
       <Route path="/device/:did">
         {(params) => <Device deviceId={params.did} />}
       </Route>

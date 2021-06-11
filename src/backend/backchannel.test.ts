@@ -9,7 +9,7 @@ let doc,
 let alice, bob, android: Backchannel;
 let server,
   port = 3001;
-let relay = `ws://localhost:${port}`
+let relay = `ws://localhost:${port}`;
 
 async function connected(device: Backchannel, id: string) {
   let p = new Promise<any>((resolve) => {
@@ -263,11 +263,11 @@ test('lost my device', (done) => {
   multidevice(({ android, alice, bob }) => {
     // oops, lost my android.
 
-    let android_loaded = new Backchannel(android.db.dbname, { relay })
+    let android_loaded = new Backchannel(android.db.dbname, { relay });
     android_loaded.on(EVENTS.OPEN, () => {
       expect(android_loaded.devices.length).toBe(1);
       expect(android_loaded.contacts.length).toBe(1);
-      android_loaded = null
+      android_loaded = null;
       alice.lostMyDevice(android_id).then((_) => {
         let pending = 2;
         android.once(EVENTS.CLOSE, () => {
@@ -276,22 +276,22 @@ test('lost my device', (done) => {
           check();
         });
         alice.once(EVENTS.ACK, ({ contactId }) => {
-          expect(contactId).toBe(android_id)
+          expect(contactId).toBe(android_id);
           pending--;
           if (pending > 0) return;
           check();
         });
 
         let check = () => {
-          expect(alice.devices.length).toBe(0)
-          let android_loaded = new Backchannel(android.db.dbname, { relay })
+          expect(alice.devices.length).toBe(0);
+          let android_loaded = new Backchannel(android.db.dbname, { relay });
           android_loaded.on(EVENTS.OPEN, () => {
             expect(android_loaded.devices.length).toBe(0);
             expect(android_loaded.contacts.length).toBe(0);
-            done()
-          })
+            done();
+          });
         };
       });
     });
   });
-})
+});

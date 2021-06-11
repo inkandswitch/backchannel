@@ -59,7 +59,10 @@ export default function Mailbox(props: Props) {
 
     return function () {
       backchannel.removeListener(EVENTS.CONTACT_CONNECTED, onContact);
-      backchannel.removeListener(EVENTS.CONTACT_DISCONNECTED, onContactDisconnected);
+      backchannel.removeListener(
+        EVENTS.CONTACT_DISCONNECTED,
+        onContactDisconnected
+      );
     };
   }, [contactId]);
 
