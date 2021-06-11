@@ -109,7 +109,7 @@ export function UnlinkDevices() {
         }
       }
     }
-  });
+  }, []);
 
   useEffect(() => {
     backchannel.on(EVENTS.ACK, () => {
