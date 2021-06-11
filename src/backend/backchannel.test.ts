@@ -268,7 +268,7 @@ test('lost my device', (done) => {
       expect(android_loaded.devices.length).toBe(1);
       expect(android_loaded.contacts.length).toBe(1);
       android_loaded = null;
-      alice.lostMyDevice(android_id).then((_) => {
+      alice.sendTombstone(android_id).then((_) => {
         let pending = 2;
         android.once(EVENTS.CLOSE, () => {
           pending--;

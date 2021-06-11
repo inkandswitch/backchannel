@@ -120,10 +120,16 @@ export class Backchannel extends events.EventEmitter {
         }
 
         if (change.message === MessageType.ACK) {
-          let contact = this.db.getContactByDiscoveryKey(docId);
-          this.deleteDevice(contact.id).then((_) => {
-            this.emit(EVENTS.ACK, { contactId: contact.id, docId });
-          });
+          try {
+            let contact = this.db.getContactByDiscoveryKey(docId);
+            this.deleteDevice(contact.id).then((_) => {
+              this.emit(EVENTS.ACK, { contactId: contact.id, docId });
+            });
+          } catch (err) {
+            // this is OK, just means that this device sent multiple tombstones
+            // and we have already deleted this device on a previous ack
+            this.emit(EVENTS.ACK, { contactId: null, docId });
+          }
         }
 
         if (change.message === MessageType.TOMBSTONE) {
@@ -311,16 +317,24 @@ export class Backchannel extends events.EventEmitter {
     return this.contacts;
   }
 
-  async lostMyDevice(contactId: ContactId) {
-    let contact = this.db.getContactById(contactId);
+  /**
+   * Sends a tombstone message, which tells the other device
+   * to unlink itself and self-destruct.
+   * @param {string} id The device id
+   * @returns Once the message has been added to automerge
+   */
+  async sendTombstone(id: ContactId): Promise<void> {
+    let messages = this.getMessagesByContactId(id);
+    let maybe_tombstone = messages.pop();
+    if (maybe_tombstone?.type === MessageType.TOMBSTONE) return;
+    let contact = this.db.getContactById(id);
 
     let msg: IMessage = {
       type: MessageType.TOMBSTONE,
-      target: contactId,
+      target: id,
       timestamp: Date.now().toString(),
     };
-    await this._addMessage(msg, contact);
-    return msg;
+    return this._addMessage(msg, contact);
   }
 
   /**

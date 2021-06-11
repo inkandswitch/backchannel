@@ -6,7 +6,7 @@ import { useLocation } from 'wouter';
 
 import { color } from './tokens';
 import { Button, Instructions, Spinner, Page, TopBar } from '.';
-import { ContactId } from '../backend/types';
+import { ContactId, MessageType } from '../backend/types';
 import { ReactComponent as Checkmark } from './icons/Checkmark.svg';
 import { ContentWithTopNav } from './index';
 import { SettingsContent } from './Settings';
@@ -85,11 +85,37 @@ export function Device({ deviceId }: Props) {
 export function UnlinkDevices() {
   let [acks, setAcks] = useState(0);
   let [loading, setLoading] = useState(false);
+  let [warning, setWarning] = useState('');
   let [devices] = useState(backchannel.devices.length);
+
+  let onTombstone = (device) => {
+    if (!backchannel.db.isConnected(device)) {
+      let msg = `One of your devices is not connected to the Internet. Once
+      the other device is online at the same time, it will self destruct.
+      You will get a notification when all devices have unlinked
+      successfully.`;
+      setWarning(msg);
+    }
+  };
+
+  useEffect(() => {
+    if (backchannel.devices.length) {
+      for (let device of backchannel.devices) {
+        let messages = backchannel.getMessagesByContactId(device.id);
+        let maybe_tombstone = messages.pop();
+        if (maybe_tombstone?.type === MessageType.TOMBSTONE) {
+          setLoading(true);
+          onTombstone(device);
+        }
+      }
+    }
+  });
 
   useEffect(() => {
     backchannel.on(EVENTS.ACK, () => {
-      setAcks(acks + 1);
+      let newAcks = acks + 1;
+      if (newAcks === devices) setWarning('');
+      setAcks(newAcks);
     });
   });
 
@@ -97,10 +123,18 @@ export function UnlinkDevices() {
     setLoading(true);
     // send tombstones
     for (let device of backchannel.devices) {
-      backchannel.lostMyDevice(device.id).then(() => {
-        console.log('message sent');
+      backchannel.sendTombstone(device.id).then(() => {
+        onTombstone(device);
       });
     }
+
+    setTimeout(() => {
+      let msg = `Your device is still waiting for confirmation that the other device
+      unlinked. Try refreshing the page.`;
+
+      if (acks === devices || warning.length > 0) return;
+      else setWarning(msg);
+    }, 10 * 1000);
   }
 
   // the user shouldn't ever get here but just in case they refresh the page,
@@ -122,7 +156,17 @@ export function UnlinkDevices() {
   );
   if (devices === 0) body = <Done message={'You have no linked devices'} />;
   else if (loading) {
-    body = <Spinner />;
+    body = (
+      <>
+        {' '}
+        {warning && (
+          <Instructions variant="destructive">{warning}</Instructions>
+        )}
+        <div>
+          <Spinner />
+        </div>
+      </>
+    );
     if (acks === devices) {
       body = <Done message={'All devices unlinked!'} />;
     }
