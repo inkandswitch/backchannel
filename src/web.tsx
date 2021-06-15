@@ -1,6 +1,11 @@
+import QRCode from 'qrcode';
 /**
  * Utilities for common tasks specific to the browser
  */
+
+export async function qrCode(url: string): Promise<string> {
+  return QRCode.toDataURL(url);
+}
 
 export async function copyToClipboard(code: string): Promise<boolean> {
   try {

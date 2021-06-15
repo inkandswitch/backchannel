@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { css } from '@emotion/react/macro';
 import { useLocation } from 'wouter';
 
-import { copyToClipboard } from '../web';
+import { qrCode, copyToClipboard } from '../web';
 import {
   Button,
   ContentWithTopNav,
@@ -40,6 +40,7 @@ type Props = {
 
 export default function AddContact({ view, object }: Props) {
   let [code, setCode] = useState<Code>('');
+  let [QRCode, setQRCode] = useState<string>('');
   let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
@@ -82,7 +83,9 @@ export default function AddContact({ view, object }: Props) {
         : await backchannel.getCode();
 
       if (code) {
+        let dataURL = await qrCode(getRedeemURL(code));
         setCode(code);
+        setQRCode(dataURL);
         setErrorMsg('');
       }
       // automatically start the connection and wait for other person to show up.
@@ -175,13 +178,17 @@ export default function AddContact({ view, object }: Props) {
     await redeemCode(code);
   }
 
+  function getRedeemURL(code) {
+    return `${window.location.origin}/redeem/contact#${code}`;
+  }
+
   async function onClickShareURL() {
-    let url = `${window.location.origin}/redeem/contact#${code}`;
+    let url = getRedeemURL(code);
     if (sharable) {
       navigator
         .share({
           title: 'backchannel',
-          text: 'lets talk on backchannel.',
+          text: 'lets talk on backchannel, the code is ' + code,
           url,
         })
         .then(() => console.log('Successful share'))
@@ -276,7 +283,7 @@ export default function AddContact({ view, object }: Props) {
               backchannel and add them as a contact:
             </Instructions>
             <CodeDisplayOrInput>
-              {code ? code : <Spinner />}
+              {code ? <img src={QRCode} alt="qr code"></img> : <Spinner />}
               <Message>{errorMsg}</Message>
             </CodeDisplayOrInput>
             <BottomActions>
