@@ -18,6 +18,7 @@ import { FileProgress } from '../backend/blobs';
 import { ReactComponent as Dots } from '../components/icons/Dots.svg';
 import { ReactComponent as Paperclip } from '../components/icons/Paperclip.svg';
 import { ReactComponent as Paperplane } from '../components/icons/Paperplane.svg';
+import IndicatorDot, { StatusType } from './IndicatorDot';
 
 let backchannel = Backchannel();
 const PADDING_CHAT = 12;
@@ -194,10 +195,39 @@ export default function Mailbox(props: Props) {
       onDrop={handleDrop}
     >
       <TopBar
-        title={`${contact ? contact.moniker : ''} ${
-          contact && connected ? '🤠' : '😪'
-        }`}
-        icon={<Dots onClick={() => setLocation(`/contact/${contact?.id}`)} />}
+        title={
+          <div
+            css={css`
+              display: flex;
+              flex-direction: row;
+              align-items: center;
+            `}
+          >
+            <IndicatorDot
+              css={css`
+                margin-right: 6px;
+              `}
+              status={
+                connected ? StatusType.CONNECTED : StatusType.DISCONNECTED
+              }
+            />
+            {contact.avatar ? (
+              <img
+                alt={`nickname for contact ${contact.id}`}
+                css={css`
+                  max-width: 200px;
+                `}
+                src={contact.avatar}
+              />
+            ) : (
+              contact?.moniker
+            )}
+          </div>
+        }
+        // TODO set location back to the contact settings rather than petname assigning page
+        icon={
+          <Dots onClick={() => setLocation(`/contact/${contact?.id}/add`)} />
+        }
       />
       <div
         css={css`

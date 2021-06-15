@@ -23,31 +23,11 @@ import { ReactComponent as EnterDoor } from './icons/EnterDoor.svg';
 import { ReactComponent as Settings } from './icons/Settings.svg';
 import { ReactComponent as Checkmark } from './icons/Checkmark.svg';
 import * as storage from './storage';
+import IndicatorDot, { StatusType } from './IndicatorDot';
 
 let backchannel = Backchannel();
 const APP_INITIATION_ANIMATION_MS = 2300;
 const LOADING_SCREEN_DELAY_MS = 800;
-
-enum StatusType {
-  DISCONNECTED = 'disconnected',
-  CONNECTED = 'connected',
-}
-type IndicatorDotProps = { status: StatusType };
-
-const IndicatorDot = ({
-  status = StatusType.DISCONNECTED,
-}: IndicatorDotProps) => (
-  <div
-    css={css`
-      height: 6px;
-      width: 6px;
-      border-radius: 50%;
-      background: ${status === StatusType.CONNECTED
-        ? color.indicatorOnline
-        : color.indicatorOffline};
-    `}
-  ></div>
-);
 
 export default function ContactList(props) {
   let [contacts, setContacts] = useState([]);
@@ -222,6 +202,7 @@ export default function ContactList(props) {
                   latestMessage = latestMessages[contact.id];
                   latestMessageTime = timestampToDate(latestMessage.timestamp);
                 }
+
                 let status = contact.isConnected
                   ? StatusType.CONNECTED
                   : StatusType.DISCONNECTED;
@@ -272,7 +253,17 @@ export default function ContactList(props) {
                             font-size: ${fontSize[2]};
                           `}
                         >
-                          {contact.moniker}
+                          {contact.avatar ? (
+                            <img
+                              alt={`nickname for contact ${contact.id}`}
+                              css={css`
+                                max-width: 200px;
+                              `}
+                              src={contact.avatar}
+                            />
+                          ) : (
+                            contact?.moniker
+                          )}
                         </div>
                         <div
                           css={css`
