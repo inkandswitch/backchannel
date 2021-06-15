@@ -82,20 +82,12 @@ export class Backchannel extends events.EventEmitter {
     });
 
     this._blobs.on('sent', (p: FileProgress) => {
-      this._updateFileState(
-        p.id,
-        p.contactId,
-        FileState.SUCCESS
-      );
+      this._updateFileState(p.id, p.contactId, FileState.SUCCESS);
       this.emit('sent', p);
     });
 
     this._blobs.on('download', (p: FileProgress) => {
-      this._updateFileState(
-        p.id,
-        p.contactId,
-        FileState.SUCCESS
-      );
+      this._updateFileState(p.id, p.contactId, FileState.SUCCESS);
       this.db.saveBlob(p.id, p.data);
       this.emit('download', p);
     });

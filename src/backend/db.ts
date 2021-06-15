@@ -76,7 +76,7 @@ export class Database<T> extends EventEmitter {
 
   async hasBlob(id: string): Promise<boolean> {
     let num = await this._idb.blobs.where({ id }).count();
-    return num > 0
+    return num > 0;
   }
 
   async getBlob(id: string): Promise<Uint8Array> {
