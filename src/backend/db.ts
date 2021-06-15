@@ -74,6 +74,11 @@ export class Database<T> extends EventEmitter {
     return this._frontends.get(SYSTEM_ID) as Automerge.Doc<System>;
   }
 
+  async hasBlob(id: string): Promise<boolean> {
+    let num = await this._idb.blobs.where({ id }).count();
+    return num > 0
+  }
+
   async getBlob(id: string): Promise<Uint8Array> {
     let maybeBlob = await this._idb.blobs.get(id);
     if (maybeBlob) return maybeBlob.data;

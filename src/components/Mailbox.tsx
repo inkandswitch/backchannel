@@ -443,7 +443,7 @@ function FileDownloader(props: FileDownloaderProps) {
             }
             `}
           `}
-          disabled={state === FileState.ERROR}
+          disabled={state !== FileState.SUCCESS}
           onClick={FileState.SUCCESS ? handleDownloadClick : null}
         >
           <Paperclip
@@ -476,7 +476,7 @@ function FileDownloader(props: FileDownloaderProps) {
           </div>
         </Button>
       </div>
-      {message.state === FileState.PROGRESS && (
+      {state === FileState.PROGRESS && (
         <div
           css={css`
             background-color: ${color.border};
