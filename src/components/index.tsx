@@ -217,9 +217,14 @@ export function Button({ variant = 'primary', ...props }: ButtonType) {
         justify-content: center;
         ${buttonStyles(variant)};
 
+        &:hover {
+          filter: brightness(210%) saturate(140%);
+        }
+
         &:disabled {
           opacity: 70%;
           cursor: not-allowed;
+          filter: grayscale(40%) brightness(90%);
         }
       `}
       {...props}
