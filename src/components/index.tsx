@@ -75,7 +75,6 @@ export function BottomNav(props) {
   return (
     <div
       css={css`
-        color: ${color.chatHeaderText};
         text-align: center;
         padding: 18px 0;
         position: absolute;
@@ -83,8 +82,12 @@ export function BottomNav(props) {
         width: 100%;
         display: flex;
         flex-direction: row;
-        justify-content: space-around;
-        align-items: center;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding-bottom: 0;
+        color: ${color.textInverse};
+        font-size: ${fontSize[0]}px;
+        font-weight: 600;
 
         pointer-events: none; /* Fixes clicking elements behind this container, and scrolling while mouse is over container. */
 
