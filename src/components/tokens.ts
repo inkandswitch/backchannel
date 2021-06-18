@@ -1,9 +1,10 @@
 const rawColor = {
-  blue: '#1E00D6',
+  blue: '#2B17A9',
   lightBlue: '#A9B7FF',
   lightBlue2: '#8497F7',
   darkBlue: '#07015F',
   darkBlue2: '#1900B4',
+  darkestBlue: '#09003F',
   lightestBlue: '#f3f4ff',
   lightGray: '#ADA4FF',
   lighterGray: '#D6D6D6',
@@ -48,7 +49,7 @@ export const color = {
   codeShareBackground: rawColor.darkBlue,
   codeShareText: rawColor.white,
   codeShareToggleTextActive: rawColor.blue,
-  codeShareToggleBackground: rawColor.darkBlue2,
+  codeShareToggleBackground: rawColor.darkestBlue,
   codeShareToggleBackgroundActive: rawColor.white,
   codeShareToggleText: rawColor.white,
   nicknameToggleBackground: rawColor.darkBlue,
@@ -57,6 +58,7 @@ export const color = {
   warningBackground: rawColor.yellow,
   errorText: rawColor.white,
   errorBackground: rawColor.red,
+  instructionsText: rawColor.white,
 };
 
 /*

@@ -1,3 +1,5 @@
+import QRCode from 'qrcode';
+
 /**
  * Utilities for common tasks specific to the browser
  */
@@ -30,4 +32,8 @@ export async function forceScreenSize(width, height) {
       window.resizeTo(width, height);
     });
   }
+}
+
+export async function generateQRCode(url: string): Promise<string> {
+  return QRCode.toDataURL(url);
 }

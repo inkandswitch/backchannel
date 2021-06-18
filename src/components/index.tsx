@@ -22,7 +22,6 @@ export function TopBar({
   return (
     <div
       css={css`
-        background: ${color.primary};
         color: ${color.chatHeaderText};
         text-align: center;
         padding: 18px 0;
@@ -75,7 +74,6 @@ export function BottomNav(props) {
   return (
     <div
       css={css`
-        color: ${color.chatHeaderText};
         text-align: center;
         padding: 18px 0;
         position: absolute;
@@ -83,8 +81,12 @@ export function BottomNav(props) {
         width: 100%;
         display: flex;
         flex-direction: row;
-        justify-content: space-around;
-        align-items: center;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding-bottom: 0;
+        color: ${color.textInverse};
+        font-size: ${fontSize[0]}px;
+        font-weight: 600;
 
         pointer-events: none; /* Fixes clicking elements behind this container, and scrolling while mouse is over container. */
 
@@ -217,10 +219,6 @@ export function Button({ variant = 'primary', ...props }: ButtonType) {
         justify-content: center;
         ${buttonStyles(variant)};
 
-        &:hover {
-          filter: brightness(210%) saturate(140%);
-        }
-
         &:disabled {
           opacity: 70%;
           cursor: not-allowed;
@@ -238,12 +236,20 @@ function buttonStyles(variant: ButtonVariantType) {
         background: ${color.primaryButtonBackground};
         box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
         color: ${color.destructiveText};
+
+        &:hover {
+          // TODO
+        }
       `;
     case 'transparent':
       return css`
         background: transparent;
         color: ${color.transparentButtonText};
         border: 1px solid ${color.transparentButtonBorder};
+
+        &:hover {
+          // TODO
+        }
       `;
     case 'primary':
     default:
@@ -251,14 +257,45 @@ function buttonStyles(variant: ButtonVariantType) {
         background: ${color.primaryButtonBackground};
         box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
         color: ${color.primary};
+
+        &:hover {
+          // TODO
+        }
       `;
   }
+}
+
+type IconButtonProps = {
+  icon: React.FunctionComponent<React.SVGProps<SVGSVGElement>>;
+  label: string;
+} & React.ClassAttributes<HTMLButtonElement> &
+  React.ButtonHTMLAttributes<HTMLButtonElement>;
+
+export function IconButton({ icon: Icon, label, ...props }: IconButtonProps) {
+  return (
+    <Button
+      css={css`
+        margin: 24px;
+        position: relative;
+      `}
+      {...props}
+    >
+      <Icon
+        css={css`
+          margin: 0 8px;
+          position: absolute;
+          left: 0;
+        `}
+      />
+      {label}
+    </Button>
+  );
 }
 
 export const Instructions = (props) => (
   <div
     css={css`
-      color: ${color.chatSecondaryText};
+      color: ${color.instructionsText};
       font-size: ${fontSize[1]}px;
       margin: 18px 18px 0;
       flex: 0 0 auto;
@@ -292,7 +329,8 @@ export const BottomActions = (props) => (
       flex: 0 0 auto;
       display: flex;
       flex-direction: column;
-      align-items: center;
+      width: 100%;
+      align-items: stretch;
     `}
     {...props}
   />
@@ -388,6 +426,7 @@ export const UnderlineInput = (props) => (
       color: white;
       font-family: monospace;
       padding: 2px 0;
+      border-radius: 0; /* phone user agents like to add border radius */
 
       &:focus {
         outline: 0;

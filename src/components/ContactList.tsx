@@ -19,9 +19,11 @@ import {
   ContentWithBottomNav,
   Text,
 } from '../components';
-import { ReactComponent as EnterDoor } from './icons/EnterDoor.svg';
-import { ReactComponent as Settings } from './icons/Settings.svg';
+import { ReactComponent as Plus } from './icons/Plus.svg';
+import { ReactComponent as Sliders } from './icons/Sliders.svg';
 import { ReactComponent as Checkmark } from './icons/Checkmark.svg';
+import { ReactComponent as Envelope } from './icons/Envelope.svg';
+import { ReactComponent as NavCurve } from './icons/NavCurve.svg';
 import * as storage from './storage';
 import IndicatorDot, { StatusType } from './IndicatorDot';
 
@@ -168,164 +170,178 @@ export default function ContactList(props) {
     return (
       <Page>
         <ContentWithBottomNav>
-          {contacts.length === 0 ? (
-            <div
-              css={css`
-                color: ${color.textBold};
-                display: flex;
-                flex: 1 0 auto;
-                flex-direction: column;
-                justify-content: center;
-                text-align: center;
-                align-items: center;
-                height: 100%;
-              `}
-            >
-              <BackchannelLink />
-              <div
-                css={css`
-                  margin-top: 14px;
-                `}
-              >
-                Start a backchannel & add a contact
-              </div>
-            </div>
-          ) : (
-            <ul
-              css={css`
-                list-style: none;
-                padding-left: 0;
-                margin: 0;
-                margin-bottom: 100px;
-              `}
-            >
-              {contacts.map((contact) => {
-                let latestMessage, latestMessageTime;
-                if (latestMessages && latestMessages[contact.id]) {
-                  latestMessage = latestMessages[contact.id];
-                  latestMessageTime = timestampToDate(latestMessage.timestamp);
-                }
+          <ul
+            css={css`
+              list-style: none;
+              padding-left: 0;
+              margin: 0;
+              margin-bottom: 100px;
+            `}
+          >
+            {contacts.map((contact) => {
+              let latestMessage, latestMessageTime;
+              if (latestMessages && latestMessages[contact.id]) {
+                latestMessage = latestMessages[contact.id];
+                latestMessageTime = timestampToDate(latestMessage.timestamp);
+              }
 
-                let status = contact.isConnected
-                  ? StatusType.CONNECTED
-                  : StatusType.DISCONNECTED;
+              let status = contact.isConnected
+                ? StatusType.CONNECTED
+                : StatusType.DISCONNECTED;
 
-                return (
-                  <Link key={contact.id} href={`mailbox/${contact.id}`}>
-                    <li
+              return (
+                <Link key={contact.id} href={`mailbox/${contact.id}`}>
+                  <li
+                    css={css`
+                      border-bottom: 1px solid ${color.border};
+                      padding: 20px;
+                      cursor: pointer;
+
+                      &:hover {
+                        background: ${color.backgroundHover};
+                      }
+
+                      display: grid;
+                      grid-template-columns: auto 2fr;
+                      grid-template-rows: auto 1fr;
+                      gap: 6px 12px;
+                      grid-template-areas:
+                        'indicator contact-info'
+                        '. message';
+                    `}
+                  >
+                    <div
                       css={css`
-                        border-bottom: 1px solid ${color.border};
-                        padding: 20px;
-                        cursor: pointer;
-
-                        &:hover {
-                          background: ${color.backgroundHover};
-                        }
-
-                        display: grid;
-                        grid-template-columns: auto 2fr;
-                        grid-template-rows: auto 1fr;
-                        gap: 6px 12px;
-                        grid-template-areas:
-                          'indicator contact-info'
-                          '. message';
+                        grid-area: indicator;
+                        display: flex;
+                        align-items: center;
+                      `}
+                    >
+                      <IndicatorDot status={status} />
+                    </div>
+                    <div
+                      css={css`
+                        display: flex;
+                        flex-direction: row;
                       `}
                     >
                       <div
                         css={css`
-                          grid-area: indicator;
-                          display: flex;
-                          align-items: center;
+                          color: ${color.textBold};
+                          font-weight: bold;
+                          flex: 1 0 auto;
+                          margin-left: 0;
+                          padding-left: 0;
+                          font-size: ${fontSize[2]};
                         `}
                       >
-                        <IndicatorDot status={status} />
-                      </div>
-                      <div
-                        css={css`
-                          display: flex;
-                          flex-direction: row;
-                        `}
-                      >
-                        <div
-                          css={css`
-                            color: ${color.textBold};
-                            font-weight: bold;
-                            flex: 1 0 auto;
-                            margin-left: 0;
-                            padding-left: 0;
-                            font-size: ${fontSize[2]};
-                          `}
-                        >
-                          {contact.avatar ? (
-                            <img
-                              alt={`nickname for contact ${contact.id}`}
-                              css={css`
-                                max-width: 200px;
-                              `}
-                              src={contact.avatar}
-                            />
-                          ) : (
-                            contact?.moniker
-                          )}
-                        </div>
-                        <div
-                          css={css`
-                            color: ${color.textSecondary};
-                            font-size: ${fontSize[1]};
-                          `}
-                        >
-                          {latestMessageTime}
-                        </div>
+                        {contact.avatar ? (
+                          <img
+                            alt={`nickname for contact ${contact.id}`}
+                            css={css`
+                              max-width: 200px;
+                            `}
+                            src={contact.avatar}
+                          />
+                        ) : (
+                          contact?.moniker
+                        )}
                       </div>
                       <div
                         css={css`
                           color: ${color.textSecondary};
-                          grid-area: message;
                           font-size: ${fontSize[1]};
                         `}
                       >
-                        {latestMessage ? latestMessage.text : ''}
+                        {latestMessageTime}
                       </div>
-                    </li>
-                  </Link>
-                );
-              })}
-            </ul>
-          )}
+                    </div>
+                    <div
+                      css={css`
+                        color: ${color.textSecondary};
+                        grid-area: message;
+                        font-size: ${fontSize[1]};
+                      `}
+                    >
+                      {latestMessage ? latestMessage.text : ''}
+                    </div>
+                  </li>
+                </Link>
+              );
+            })}
+          </ul>
         </ContentWithBottomNav>
         <BottomNav>
+          <div
+            css={css`
+              width: 100%;
+              position: absolute;
+              bottom: 0;
+              z-index: 1;
+              height: 100px;
+              display: flex;
+              align-items: flex-end;
+            `}
+          >
+            <NavCurve
+              css={css`
+                width: 100%;
+                height: 100%;
+              `}
+            />
+          </div>
           <Link href="/settings">
             <div
               css={css`
-                width: 50px;
-                height: 50px;
-                cursor: pointer;
+                // background: white;
+                width: 30%;
+                height: 100px;
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-end;
+                margin-bottom: 12px;
+                align-items: center;
+                border-top-right-radius: 20px;
+                row-gap: 20px;
+                z-index: 100;
               `}
             >
-              <Settings
+              <Sliders
                 css={css`
-                  background: ${color.contactListBackground};
-                  border-radius: 50%;
+                  width: 30px;
+                  height: 30px;
+                  cursor: pointer;
+                  z-index: 100;
                 `}
               />
+              Settings
             </div>
           </Link>
-          {contacts.length > 0 ? (
-            <BackchannelLink />
-          ) : (
-            <div
-              css={css`
-                width: 76px;
-              `}
-            />
-          )}
           <div
             css={css`
-              border-radius: 50%;
-              width: 50px;
-              height: 50px;
+              display: flex;
+              flex-direction: row;
+              justify-content: space-evenly;
+              flex: 1 1 auto;
             `}
-          ></div>
+          >
+            <LinkWrapper>
+              <Link href="/generate/contact">
+                <InviteButton>
+                  <Plus />
+                </InviteButton>
+              </Link>
+              Create invite
+            </LinkWrapper>
+            <LinkWrapper>
+              <Link href="/redeem/contact">
+                <InviteButton>
+                  <Envelope />
+                </InviteButton>
+              </Link>
+              Use Invite
+            </LinkWrapper>
+          </div>
         </BottomNav>
       </Page>
     );
@@ -351,23 +367,36 @@ export default function ContactList(props) {
   return <div></div>;
 }
 
-function BackchannelLink() {
+function InviteButton(props) {
   return (
-    <Link href="/generate/contact">
-      <div
-        css={css`
-          background: ${color.primaryButtonBackground};
-          border-radius: 50%;
-          width: 76px;
-          height: 76px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-        `}
-      >
-        <EnterDoor />
-      </div>
-    </Link>
+    <div
+      css={css`
+        background: ${color.primaryButtonBackground};
+        border-radius: 50%;
+        width: 76px;
+        height: 76px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      `}
+      {...props}
+    />
+  );
+}
+
+export function LinkWrapper(props) {
+  return (
+    <div
+      css={css`
+        z-index: 100;
+        margin-bottom: 12px;
+
+        > div {
+          margin-bottom: 24px;
+        }
+      `}
+      {...props}
+    />
   );
 }
