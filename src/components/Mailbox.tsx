@@ -318,7 +318,6 @@ export default function Mailbox(props: Props) {
               border-bottom: 2px solid ${color.border};
             }
           `}
-          autoFocus
           value={messageText}
           onChange={handleChange}
         />

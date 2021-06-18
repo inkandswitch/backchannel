@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { css } from '@emotion/react/macro';
 import { useLocation } from 'wouter';
 
@@ -21,9 +21,9 @@ import {
 } from '../components';
 import { Key, Code, ContactId } from '../backend/types';
 import { color } from '../components/tokens';
-import { ReactComponent as EnterDoor } from './icons/EnterDoor.svg';
+import { ReactComponent as Copy } from './icons/Copy.svg';
+import { ReactComponent as People } from './icons/People.svg';
 import Backchannel from '../backend';
-import TimerDisplay from './TimerDisplay';
 
 // Amount of milliseconds to show immediate user feedback
 const USER_FEEDBACK_TIMER = 5000;
@@ -31,6 +31,7 @@ const USER_FEEDBACK_TIMER = 5000;
 const CODE_REGENERATE_TIMER_SEC = 60;
 
 type CodeViewMode = 'redeem' | 'generate';
+type CodeType = 'words' | 'numbers' | 'qrCode';
 let backchannel = Backchannel();
 
 type Props = {
@@ -40,16 +41,14 @@ type Props = {
 
 export default function AddContact({ view, object }: Props) {
   let [code, setCode] = useState<Code>('');
+  let [codeType, setCodeType] = useState<CodeType>('words');
+  let previousCodeType = usePrevious(codeType);
   let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
-  const [timeRemainingSec, setTimeRemainingSec] = useState<number>(
-    CODE_REGENERATE_TIMER_SEC
-  );
+  const [timeRemaining, resetTimer] = useCountdown(CODE_REGENERATE_TIMER_SEC);
   //eslint-disable-next-line
   let [location, setLocation] = useLocation();
-  //@ts-ignore
-  let useNumbers = new URLSearchParams(window.location.search).get('numbers');
 
   let sharable = navigator.share;
 
@@ -75,11 +74,21 @@ export default function AddContact({ view, object }: Props) {
     setCode(event.target.value);
   }
 
+  // Generate a new code and wait for other party to enter the code.
   let generateCode = useCallback(async () => {
+    // Clear the code before getting a new one so
+    // stale codes don't linger
+    setCode('');
     try {
-      const code: Code = useNumbers
-        ? await backchannel.getNumericCode()
-        : await backchannel.getCode();
+      let code: Code;
+      switch (codeType) {
+        case 'words':
+          code = await backchannel.getCode();
+          break;
+        case 'numbers':
+          code = await backchannel.getNumericCode();
+          break;
+      }
 
       if (code) {
         setCode(code);
@@ -94,25 +103,30 @@ export default function AddContact({ view, object }: Props) {
       setErrorMsg('');
       setLocation(`/contact/${cid}/add`);
     } catch (err) {
-      console.error('got error from backend', err);
-      // TODO differentiate between an actual backend err (which should be displayed) vs the code timing out (which should happen quietly).
+      if (err.message.startsWith('This code has expired')) {
+        // TODO differentiate between an actual backend err (which should be displayed) vs the code timing out (which should happen quietly).
+      } else {
+        console.error('got error from backend', err);
+      }
     }
-  }, [useNumbers, setLocation]);
+  }, [codeType, setLocation]);
 
-  // Decrement the timer, or restart it and generate a new code when it finishes.
+  // generate new code and reset countdown when timer runs out
   useEffect(() => {
-    const timeout = setInterval(() => {
-      setTimeRemainingSec((prevValue) =>
-        prevValue === 0
-          ? (generateCode(),
-            console.log('generating code from timer'),
-            CODE_REGENERATE_TIMER_SEC)
-          : prevValue - 1
-      );
-    }, 1000);
+    if (view === 'generate' && timeRemaining === 0) {
+      generateCode();
+      resetTimer();
+    }
+  }, [timeRemaining, generateCode, resetTimer, view]);
 
-    return () => clearInterval(timeout);
-  }, [setTimeRemainingSec, generateCode]);
+  // generate new code and reset countdown when the code type changes
+  // (including on initial page load)
+  useEffect(() => {
+    if (view === 'generate' && previousCodeType !== codeType) {
+      generateCode();
+      resetTimer();
+    }
+  }, [codeType, generateCode, view, previousCodeType, resetTimer]);
 
   async function onClickCopy() {
     const copySuccess = await copyToClipboard(code);
@@ -141,23 +155,11 @@ export default function AddContact({ view, object }: Props) {
       } catch (err) {
         console.log('got error', err);
         onError(err);
-        if (view === 'redeem') setCode('');
-        else {
-          console.log('generating code from redeemCode');
-          generateCode();
-        }
+        setCode('');
       }
     },
-    [generateCode, isConnecting, object, setLocation, view]
+    [isConnecting, object, setLocation]
   );
-
-  // get code on initial page load
-  useEffect(() => {
-    if (view === 'generate' && !code) {
-      console.log('generating code from initial pageload');
-      generateCode();
-    }
-  }, [code, generateCode, view]);
 
   // attempt to redeem code if it's in the url hash
   useEffect(() => {
@@ -249,14 +251,27 @@ export default function AddContact({ view, object }: Props) {
   return (
     <Page>
       <TopBar>
-        <ToggleWrapper>
-          <Toggle href={`/generate/${object}`} isActive={view === 'generate'}>
-            My code
-          </Toggle>
-          <Toggle href={`/redeem/${object}`} isActive={view === 'redeem'}>
-            Enter code
-          </Toggle>
-        </ToggleWrapper>
+        {view === 'generate' && (
+          <ToggleWrapper>
+            <Toggle
+              onClick={() => setCodeType('words')}
+              isActive={codeType === 'words'}
+            >
+              Via text
+            </Toggle>
+            <Toggle
+              onClick={() => setCodeType('numbers')}
+              isActive={codeType === 'numbers'}
+            >
+              On a Call
+            </Toggle>
+          </ToggleWrapper>
+        )}
+        {view === 'redeem' && (
+          <ToggleWrapper>
+            <Toggle isActive>Enter invite</Toggle>
+          </ToggleWrapper>
+        )}
         <div
           css={css`
             width: 50px;
@@ -281,26 +296,22 @@ export default function AddContact({ view, object }: Props) {
             </CodeDisplayOrInput>
             <BottomActions>
               <Message>{message}</Message>
-
               <Button
-                variant="transparent"
                 onClick={onClickCopy}
                 css={css`
                   margin: 24px;
                   width: 100%;
+                  position: relative;
                 `}
               >
-                <div
+                <Copy
                   css={css`
                     margin: 0 8px;
+                    position: absolute;
+                    left: 0;
                   `}
-                >
-                  <TimerDisplay
-                    totalTimeSec={CODE_REGENERATE_TIMER_SEC}
-                    timeRemainingSec={timeRemainingSec}
-                  />
-                </div>
-                Copy code
+                />
+                Copy invite
               </Button>
 
               {sharable && (
@@ -345,6 +356,7 @@ export default function AddContact({ view, object }: Props) {
                 onClick={onClickRedeem}
                 type="submit"
                 form="code-input"
+                disabled={code.length === 0}
               />
             </BottomActions>
           </React.Fragment>
@@ -356,13 +368,53 @@ export default function AddContact({ view, object }: Props) {
 
 function EnterBackchannelButton(props) {
   return (
-    <Button {...props}>
-      <EnterDoor
+    <Button
+      css={css`
+        width: 100%;
+        position: relative;
+      `}
+      {...props}
+    >
+      <People
         css={css`
-          height: 22px;
+          margin: 0 8px;
+          position: absolute;
+          left: 0;
         `}
       />
-      Enter backchannel
+      Add contact
     </Button>
   );
+}
+
+// Counts down the seconds starting from `durationSec` to 0.
+function useCountdown(
+  durationSec: number
+): [timeRemaining: number, resetTimer: () => void] {
+  const [timeRemaining, setTimeRemaining] = useState<number>(durationSec);
+
+  useEffect(() => {
+    const timerID = setInterval(() => {
+      if (timeRemaining !== 0) {
+        // Count down by one second if the timer is not already at 0
+        setTimeRemaining((sec) => sec - 1);
+      }
+    }, 1000);
+
+    return () => clearInterval(timerID);
+  }, [timeRemaining, durationSec]);
+
+  return [timeRemaining, () => setTimeRemaining(durationSec)];
+}
+
+function usePrevious(value) {
+  // The ref object is a generic container whose current property is mutable ...
+  // ... and can hold any value, similar to an instance property on a class
+  const ref = useRef();
+  // Store current value in ref
+  useEffect(() => {
+    ref.current = value;
+  }, [value]); // Only re-run if value changes
+  // Return previous value (happens before update in useEffect above)
+  return ref.current;
 }

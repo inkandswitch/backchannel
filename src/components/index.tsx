@@ -22,7 +22,6 @@ export function TopBar({
   return (
     <div
       css={css`
-        background: ${color.primary};
         color: ${color.chatHeaderText};
         text-align: center;
         padding: 18px 0;
@@ -220,10 +219,6 @@ export function Button({ variant = 'primary', ...props }: ButtonType) {
         justify-content: center;
         ${buttonStyles(variant)};
 
-        &:hover {
-          filter: brightness(210%) saturate(140%);
-        }
-
         &:disabled {
           opacity: 70%;
           cursor: not-allowed;
@@ -241,12 +236,20 @@ function buttonStyles(variant: ButtonVariantType) {
         background: ${color.primaryButtonBackground};
         box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
         color: ${color.destructiveText};
+
+        &:hover {
+          // TODO
+        }
       `;
     case 'transparent':
       return css`
         background: transparent;
         color: ${color.transparentButtonText};
         border: 1px solid ${color.transparentButtonBorder};
+
+        &:hover {
+          // TODO
+        }
       `;
     case 'primary':
     default:
@@ -254,6 +257,10 @@ function buttonStyles(variant: ButtonVariantType) {
         background: ${color.primaryButtonBackground};
         box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
         color: ${color.primary};
+
+        &:hover {
+          // TODO
+        }
       `;
   }
 }
@@ -391,6 +398,7 @@ export const UnderlineInput = (props) => (
       color: white;
       font-family: monospace;
       padding: 2px 0;
+      border-radius: 0; /* phone user agents like to add border radius */
 
       &:focus {
         outline: 0;
