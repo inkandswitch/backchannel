@@ -247,7 +247,7 @@ export default function AddContact({ view, object }: Props) {
   }
 
   function onScanQRCode(value) {
-    window.location.href = value
+    window.location.href = value;
   }
 
   switch (animationMode) {
