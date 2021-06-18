@@ -116,7 +116,7 @@ test('save/load', async () => {
   expect(bob.moniker).toBe('bob');
   expect(bob2.moniker).toBe('bob2');
 
-  let docId = await db.addDocument(bob2, (doc: Mailbox) => {
+  let docId = await db.addDocument(bob2.discoveryKey, (doc: Mailbox) => {
     doc.messages = [
       {
         id: '523',

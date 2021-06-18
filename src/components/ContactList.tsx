@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { css } from '@emotion/react/macro';
 import { Link } from 'wouter';
-import Backchannel from '../backend';
+import Backchannel, { EVENTS } from '../backend';
 import { color, fontSize } from './tokens';
 import { IMessage } from '../backend/types';
 import Automerge from 'automerge';
@@ -96,13 +96,16 @@ export default function ContactList(props) {
 
     refreshContactList();
 
-    backchannel.on('contact.disconnected', refreshContactList);
-    backchannel.on('contact.connected', refreshContactList);
-    backchannel.db.on('patch', refreshContactList);
+    backchannel.on(EVENTS.CONTACT_DISCONNECTED, refreshContactList);
+    backchannel.on(EVENTS.CONTACT_CONNECTED, refreshContactList);
+    backchannel.on(EVENTS.MESSAGE, refreshContactList);
     return function unsub() {
-      backchannel.removeListener('contact.disconnected', refreshContactList);
-      backchannel.removeListener('contact.connected', refreshContactList);
-      backchannel.db.removeListener('patch', refreshContactList);
+      backchannel.removeListener(
+        EVENTS.CONTACT_DISCONNECTED,
+        refreshContactList
+      );
+      backchannel.removeListener(EVENTS.CONTACT_CONNECTED, refreshContactList);
+      backchannel.removeListener(EVENTS.MESSAGE, refreshContactList);
     };
   }, []);
 

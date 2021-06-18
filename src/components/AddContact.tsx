@@ -90,14 +90,23 @@ export default function AddContact({ view, object }: Props) {
         code,
         (CODE_REGENERATE_TIMER_SEC + 2) * 1000 // be permissive, give extra time to redeem after timeout ends
       );
-      let cid: ContactId = await backchannel.addContact(key);
-      setErrorMsg('');
-      setLocation(`/contact/${cid}/add`);
+
+      if (object === 'device') {
+        let deviceId: ContactId = await backchannel.addDevice(key);
+        setErrorMsg('');
+        setIsConnecting(false);
+        setLocation(`/device/${deviceId}`);
+      } else {
+        let cid: ContactId = await backchannel.addContact(key);
+        setErrorMsg('');
+        setIsConnecting(false);
+        setLocation(`/contact/${cid}/add`);
+      }
     } catch (err) {
       console.error('got error from backend', err);
       // TODO differentiate between an actual backend err (which should be displayed) vs the code timing out (which should happen quietly).
     }
-  }, [useNumbers, setLocation]);
+  }, [useNumbers, setLocation, object]);
 
   // Decrement the timer, or restart it and generate a new code when it finishes.
   useEffect(() => {
@@ -176,7 +185,7 @@ export default function AddContact({ view, object }: Props) {
   }
 
   async function onClickShareURL() {
-    let url = `${window.location.origin}/redeem/contact#${code}`;
+    let url = `${window.location.origin}/redeem/${object}#${code}`;
     if (sharable) {
       navigator
         .share({
@@ -302,19 +311,6 @@ export default function AddContact({ view, object }: Props) {
                 </div>
                 Copy code
               </Button>
-
-              {sharable && (
-                <Button
-                  variant="transparent"
-                  onClick={onClickShareURL}
-                  css={css`
-                    margin-bottom: 24px;
-                    width: 100%;
-                  `}
-                >
-                  Share
-                </Button>
-              )}
             </BottomActions>
           </React.Fragment>
         )}
@@ -342,6 +338,7 @@ export default function AddContact({ view, object }: Props) {
             <BottomActions>
               <Message>{errorMsg || message}</Message>
               <EnterBackchannelButton
+                object={object}
                 onClick={onClickRedeem}
                 type="submit"
                 form="code-input"
@@ -362,7 +359,7 @@ function EnterBackchannelButton(props) {
           height: 22px;
         `}
       />
-      Enter backchannel
+      Add {props.object}
     </Button>
   );
 }

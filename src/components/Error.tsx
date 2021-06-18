@@ -3,8 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { css } from '@emotion/react/macro';
 
 import { color } from './tokens';
-import Backchannel from '../backend';
-import { ERROR } from '../backend/backchannel';
+import Backchannel, { EVENTS, ERROR } from '../backend';
 
 let backchannel = Backchannel();
 
@@ -42,12 +41,12 @@ export default function NetworkError() {
       }
     }
 
-    backchannel.on('error', onError);
-    backchannel.on('server.connect', onServerConnect);
+    backchannel.on(EVENTS.ERROR, onError);
+    backchannel.on(EVENTS.RELAY_CONNECT, onServerConnect);
 
     return () => {
-      backchannel.removeListener('error', onError);
-      backchannel.removeListener('server.connect', onServerConnect);
+      backchannel.removeListener(EVENTS.ERROR, onError);
+      backchannel.removeListener(EVENTS.RELAY_CONNECT, onServerConnect);
     };
   });
 
