@@ -403,11 +403,9 @@ export default function AddContact({ view, object }: Props) {
               <Message>{message}</Message>
               {codeType !== CodeType.QRCODE && (
                 <>
-                  <IconButton
-                    onClick={onClickCopy}
-                    icon={Copy}
-                    label="Copy invite"
-                  />
+                  <IconButton onClick={onClickCopy} icon={Copy}>
+                    Copy invite
+                  </IconButton>
                   {sharable && (
                     <Button
                       variant="transparent"
@@ -456,11 +454,12 @@ export default function AddContact({ view, object }: Props) {
                 <IconButton
                   onClick={onClickRedeem}
                   icon={People}
-                  label={`Add ${object}`}
                   form="code-input"
                   type="submit"
                   disabled={code.length === 0}
-                />
+                >
+                  Add {object}
+                </IconButton>
               )}
             </BottomActions>
           </React.Fragment>

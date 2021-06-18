@@ -267,15 +267,17 @@ function buttonStyles(variant: ButtonVariantType) {
 
 type IconButtonProps = {
   icon: React.FunctionComponent<React.SVGProps<SVGSVGElement>>;
-  label: string;
-} & React.ClassAttributes<HTMLButtonElement> &
-  React.ButtonHTMLAttributes<HTMLButtonElement>;
+} & ButtonType;
 
-export function IconButton({ icon: Icon, label, ...props }: IconButtonProps) {
+export function IconButton({
+  icon: Icon,
+  children,
+  ...props
+}: IconButtonProps) {
   return (
     <Button
       css={css`
-        margin: 24px;
+        margin: 0 24px;
         position: relative;
       `}
       {...props}
@@ -285,9 +287,11 @@ export function IconButton({ icon: Icon, label, ...props }: IconButtonProps) {
           margin: 0 8px;
           position: absolute;
           left: 0;
+          max-height: 20px;
+          max-width: 20px;
         `}
       />
-      {label}
+      {children}
     </Button>
   );
 }

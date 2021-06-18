@@ -192,9 +192,10 @@ export default function Contact({ contactId }: Props) {
             }
             type="submit"
             form="input-nickname"
-            label=" Confirm nickname"
             icon={HatPerson}
-          />
+          >
+            Confirm nickname
+          </IconButton>
         </BottomActions>
       </ContentWithTopNav>
     </Page>
