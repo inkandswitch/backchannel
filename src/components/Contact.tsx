@@ -111,7 +111,11 @@ export default function Contact({ contactId }: Props) {
       >
         <Message>{errorMsg}</Message>
         <Instructions></Instructions>
-        <CodeDisplayOrInput>
+        <CodeDisplayOrInput
+          css={css`
+            justify-content: flex-start;
+          `}
+        >
           <ToggleWrapper
             css={css`
               margin-bottom: 12px;
@@ -137,7 +141,7 @@ export default function Contact({ contactId }: Props) {
             <form
               css={css`
                 background: white;
-                padding: 50px 30px;
+                padding: 22px 30px;
               `}
               id="input-nickname"
             >
