@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { css } from '@emotion/react/macro';
 import { useLocation } from 'wouter';
 
-import { copyToClipboard } from '../web';
+import { copyToClipboard, generateQRCode } from '../web';
 import {
   Button,
   ContentWithTopNav,
@@ -33,7 +33,11 @@ const USER_FEEDBACK_TIMER = 5000;
 const CODE_REGENERATE_TIMER_SEC = 60;
 
 type CodeViewMode = 'redeem' | 'generate';
-type CodeType = 'words' | 'numbers' | 'qrCode';
+enum CodeType {
+  WORDS = 'words',
+  NUMBERS = 'numbers',
+  QRCODE = 'qrcode',
+}
 enum AnimationMode {
   None = 0,
   Connecting = 1,
@@ -49,10 +53,11 @@ type Props = {
 
 export default function AddContact({ view, object }: Props) {
   let [code, setCode] = useState<Code>('');
-  let [codeType, setCodeType] = useState<CodeType>('words');
+  let [codeType, setCodeType] = useState<CodeType>(CodeType.WORDS);
   let previousCodeType = usePrevious(codeType);
   let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
+  let [qrCode, setQrCode] = useState<string>('');
   const [redirectUrl, setRedirectUrl] = useState<string>('');
   const [animationMode, setAnimationMode] = useState<AnimationMode>(
     AnimationMode.None
@@ -93,11 +98,17 @@ export default function AddContact({ view, object }: Props) {
     try {
       let code: Code;
       switch (codeType) {
-        case 'words':
+        case CodeType.WORDS:
           code = await backchannel.getCode();
           break;
-        case 'numbers':
+        case CodeType.NUMBERS:
           code = await backchannel.getNumericCode();
+          break;
+        case CodeType.QRCODE:
+          code = await backchannel.getNumericCode();
+          let url = getReedemURL(code);
+          let qrCode = await generateQRCode(url);
+          setQrCode(qrCode);
           break;
       }
 
@@ -208,8 +219,12 @@ export default function AddContact({ view, object }: Props) {
     await redeemCode(code);
   }
 
+  function getReedemURL(code) {
+    return `${window.location.origin}/redeem/contact#${code}`;
+  }
+
   async function onClickShareURL() {
-    let url = `${window.location.origin}/redeem/contact#${code}`;
+    let url = getReedemURL(code);
     if (sharable) {
       navigator
         .share({
@@ -305,16 +320,22 @@ export default function AddContact({ view, object }: Props) {
         {view === 'generate' && (
           <ToggleWrapper>
             <Toggle
-              onClick={() => setCodeType('words')}
-              isActive={codeType === 'words'}
+              onClick={() => setCodeType(CodeType.WORDS)}
+              isActive={codeType === CodeType.WORDS}
             >
               Via text
             </Toggle>
             <Toggle
-              onClick={() => setCodeType('numbers')}
-              isActive={codeType === 'numbers'}
+              onClick={() => setCodeType(CodeType.NUMBERS)}
+              isActive={codeType === CodeType.NUMBERS}
             >
               On a Call
+            </Toggle>
+            <Toggle
+              onClick={() => setCodeType(CodeType.QRCODE)}
+              isActive={codeType === CodeType.QRCODE}
+            >
+              In person
             </Toggle>
           </ToggleWrapper>
         )}
@@ -342,7 +363,13 @@ export default function AddContact({ view, object }: Props) {
               you’ll be added as each other's contact.
             </Instructions>
             <CodeDisplayOrInput>
-              {code ? code : <Spinner />}
+              {qrCode ? (
+                <img src={qrCode} alt="Scan me with your camera" />
+              ) : code ? (
+                code
+              ) : (
+                <Spinner />
+              )}
               <Message>{errorMsg}</Message>
             </CodeDisplayOrInput>
             <BottomActions>
