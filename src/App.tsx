@@ -13,6 +13,7 @@ import NetworkError from './components/Error';
 import Settings, {
   ClearAllSettings,
   RelaySettings,
+  DevicesSettings,
 } from './components/Settings';
 import ContactSettings from './components/ContactSettings';
 
@@ -47,6 +48,9 @@ export default function App() {
       </Route>
       <Route path="/settings/relay">
         <RelaySettings />
+      </Route>
+      <Route path="/settings/devices">
+        <DevicesSettings />
       </Route>
       <Route path="/settings">
         <Settings />

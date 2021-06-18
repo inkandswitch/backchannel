@@ -127,14 +127,15 @@ export function SettingsContent(props) {
   return (
     <div
       css={css`
-        max-width: 210px;
+        max-width: 374px;
+        width: 100%;
         display: flex;
         flex-direction: column;
         align-self: center;
         row-gap: 10px;
         justify-content: center;
         margin-bottom: 60px;
-        flex: 1;
+        flex: 1 0 auto;
       `}
       {...props}
     />
