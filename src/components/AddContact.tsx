@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { css } from '@emotion/react/macro';
 import { useLocation } from 'wouter';
+import jsQR from 'jsqr';
 
 import { copyToClipboard, generateQRCode } from '../web';
 import {
@@ -100,9 +101,13 @@ export default function AddContact({ view, object }: Props) {
       switch (codeType) {
         case CodeType.WORDS:
           code = await backchannel.getCode();
+          setCode(code);
+          setQrCode('');
           break;
         case CodeType.NUMBERS:
           code = await backchannel.getNumericCode();
+          setCode(code);
+          setQrCode('');
           break;
         case CodeType.QRCODE:
           code = await backchannel.getNumericCode();
@@ -113,7 +118,6 @@ export default function AddContact({ view, object }: Props) {
       }
 
       if (code) {
-        setCode(code);
         setErrorMsg('');
       }
       // automatically start the connection and wait for other person to show up.
@@ -224,13 +228,13 @@ export default function AddContact({ view, object }: Props) {
   }
 
   async function onClickShareURL() {
-    let url = getReedemURL(code);
+    let url = window.location.origin + '/redeem/contact';
     if (sharable) {
       navigator
         .share({
-          title: 'backchannel',
-          text: 'lets talk on backchannel.',
-          url,
+          title: 'Chat on backchannel',
+          text: `I want to chat with you securely with you on Backchannel. Go to ${url} and use the following invitation code: 
+          ${code}`,
         })
         .then(() => console.log('Successful share'))
         .catch((error) => console.log('Error sharing', error));
@@ -240,6 +244,10 @@ export default function AddContact({ view, object }: Props) {
         setMessage('Code copied!');
       }
     }
+  }
+
+  function onScanQRCode(value) {
+    window.location.href = value
   }
 
   switch (animationMode) {
@@ -341,7 +349,18 @@ export default function AddContact({ view, object }: Props) {
         )}
         {view === 'redeem' && (
           <ToggleWrapper>
-            <Toggle isActive>Enter invite</Toggle>
+            <Toggle
+              onClick={() => setCodeType(CodeType.WORDS)}
+              isActive={codeType === CodeType.WORDS}
+            >
+              Enter Invite
+            </Toggle>
+            <Toggle
+              onClick={() => setCodeType(CodeType.QRCODE)}
+              isActive={codeType === CodeType.QRCODE}
+            >
+              Scan Invite
+            </Toggle>
           </ToggleWrapper>
         )}
         <div
@@ -374,22 +393,26 @@ export default function AddContact({ view, object }: Props) {
             </CodeDisplayOrInput>
             <BottomActions>
               <Message>{message}</Message>
-              <IconButton
-                onClick={onClickCopy}
-                icon={Copy}
-                label="Copy invite"
-              />
-              {sharable && (
-                <Button
-                  variant="transparent"
-                  onClick={onClickShareURL}
-                  css={css`
-                    margin: 16px;
-                    margin-bottom: 24px;
-                  `}
-                >
-                  Share
-                </Button>
+              {codeType !== CodeType.QRCODE && (
+                <>
+                  <IconButton
+                    onClick={onClickCopy}
+                    icon={Copy}
+                    label="Copy invite"
+                  />
+                  {sharable && (
+                    <Button
+                      variant="transparent"
+                      onClick={onClickShareURL}
+                      css={css`
+                        margin: 16px;
+                        margin-bottom: 24px;
+                      `}
+                    >
+                      Share
+                    </Button>
+                  )}
+                </>
               )}
             </BottomActions>
           </React.Fragment>
@@ -401,30 +424,36 @@ export default function AddContact({ view, object }: Props) {
               added as each other's contact.
             </Instructions>
             <CodeDisplayOrInput>
-              <form id="code-input">
-                <UnderlineInput
-                  value={code}
-                  css={css`
-                    font-size: inherit;
-                    width: 100%;
-                    text-align: center;
-                  `}
-                  placeholder="Enter the code"
-                  onChange={handleChange}
-                  autoFocus
-                />
-              </form>
+              {codeType === CodeType.QRCODE ? (
+                <QRReader onFind={onScanQRCode} />
+              ) : (
+                <form id="code-input">
+                  <UnderlineInput
+                    value={code}
+                    css={css`
+                      font-size: inherit;
+                      width: 100%;
+                      text-align: center;
+                    `}
+                    placeholder="Enter the code"
+                    onChange={handleChange}
+                    autoFocus
+                  />
+                </form>
+              )}
             </CodeDisplayOrInput>
             <BottomActions>
               <Message>{errorMsg || message}</Message>
-              <IconButton
-                onClick={onClickRedeem}
-                icon={People}
-                label="Add contact"
-                form="code-input"
-                type="submit"
-                disabled={code.length === 0}
-              />
+              {codeType !== CodeType.QRCODE && (
+                <IconButton
+                  onClick={onClickRedeem}
+                  icon={People}
+                  label="Add contact"
+                  form="code-input"
+                  type="submit"
+                  disabled={code.length === 0}
+                />
+              )}
             </BottomActions>
           </React.Fragment>
         )}
@@ -463,4 +492,128 @@ function usePrevious(value) {
   }, [value]); // Only re-run if value changes
   // Return previous value (happens before update in useEffect above)
   return ref.current;
+}
+
+interface QRReaderProps {
+  onFind: Function;
+}
+
+enum QRState {
+  LOADING = 'loading',
+  ERROR = 'error',
+  READY = 'ready',
+}
+
+const { requestAnimationFrame } = global;
+
+class QRReader extends React.Component<QRReaderProps> {
+  state: any;
+
+  constructor(props) {
+    super(props);
+    this.state = {
+      qrState: QRState.LOADING,
+      video: null,
+    };
+    this.requestCamera = this.requestCamera.bind(this);
+  }
+
+  requestCamera() {
+    let video = this.state.video;
+    if (!video) {
+      video = document.createElement('video');
+      this.setState({ video });
+    }
+    const canvasElement = document.getElementById(
+      'qrCanvas'
+    ) as HTMLCanvasElement;
+    const canvas = canvasElement.getContext('2d');
+
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: 'environment' } })
+      .then((stream) => {
+        video.srcObject = stream;
+        video.setAttribute('playsinline', 'true');
+        this.setState({ qrState: QRState.READY });
+        video.play();
+        requestAnimationFrame(tick);
+      })
+      .catch((err) => {
+        console.error(err);
+        this.setState({ qrState: QRState.ERROR });
+      });
+
+    const tick = () => {
+      //@ts-ignore
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        if (this.state.loading) this.setState({ loading: false });
+        canvasElement.height = video.videoHeight;
+        canvasElement.width = video.videoWidth;
+        canvas.drawImage(
+          video,
+          0,
+          0,
+          canvasElement.width,
+          canvasElement.height
+        );
+        var imageData = canvas.getImageData(
+          0,
+          0,
+          canvasElement.width,
+          canvasElement.height
+        );
+        var code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert',
+        });
+        if (code) {
+          this.props.onFind(code.data);
+        }
+      }
+      requestAnimationFrame(tick);
+    };
+  }
+  componentDidMount() {
+    this.requestCamera();
+  }
+
+  componentWillUnmount() {
+    if (this.state.video) this.state.video.pause();
+  }
+
+  render() {
+    let message;
+    switch (this.state.qrState) {
+      case QRState.LOADING:
+        message = <Spinner />;
+        break;
+      case QRState.ERROR:
+        message = (
+          <>
+            <span>
+              Unable to access video stream. Please make sure you have a webcam
+              enabled.
+            </span>
+            <div>
+              <Button onClick={this.requestCamera}>Try Again</Button>
+            </div>
+          </>
+        );
+        break;
+      default:
+        message = null;
+        break;
+    }
+    return (
+      <div>
+        {message}
+        <canvas
+          css={css`
+            display: ${this.state.qrState === QRState.READY ? 'block' : 'none'};
+            max-width: 100%;
+          `}
+          id="qrCanvas"
+        />
+      </div>
+    );
+  }
 }

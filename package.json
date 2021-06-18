@@ -29,6 +29,7 @@
     "dexie": "^3.0.3",
     "enc-utils": "^3.0.0",
     "qrcode": "^1.4.4",
+    "qrscan": "^1.0.6",
     "react": "^17.0.2",
     "react-chat-elements": "^10.14.0",
     "react-dom": "^17.0.2",
