@@ -1,17 +1,20 @@
-import { Backchannel } from './backchannel';
+import { Backchannel, EVENTS } from './backchannel';
 import { generateKey } from './crypto';
 import { randomBytes } from 'crypto';
+import { DiscoveryKey } from './types';
 
 let doc,
   petbob_id,
+  android_id,
   petalice_id = null;
 let alice, bob, android: Backchannel;
 let server,
   port = 3001;
+let relay = `ws://localhost:${port}`;
 
 async function connected(device: Backchannel, id: string) {
   let p = new Promise<any>((resolve) => {
-    device.once('contact.connected', async (payload) => {
+    device.once(EVENTS.CONTACT_CONNECTED, async (payload) => {
       if (payload.contact.id === id) resolve(payload);
     });
   });
@@ -19,15 +22,15 @@ async function connected(device: Backchannel, id: string) {
   return p;
 }
 
-async function patched(device, id) {
+async function onmessage(device, id) {
   return new Promise<any>((resolve) => {
-    let onPatch = async (payload) => {
-      if (payload.docId === id) {
-        device.db.removeListener('patch', onPatch);
-        resolve(payload);
+    let onPatch = async ({ contactId, docId }) => {
+      if (docId === id) {
+        device.removeListener(EVENTS.MESSAGE, onPatch);
+        resolve(contactId);
       }
     };
-    device.db.on('patch', onPatch);
+    device.on(EVENTS.MESSAGE, onPatch);
   });
 }
 
@@ -50,8 +53,8 @@ function multidevice(done) {
       let msgText = 'hey alice';
       let docId = synced_bob.discoveryKey;
       let allPatched = Promise.all([
-        patched(android, docId),
-        patched(alice, docId),
+        onmessage(android, docId),
+        onmessage(alice, docId),
       ]);
       await bob.sendMessage(petalice_id, msgText);
 
@@ -67,24 +70,31 @@ function multidevice(done) {
       });
     }
 
-    android.once('server.connect', () => {
-      let prom2 = alice.addDevice(key, 'my android');
-      let prom1 = android.addDevice(key, 'my windows laptop');
+    android.once(EVENTS.RELAY_CONNECT, async () => {
+      let _android_id = await alice.addDevice(key);
+      let _alice_id = await android.addDevice(key);
 
-      Promise.all([prom1, prom2]).then(([alice_id, android_id]) => {
-        android.once('CONTACT_LIST_SYNC', () => {
+      android_id = _android_id;
+      let done = false;
+
+      let cb = () => {
+        if (done) return;
+        if (android.contacts.length === alice.contacts.length) {
+          done = true;
           onSync();
-        });
-        android.connectToContactId(alice_id);
-        alice.connectToContactId(android_id);
-      });
+        }
+      };
+      android.on(EVENTS.CONTACT_LIST_SYNC, cb);
+      alice.on(EVENTS.CONTACT_LIST_SYNC, cb);
+      android.connectToContactId(_alice_id);
+      alice.connectToContactId(_android_id);
     });
   });
 }
 
-function createDevice(): Backchannel {
-  let dbname = randomBytes(16).toString('hex');
-  return new Backchannel(dbname, { relay: `ws://localhost:${port}` });
+function createDevice(name?: string): Backchannel {
+  let dbname = name || randomBytes(16).toString('hex');
+  return new Backchannel(dbname, { relay });
 }
 
 beforeEach((done) => {
@@ -106,8 +116,8 @@ beforeEach((done) => {
       bob.connectToAllContacts();
     }
 
-    alice.once('open', () => {
-      bob.once('open', () => {
+    alice.once(EVENTS.OPEN, () => {
+      bob.once(EVENTS.OPEN, () => {
         create().then(() => {
           Promise.all([
             connected(alice, petbob_id),
@@ -154,8 +164,8 @@ test('integration send a message', async () => {
   expect(alice.opened()).toBe(true);
   expect(bob.opened()).toBe(true);
 
-  let docId = bob.db.getDocumentId(bob.db.getContactById(petalice_id));
-  let p = patched(bob, docId);
+  let docId = bob.db.getContactById(petalice_id).discoveryKey;
+  let p = onmessage(bob, docId);
   await alice.sendMessage(outgoing.contact, outgoing.text);
   await p;
   let messages = bob.getMessagesByContactId(petalice_id);
@@ -175,7 +185,7 @@ test('presence', (done) => {
   let contacts = alice.contacts;
   expect(contacts[0].isConnected).toBe(true);
   // sending the message once we an open contact
-  alice.once('contact.disconnected', onDisconnect);
+  alice.once(EVENTS.CONTACT_DISCONNECTED, onDisconnect);
   bob.destroy();
 });
 
@@ -189,7 +199,7 @@ test('editMoniker syncs between two devices', (done) => {
   multidevice(async ({ android, alice, bob }) => {
     let newBobName = 'this is really bob i promise';
 
-    alice.once('CONTACT_LIST_SYNC', () => {
+    alice.once(EVENTS.CONTACT_LIST_SYNC, () => {
       let bb = alice.db.getContactById(petbob_id);
       let ba = android.db.getContactById(petbob_id);
       expect(ba).toStrictEqual(bb);
@@ -241,21 +251,68 @@ test('integration send multiple messages', async () => {
   expect(bob.opened()).toBe(true);
 
   let docId = bob.db.getContactById(petalice_id).discoveryKey;
-  let p = patched(bob, docId);
+  let p = onmessage(bob, docId);
   await alice.sendMessage(outgoing.contact, outgoing.text);
   await p;
 
   let messages = bob.getMessagesByContactId(petalice_id);
   expect(messages.length).toBe(1);
 
-  p = patched(alice, docId);
+  p = onmessage(alice, docId);
   await bob.sendMessage(response.contact, response.text);
   await p;
 
-  docId = alice.db.getDocumentId(alice.db.getContactById(petbob_id));
+  docId = alice.db.getContactById(petbob_id).discoveryKey;
   let alices = alice.getMessagesByContactId(petbob_id);
   expect(alices[0].text).toBe(outgoing.text);
   expect(alices[1].text).toBe(response.text);
   let bobs = bob.getMessagesByContactId(petalice_id);
   expect(alices).toStrictEqual(bobs);
+});
+
+test('unlink device', (done) => {
+  multidevice(({ android, alice, bob }) => {
+    // oops, lost my android.
+    alice.unlinkDevice().then((_) => {
+      expect(alice.devices.length).toBe(0);
+      done();
+    });
+  });
+});
+
+test('lost my device', (done) => {
+  multidevice(({ android, alice, bob }) => {
+    // oops, lost my android.
+
+    let android_loaded = new Backchannel(android.db.dbname, { relay });
+    android_loaded.on(EVENTS.OPEN, () => {
+      expect(android_loaded.devices.length).toBe(1);
+      expect(android_loaded.contacts.length).toBe(1);
+      android_loaded = null;
+      alice.sendTombstone(android_id).then((_) => {
+        let pending = 2;
+        android.once(EVENTS.CLOSE, () => {
+          pending--;
+          if (pending > 0) return;
+          check();
+        });
+        alice.once(EVENTS.ACK, ({ contactId }) => {
+          expect(contactId).toBe(android_id);
+          pending--;
+          if (pending > 0) return;
+          check();
+        });
+
+        let check = () => {
+          expect(alice.devices.length).toBe(0);
+          let android_loaded = new Backchannel(android.db.dbname, { relay });
+          android_loaded.on(EVENTS.OPEN, () => {
+            expect(android_loaded.devices.length).toBe(0);
+            expect(android_loaded.contacts.length).toBe(0);
+            done();
+          });
+        };
+      });
+    });
+  });
 });

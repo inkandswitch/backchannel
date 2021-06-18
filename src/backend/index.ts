@@ -1,5 +1,6 @@
 import { Backchannel, BackchannelSettings } from './backchannel';
 import defaultConfig from './config';
+export { ERROR, EVENTS } from './backchannel';
 
 let instance = null;
 

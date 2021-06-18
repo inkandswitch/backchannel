@@ -3,6 +3,8 @@ import { Backchannel as bc } from './backchannel';
 export enum MessageType {
   FILE = 'file',
   TEXT = 'text',
+  TOMBSTONE = 'tombstone',
+  ACK = 'ack',
 }
 export type MessageId = string;
 export type ContactId = string;
@@ -18,8 +20,12 @@ export interface IContact {
   avatar?: string; // -> stringified image representing this contact
   discoveryKey?: DiscoveryKey; // -> hash of code
   key: Key; // -> shared secret key I've accepted with them
-  device: number;
   isConnected?: boolean;
+  device: number;
+}
+
+export interface IDevice extends IContact {
+  device: 1;
 }
 
 export interface IMessage {

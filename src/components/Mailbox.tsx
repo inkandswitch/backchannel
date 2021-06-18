@@ -10,7 +10,7 @@ import {
   FileMessage,
 } from '../backend/types';
 import { Button, Spinner, TopBar, UnderlineInput } from './';
-import Backchannel from '../backend';
+import Backchannel, { EVENTS } from '../backend';
 import { color, fontSize } from './tokens';
 import { timestampToDate } from './util';
 import { Instructions } from '../components';
@@ -66,19 +66,20 @@ export default function Mailbox(props: Props) {
     }
 
     let subscribeToConnections = () => {
-      let intendedContact = backchannel.db.getContactById(contactId);
       let messages = backchannel.getMessagesByContactId(contactId);
       setMessages(messages);
-      backchannel.on('contact.connected', onContact);
-      backchannel.on('contact.disconnected', onContactDisconnected);
-      backchannel.connectToContact(intendedContact);
+      backchannel.on(EVENTS.CONTACT_CONNECTED, onContact);
+      backchannel.on(EVENTS.CONTACT_DISCONNECTED, onContactDisconnected);
     };
 
     subscribeToConnections();
 
     return function () {
-      backchannel.removeListener('contact.connected', onContact);
-      backchannel.removeListener('contact.disconnected', onContactDisconnected);
+      backchannel.removeListener(EVENTS.CONTACT_CONNECTED, onContact);
+      backchannel.removeListener(
+        EVENTS.CONTACT_DISCONNECTED,
+        onContactDisconnected
+      );
     };
   }, [contactId]);
 
@@ -98,18 +99,18 @@ export default function Mailbox(props: Props) {
 
     refreshMessages();
 
-    backchannel.db.on('patch', onMessage);
-    backchannel.on('progress', onMessagesChanged);
-    backchannel.on('download', onMessagesChanged);
-    backchannel.on('sent', onMessagesChanged);
-    backchannel.on('error', refreshMessages);
+    backchannel.on(EVENTS.MESSAGE, onMessage);
+    backchannel.on(EVENTS.FILE_PROGRESS, onMessagesChanged);
+    backchannel.on(EVENTS.FILE_DOWNLOAD, onMessagesChanged);
+    backchannel.on(EVENTS.FILE_SENT, onMessagesChanged);
+    backchannel.on(EVENTS.ERROR, refreshMessages);
 
     return function cleanup() {
-      backchannel.db.removeListener('patch', onMessage);
-      backchannel.removeListener('progress', onMessagesChanged);
-      backchannel.removeListener('download', onMessagesChanged);
-      backchannel.removeListener('sent', onMessagesChanged);
-      backchannel.removeListener('error', refreshMessages);
+      backchannel.removeListener(EVENTS.MESSAGE, onMessage);
+      backchannel.removeListener(EVENTS.FILE_PROGRESS, onMessagesChanged);
+      backchannel.removeListener(EVENTS.FILE_DOWNLOAD, onMessagesChanged);
+      backchannel.removeListener(EVENTS.FILE_SENT, onMessagesChanged);
+      backchannel.removeListener(EVENTS.ERROR, refreshMessages);
     };
   }, [contactId, contact]);
 
