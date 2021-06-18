@@ -125,25 +125,18 @@ export default function AddContact({ view, object }: Props) {
         code,
         (CODE_REGENERATE_TIMER_SEC + 2) * 1000 // be permissive, give extra time to redeem after timeout ends
       );
-<<<<<<< HEAD
-      let cid: ContactId = await backchannel.addContact(key);
-      setErrorMsg('');
-      setAnimationMode(AnimationMode.Connected);
-      setRedirectUrl(`/contact/${cid}/add`);
-=======
 
       if (object === 'device') {
         let deviceId: ContactId = await backchannel.addDevice(key);
         setErrorMsg('');
-        setIsConnecting(false);
+        setAnimationMode(AnimationMode.Connected);
         setLocation(`/device/${deviceId}`);
       } else {
         let cid: ContactId = await backchannel.addContact(key);
         setErrorMsg('');
-        setIsConnecting(false);
+        setAnimationMode(AnimationMode.Connected);
         setLocation(`/contact/${cid}/add`);
       }
->>>>>>> origin/master
     } catch (err) {
       if (err.message.startsWith('This code has expired')) {
         // TODO differentiate between an actual backend err (which should be displayed) vs the code timing out (which should happen quietly).
@@ -151,11 +144,7 @@ export default function AddContact({ view, object }: Props) {
         console.error('got error from backend', err);
       }
     }
-<<<<<<< HEAD
-  }, [codeType]);
-=======
-  }, [useNumbers, setLocation, object]);
->>>>>>> origin/master
+  }, [codeType, setLocation, object]);
 
   // generate new code and reset countdown when timer runs out
   useEffect(() => {
@@ -419,7 +408,6 @@ export default function AddContact({ view, object }: Props) {
                     icon={Copy}
                     label="Copy invite"
                   />
-<<<<<<< HEAD
                   {sharable && (
                     <Button
                       variant="transparent"
@@ -434,11 +422,6 @@ export default function AddContact({ view, object }: Props) {
                   )}
                 </>
               )}
-=======
-                </div>
-                Copy code
-              </Button>
->>>>>>> origin/master
             </BottomActions>
           </React.Fragment>
         )}
@@ -469,25 +452,16 @@ export default function AddContact({ view, object }: Props) {
             </CodeDisplayOrInput>
             <BottomActions>
               <Message>{errorMsg || message}</Message>
-<<<<<<< HEAD
               {codeType !== CodeType.QRCODE && (
                 <IconButton
                   onClick={onClickRedeem}
                   icon={People}
-                  label="Add contact"
+                  label={`Add ${object}`}
                   form="code-input"
                   type="submit"
                   disabled={code.length === 0}
                 />
               )}
-=======
-              <EnterBackchannelButton
-                object={object}
-                onClick={onClickRedeem}
-                type="submit"
-                form="code-input"
-              />
->>>>>>> origin/master
             </BottomActions>
           </React.Fragment>
         )}
@@ -496,7 +470,6 @@ export default function AddContact({ view, object }: Props) {
   );
 }
 
-<<<<<<< HEAD
 // Counts down the seconds starting from `durationSec` to 0.
 function useCountdown(
   durationSec: number
@@ -651,17 +624,4 @@ class QRReader extends React.Component<QRReaderProps> {
       </div>
     );
   }
-=======
-function EnterBackchannelButton(props) {
-  return (
-    <Button {...props}>
-      <EnterDoor
-        css={css`
-          height: 22px;
-        `}
-      />
-      Add {props.object}
-    </Button>
-  );
->>>>>>> origin/master
 }
