@@ -265,10 +265,37 @@ function buttonStyles(variant: ButtonVariantType) {
   }
 }
 
+type IconButtonProps = {
+  icon: React.FunctionComponent<React.SVGProps<SVGSVGElement>>;
+  label: string;
+} & React.ClassAttributes<HTMLButtonElement> &
+  React.ButtonHTMLAttributes<HTMLButtonElement>;
+
+export function IconButton({ icon: Icon, label, ...props }: IconButtonProps) {
+  return (
+    <Button
+      css={css`
+        margin: 24px;
+        position: relative;
+      `}
+      {...props}
+    >
+      <Icon
+        css={css`
+          margin: 0 8px;
+          position: absolute;
+          left: 0;
+        `}
+      />
+      {label}
+    </Button>
+  );
+}
+
 export const Instructions = (props) => (
   <div
     css={css`
-      color: ${color.chatSecondaryText};
+      color: ${color.instructionsText};
       font-size: ${fontSize[1]}px;
       margin: 18px 18px 0;
       flex: 0 0 auto;
@@ -302,7 +329,8 @@ export const BottomActions = (props) => (
       flex: 0 0 auto;
       display: flex;
       flex-direction: column;
-      align-items: center;
+      width: 100%;
+      align-items: stretch;
     `}
     {...props}
   />

@@ -5,7 +5,6 @@ import { useLocation } from 'wouter';
 import { ReactSketchCanvas } from 'react-sketch-canvas';
 
 import {
-  Button,
   ContentWithTopNav,
   Instructions,
   CodeDisplayOrInput,
@@ -16,9 +15,11 @@ import {
   TopBar,
   Toggle,
   ToggleWrapper,
+  IconButton,
 } from './';
 import { color } from './tokens';
 import WormholePlaceholder from './images/WormholePlaceholder.png';
+import { ReactComponent as HatPerson } from './icons/HatPerson.svg';
 import { ContactId, IContact } from '../backend/types';
 import Backchannel from '../backend';
 
@@ -183,7 +184,7 @@ export default function Contact({ contactId }: Props) {
           )}
         </CodeDisplayOrInput>
         <BottomActions>
-          <Button
+          <IconButton
             onClick={
               view === 'write'
                 ? handleSaveNicknameText
@@ -191,9 +192,9 @@ export default function Contact({ contactId }: Props) {
             }
             type="submit"
             form="input-nickname"
-          >
-            Confirm nickname
-          </Button>
+            label=" Confirm nickname"
+            icon={HatPerson}
+          />
         </BottomActions>
       </ContentWithTopNav>
     </Page>

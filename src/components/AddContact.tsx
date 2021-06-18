@@ -18,11 +18,13 @@ import {
   TopBar,
   Toggle,
   ToggleWrapper,
+  IconButton,
 } from '../components';
 import { Key, Code, ContactId } from '../backend/types';
 import { color } from '../components/tokens';
 import { ReactComponent as Copy } from './icons/Copy.svg';
 import { ReactComponent as People } from './icons/People.svg';
+import { ReactComponent as Checkmark } from './icons/Checkmark.svg';
 import Backchannel from '../backend';
 
 // Amount of milliseconds to show immediate user feedback
@@ -32,6 +34,12 @@ const CODE_REGENERATE_TIMER_SEC = 60;
 
 type CodeViewMode = 'redeem' | 'generate';
 type CodeType = 'words' | 'numbers' | 'qrCode';
+enum AnimationMode {
+  None = 0,
+  Connecting = 1,
+  Connected = 2,
+  Redirecting = 3,
+}
 let backchannel = Backchannel();
 
 type Props = {
@@ -45,7 +53,10 @@ export default function AddContact({ view, object }: Props) {
   let previousCodeType = usePrevious(codeType);
   let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [redirectUrl, setRedirectUrl] = useState<string>('');
+  const [animationMode, setAnimationMode] = useState<AnimationMode>(
+    AnimationMode.None
+  );
   const [timeRemaining, resetTimer] = useCountdown(CODE_REGENERATE_TIMER_SEC);
   //eslint-disable-next-line
   let [location, setLocation] = useLocation();
@@ -65,7 +76,7 @@ export default function AddContact({ view, object }: Props) {
 
   let onError = (err: Error) => {
     console.error('got error from backend', err);
-    setIsConnecting(false);
+    setAnimationMode(AnimationMode.Connecting);
     setErrorMsg(err.message);
   };
 
@@ -101,7 +112,8 @@ export default function AddContact({ view, object }: Props) {
       );
       let cid: ContactId = await backchannel.addContact(key);
       setErrorMsg('');
-      setLocation(`/contact/${cid}/add`);
+      setAnimationMode(AnimationMode.Connected);
+      setRedirectUrl(`/contact/${cid}/add`);
     } catch (err) {
       if (err.message.startsWith('This code has expired')) {
         // TODO differentiate between an actual backend err (which should be displayed) vs the code timing out (which should happen quietly).
@@ -109,7 +121,7 @@ export default function AddContact({ view, object }: Props) {
         console.error('got error from backend', err);
       }
     }
-  }, [codeType, setLocation]);
+  }, [codeType]);
 
   // generate new code and reset countdown when timer runs out
   useEffect(() => {
@@ -118,6 +130,23 @@ export default function AddContact({ view, object }: Props) {
       resetTimer();
     }
   }, [timeRemaining, generateCode, resetTimer, view]);
+
+  // Move from one animation step to the next
+  useEffect(() => {
+    let timeoutId;
+    switch (animationMode) {
+      case AnimationMode.Connected:
+        timeoutId = setTimeout(() => {
+          setAnimationMode((mode) => mode + 1);
+        }, 2000);
+        return () => clearTimeout(timeoutId);
+      case AnimationMode.Redirecting:
+        timeoutId = setTimeout(() => {
+          setLocation(redirectUrl);
+        }, 3000);
+        return () => clearTimeout(timeoutId);
+    }
+  }, [animationMode, redirectUrl, setLocation]);
 
   // generate new code and reset countdown when the code type changes
   // (including on initial page load)
@@ -137,20 +166,22 @@ export default function AddContact({ view, object }: Props) {
 
   let redeemCode = useCallback(
     async (code) => {
-      if (isConnecting) return;
+      if (animationMode === AnimationMode.Connecting) return;
       try {
-        setIsConnecting(true);
+        setAnimationMode(AnimationMode.Connecting);
         let key: Key = await backchannel.accept(code);
         if (object === 'device') {
           let deviceId: ContactId = await backchannel.addDevice(key);
           setErrorMsg('');
-          setIsConnecting(false);
-          setLocation(`/device/${deviceId}`);
+          setAnimationMode(AnimationMode.Connected);
+          setRedirectUrl(`/device/${deviceId}`);
         } else {
           let cid: ContactId = await backchannel.addContact(key);
           setErrorMsg('');
-          setIsConnecting(false);
-          setLocation(`/contact/${cid}/add`);
+          setAnimationMode(AnimationMode.Connected);
+          setRedirectUrl(`/contact/${cid}/add`);
+          const timeoutId = setTimeout(() => {}, 2400);
+          return () => clearTimeout(timeoutId);
         }
       } catch (err) {
         console.log('got error', err);
@@ -158,7 +189,7 @@ export default function AddContact({ view, object }: Props) {
         setCode('');
       }
     },
-    [isConnecting, object, setLocation]
+    [animationMode, object, setRedirectUrl]
   );
 
   // attempt to redeem code if it's in the url hash
@@ -196,56 +227,76 @@ export default function AddContact({ view, object }: Props) {
     }
   }
 
-  if (isConnecting && !errorMsg.length) {
-    return (
-      <Page>
-        <TopBar />
-        <ContentWithTopNav
-          css={css`
-            background: ${color.codeShareBackground};
-            text-align: center;
-          `}
-        >
-          {view === 'generate' && (
-            <React.Fragment>
-              <Instructions>
-                Share this code with a correspondant you trust to open a
-                backchannel and add them as a contact:
-              </Instructions>
-              <CodeDisplayOrInput>
-                {code}
-                <Button
-                  variant="transparent"
-                  onClick={onClickCopy}
-                  css={css`
-                    margin-top: 24px;
-                  `}
-                >
-                  Copy code
-                </Button>
-                {sharable && (
-                  <Button
-                    variant="transparent"
-                    onClick={onClickShareURL}
-                    css={css`
-                      margin-top: 24px;
-                    `}
-                  >
-                    Share
-                  </Button>
-                )}
-              </CodeDisplayOrInput>
-              <BottomActions>
-                <IconWithMessage icon={Spinner} text="Waiting for other side" />
-              </BottomActions>
-            </React.Fragment>
-          )}
-          {view === 'redeem' && (
-            <IconWithMessage icon={Spinner} text="Connecting" />
-          )}
-        </ContentWithTopNav>
-      </Page>
-    );
+  switch (animationMode) {
+    case AnimationMode.Connecting:
+      // Show connection loading page
+      return (
+        <Page>
+          <TopBar />
+          <ContentWithTopNav
+            css={css`
+              background: ${color.codeShareBackground};
+            `}
+          >
+            <CodeDisplayOrInput>
+              <IconWithMessage icon={Spinner} text="Connecting" />
+            </CodeDisplayOrInput>
+            <BottomActions
+              css={css`
+                height: 76px;
+              `}
+            />
+          </ContentWithTopNav>
+        </Page>
+      );
+
+    case AnimationMode.Connected:
+      // Show successful connection message
+      return (
+        <Page>
+          <TopBar />
+          <ContentWithTopNav
+            css={css`
+              background: ${color.codeShareBackground};
+            `}
+          >
+            <CodeDisplayOrInput>
+              <IconWithMessage
+                icon={Checkmark}
+                text={`${
+                  object === 'device' ? 'Device' : 'Correspondant'
+                } found`}
+              />
+            </CodeDisplayOrInput>
+            <BottomActions
+              css={css`
+                height: 76px;
+              `}
+            />
+          </ContentWithTopNav>
+        </Page>
+      );
+    case AnimationMode.Redirecting:
+      // Redirect to the contact/device naming step
+      return (
+        <Page>
+          <TopBar />
+          <ContentWithTopNav
+            css={css`
+              background: ${color.codeShareBackground};
+            `}
+          >
+            <CodeDisplayOrInput>
+              <IconWithMessage icon={Spinner} text="Creating Secure Channel" />
+            </CodeDisplayOrInput>
+            <BottomActions
+              css={css`
+                height: 76px;
+              `}
+            />
+          </ContentWithTopNav>
+        </Page>
+      );
   }
 
   return (
@@ -287,8 +338,8 @@ export default function AddContact({ view, object }: Props) {
         {view === 'generate' && (
           <React.Fragment>
             <Instructions>
-              Share this code with a correspondant you trust to open a
-              backchannel and add them as a contact:
+              Share this temporary invite with the other party. Once used,
+              you’ll be added as each other's contact.
             </Instructions>
             <CodeDisplayOrInput>
               {code ? code : <Spinner />}
@@ -296,31 +347,18 @@ export default function AddContact({ view, object }: Props) {
             </CodeDisplayOrInput>
             <BottomActions>
               <Message>{message}</Message>
-              <Button
+              <IconButton
                 onClick={onClickCopy}
-                css={css`
-                  margin: 24px;
-                  width: 100%;
-                  position: relative;
-                `}
-              >
-                <Copy
-                  css={css`
-                    margin: 0 8px;
-                    position: absolute;
-                    left: 0;
-                  `}
-                />
-                Copy invite
-              </Button>
-
+                icon={Copy}
+                label="Copy invite"
+              />
               {sharable && (
                 <Button
                   variant="transparent"
                   onClick={onClickShareURL}
                   css={css`
+                    margin: 16px;
                     margin-bottom: 24px;
-                    width: 100%;
                   `}
                 >
                   Share
@@ -332,8 +370,8 @@ export default function AddContact({ view, object }: Props) {
         {view === 'redeem' && (
           <React.Fragment>
             <Instructions>
-              Enter the code your correspondant sent you to access the
-              backchannel:
+              Enter the invite you were given by the other party. You’ll be
+              added as each other's contact.
             </Instructions>
             <CodeDisplayOrInput>
               <form id="code-input">
@@ -352,10 +390,12 @@ export default function AddContact({ view, object }: Props) {
             </CodeDisplayOrInput>
             <BottomActions>
               <Message>{errorMsg || message}</Message>
-              <EnterBackchannelButton
+              <IconButton
                 onClick={onClickRedeem}
-                type="submit"
+                icon={People}
+                label="Add contact"
                 form="code-input"
+                type="submit"
                 disabled={code.length === 0}
               />
             </BottomActions>
@@ -363,27 +403,6 @@ export default function AddContact({ view, object }: Props) {
         )}
       </ContentWithTopNav>
     </Page>
-  );
-}
-
-function EnterBackchannelButton(props) {
-  return (
-    <Button
-      css={css`
-        width: 100%;
-        position: relative;
-      `}
-      {...props}
-    >
-      <People
-        css={css`
-          margin: 0 8px;
-          position: absolute;
-          left: 0;
-        `}
-      />
-      Add contact
-    </Button>
   );
 }
 

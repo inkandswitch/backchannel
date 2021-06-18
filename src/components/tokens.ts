@@ -58,6 +58,7 @@ export const color = {
   warningBackground: rawColor.yellow,
   errorText: rawColor.white,
   errorBackground: rawColor.red,
+  instructionsText: rawColor.white,
 };
 
 /*
