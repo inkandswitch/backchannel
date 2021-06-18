@@ -99,10 +99,12 @@ export class Backchannel extends events.EventEmitter {
     });
 
     this._blobs.on('sent', (p: FileProgress) => {
+      this._updateFileState(p.id, p.contactId, FileState.SUCCESS);
       this.emit(EVENTS.FILE_SENT, p);
     });
 
     this._blobs.on('download', (p: FileProgress) => {
+      this._updateFileState(p.id, p.contactId, FileState.SUCCESS);
       this.db.saveBlob(p.id, p.data);
       this.emit(EVENTS.FILE_DOWNLOAD, p);
     });
@@ -407,7 +409,7 @@ export class Backchannel extends events.EventEmitter {
       await this._updateFileState(
         msg.id,
         contact.id,
-        sent ? FileState.SUCCESS : FileState.ERROR
+        sent ? FileState.SUCCESS : FileState.QUEUED
       );
     } catch (err) {
       this._updateFileState(msg.id, contactId, FileState.ERROR);

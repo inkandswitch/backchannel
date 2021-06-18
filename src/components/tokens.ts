@@ -38,6 +38,8 @@ export const color = {
   chatHeaderText: rawColor.white,
   chatText: rawColor.darkBlue,
   chatTimestamp: rawColor.lightBlue2,
+  chatAttachmentBackground: rawColor.blue,
+  chatAttachmentText: rawColor.white,
   primaryButtonBackground: rawColor.white,
   destructiveText: rawColor.lightRed,
   transparentButtonText: rawColor.white,
