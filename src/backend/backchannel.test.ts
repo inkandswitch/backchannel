@@ -2,7 +2,7 @@ import { Backchannel, EVENTS } from './backchannel';
 import { generateKey } from './crypto';
 import { randomBytes } from 'crypto';
 import { FileProgress } from './blobs';
-import { FileState } from './types';
+import { FileMessage, FileState, TextMessage } from './types';
 
 let doc,
   petbob_id,
@@ -181,7 +181,7 @@ test('integration send a message', async () => {
   await p;
   let messages = await bob.getMessagesByContactId(petalice_id);
   expect(messages.length).toBe(1);
-  expect(messages[0].text).toBe(outgoing.text);
+  expect((messages[0] as TextMessage).text).toBe(outgoing.text);
 });
 
 test('presence', (done) => {
@@ -286,7 +286,7 @@ test('integration send multiple messages', async () => {
   let bobs = await bob.getMessagesByContactId(petalice_id);
   expect(alices).toStrictEqual(bobs);
   expect(alices[2].state).toEqual(FileState.SUCCESS);
-  expect(bobs[2].state).toEqual(FileState.SUCCESS);
+  expect((bobs[2] as FileMessage).state).toEqual(FileState.SUCCESS);
 });
 
 test('unlink device', (done) => {

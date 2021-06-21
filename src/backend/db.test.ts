@@ -118,6 +118,7 @@ test('save/load', async () => {
 
   let docId = await db.addDocument(bob2.discoveryKey, (doc: Mailbox) => {
     doc.messages = [
+      //@ts-ignore
       {
         id: '523',
         target: bob.id,
@@ -135,6 +136,7 @@ test('save/load', async () => {
   expect(doc.messages[0].text).toBe('hello friend');
 
   db.change(docId, (doc: Mailbox) => {
+    //@ts-ignore
     doc.messages.push({
       id: '525',
       target: bob.id,
