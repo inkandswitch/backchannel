@@ -62,8 +62,6 @@ export interface Mailbox {
 }
 /**
  * The backchannel class manages the database and wormholes.
- *
- * Call backchannel.db.save() periodically to ensure changes are saved.
  */
 export class Backchannel extends events.EventEmitter {
   public db: Database<Mailbox>;
@@ -581,7 +579,7 @@ export class Backchannel extends events.EventEmitter {
       let getAutomergeListener = (socket, docId, peerId) => {
         let automergeSend = (msg: Uint8Array) => {
           let msgType = 'automerge';
-          // automerge document encrypts inside the document
+          // automerge wants you to encrypt inside the document
           // but not over the sync protocol.
           let encoded = serialize({ msgType, docId, msg });
           socket.send(encoded);
