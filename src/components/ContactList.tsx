@@ -4,7 +4,6 @@ import { css } from '@emotion/react/macro';
 import { Link } from 'wouter';
 import Backchannel, { EVENTS } from '../backend';
 import { color, fontSize } from './tokens';
-import { IMessage } from '../backend/types';
 import Automerge from 'automerge';
 import { Mailbox } from '../backend/backchannel';
 import { timestampToDate } from './util';
@@ -26,7 +25,6 @@ import { ReactComponent as Envelope } from './icons/Envelope.svg';
 import { ReactComponent as NavCurve } from './icons/NavCurve.svg';
 import * as storage from './storage';
 import IndicatorDot, { StatusType } from './IndicatorDot';
-import { EncryptedProtocolMessage } from '../backend/crypto';
 
 let backchannel = Backchannel();
 const APP_INITIATION_ANIMATION_MS = 2300;
@@ -82,13 +80,6 @@ export default function ContactList(props) {
       }
       contacts.forEach(async (contact) => {
         let messages = await backchannel.getMessagesByContactId(contact.id);
-
-        if (!messages) {
-          let doc = (await backchannel._addContactDocument(
-            contact
-          )) as Automerge.Doc<Mailbox>;
-          messages = await backchannel.getMessagesByContactId(contact.id);
-        }
         const lastMessage = messages[messages.length - 1];
         setLatestMessages((latestMessages) => ({
           ...latestMessages,

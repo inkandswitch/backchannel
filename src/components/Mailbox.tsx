@@ -8,6 +8,8 @@ import {
   ContactId,
   MessageType,
   FileMessage,
+  TextMessage,
+  IMessage,
 } from '../backend/types';
 import { Button, Spinner, TopBar, UnderlineInput } from './';
 import Backchannel, { EVENTS } from '../backend';
@@ -19,8 +21,6 @@ import { ReactComponent as Dots } from '../components/icons/Dots.svg';
 import { ReactComponent as Paperclip } from '../components/icons/Paperclip.svg';
 import { ReactComponent as Paperplane } from '../components/icons/Paperplane.svg';
 import IndicatorDot, { StatusType } from './IndicatorDot';
-import { EncryptedProtocolMessage } from '../backend/crypto';
-import { IMessage } from '../backend/types';
 
 let backchannel = Backchannel();
 const PADDING_CHAT = 12;
@@ -278,11 +278,11 @@ export default function Mailbox(props: Props) {
                     border-radius: 1px;
                   `}
                 >
-                  {message.type === MessageType.TEXT && message.text}
+                  {message.type === MessageType.TEXT && (message as TextMessage).text}
                   {message.type === MessageType.FILE && (
                     <FileDownloader
                       progress={progress[message.id]}
-                      message={message}
+                      message={message as FileMessage}
                     />
                   )}
                 </div>

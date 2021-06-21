@@ -6,7 +6,7 @@ import { useLocation } from 'wouter';
 
 import { color } from './tokens';
 import { Button, Instructions, Spinner, Page, TopBar } from '.';
-import { ContactId, MessageType } from '../backend/types';
+import { ContactId } from '../backend/types';
 import { ReactComponent as Checkmark } from './icons/Checkmark.svg';
 import { ContentWithTopNav, SettingsContent } from './index';
 

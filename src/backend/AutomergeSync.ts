@@ -252,7 +252,7 @@ export class MultipleDocuments {
    * @param docId The document ID
    * @param changeFn The Automerge change function to change the document.
    */
-  change<J>(
+  change(
     docId: DocumentId,
     changeFn: ChangeFn<unknown>,
     message?: string

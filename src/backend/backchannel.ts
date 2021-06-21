@@ -419,6 +419,7 @@ export class Backchannel extends events.EventEmitter {
         meta,
         file,
       });
+
       await this._updateFileState(
         msg.id,
         contact.id,
@@ -694,12 +695,20 @@ export class Backchannel extends events.EventEmitter {
     let contact = this.db.getContactById(contactId);
     if (!contact) return;
     let docId = contact.discoveryKey;
-    let res = await this.db.change(docId, (doc: Mailbox) => {
-      let idx = doc.messages.findIndex((message) => message.id === msgId);
-      //@ts-ignore
-      doc.messages[idx].state = state;
-    });
-    return res;
+
+    let doc = this.db.getDocument(docId) as Automerge.Doc<Mailbox>
+    return new Promise((resolve, reject) => {
+      doc.messages.map((cipher: EncryptedProtocolMessage, idx: number) => {
+        return this.decryptMessage(cipher, contact).then(message => {
+          if (message.id === msgId) {
+            this.db.change(docId, (doc: Mailbox) => {
+              //@ts-ignore
+              doc.messages[idx].state = state
+            }).then(resolve).catch(reject);
+          }
+        })
+      });
+    })
   }
 }
 
