@@ -33,8 +33,6 @@ async function ondownload(d) {
   });
 }
 
-
-
 async function onmessage(device, id) {
   return new Promise<any>((resolve) => {
     let onPatch = async ({ contactId, docId }) => {
@@ -275,8 +273,8 @@ test('integration send multiple messages', async () => {
   await bob.sendMessage(response.contact, response.text);
   await p;
 
-  p = ondownload(alice)
-  let blob = new File(['test text'], 'boop.txt', { type: 'text/plain'})
+  p = ondownload(alice);
+  let blob = new File(['test text'], 'boop.txt', { type: 'text/plain' });
   await bob.sendFile(petalice_id, blob);
   await p;
 
@@ -286,8 +284,8 @@ test('integration send multiple messages', async () => {
   expect(alices[1].text).toBe(response.text);
   let bobs = await bob.getMessagesByContactId(petalice_id);
   expect(alices).toStrictEqual(bobs);
-  expect(alices[2].state).toEqual(FileState.SUCCESS)
-  expect(bobs[2].state).toEqual(FileState.SUCCESS)
+  expect(alices[2].state).toEqual(FileState.SUCCESS);
+  expect(bobs[2].state).toEqual(FileState.SUCCESS);
 });
 
 test('unlink device', (done) => {

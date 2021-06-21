@@ -149,7 +149,7 @@ export class Blobs extends EventEmitter {
         let blob = file.slice(offset, end);
         fr.readAsArrayBuffer(blob);
       });
-    }
+    };
 
     return {
       current: 0,

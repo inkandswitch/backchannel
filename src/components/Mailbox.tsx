@@ -136,10 +136,10 @@ export default function Mailbox(props: Props) {
   async function uploadFiles(files: Array<File>) {
     if (files.length !== 0) {
       for (let i = 0; i < files.length; i++) {
-        let file = files[i]
-        let msg = await backchannel.createFileMessage(contactId, file)
-        setMessages(messages.concat(msg))
-        backchannel.sendFile(msg, file)
+        let file = files[i];
+        let msg = await backchannel.createFileMessage(contactId, file);
+        setMessages(messages.concat(msg));
+        backchannel.sendFile(msg, file);
       }
     }
   }
@@ -281,7 +281,8 @@ export default function Mailbox(props: Props) {
                     border-radius: 1px;
                   `}
                 >
-                  {message.type === MessageType.TEXT && (message as TextMessage).text}
+                  {message.type === MessageType.TEXT &&
+                    (message as TextMessage).text}
                   {message.type === MessageType.FILE && (
                     <FileDownloader
                       progress={progress[message.id]}
