@@ -97,12 +97,7 @@ export class Blobs extends EventEmitter {
           })
         )
       );
-      let reader;
-      if (file.stream) {
-        reader = file.stream().getReader();
-      } else {
-        reader = this._read(file);
-      }
+      let reader = this._read(file);
       let sending: FileProgress = {
         contactId,
         id: meta.id,
@@ -142,8 +137,8 @@ export class Blobs extends EventEmitter {
    * @returns An async interator that mimics the stream interface
    */
   private _read(file: File, chunkSize: number = 64 << 10) {
-    let _read = (file, offset) =>
-      new Promise((resolve, reject) => {
+    let _read = (file, offset) => {
+      return new Promise<Uint8Array>((resolve, reject) => {
         const fr = new FileReader();
         fr.onload = (e: ProgressEvent<FileReader>) => {
           //@ts-ignore
@@ -154,12 +149,13 @@ export class Blobs extends EventEmitter {
         let blob = file.slice(offset, end);
         fr.readAsArrayBuffer(blob);
       });
+    }
 
     return {
       current: 0,
       last: file.size,
       async read() {
-        let value = await _read(file, this.current);
+        let value: Uint8Array = await _read(file, this.current);
         if (this.current <= this.last) {
           this.current += chunkSize;
           return { done: false, value };
