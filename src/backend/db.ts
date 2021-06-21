@@ -6,9 +6,8 @@ import { Backend } from 'automerge';
 
 import * as crypto from './crypto';
 import { Key, ContactId, IContact, IDevice } from './types';
-import { MultipleDocuments } from './AutomergeSync';
+import { MultipleDocuments, ReceiveSyncMsg } from 'automerge-sync';
 import { DB } from './automerge-db';
-import { ReceiveSyncMsg } from './AutomergeSync';
 import { randomBytes } from 'crypto';
 
 type DocumentId = string;
@@ -122,7 +121,7 @@ export class Database<T> extends EventEmitter {
    * @param send
    * @returns
    */
-  onPeerConnect(peerId: string, docId: string, send: Function): ReceiveSyncMsg {
+  onPeerConnect(docId: string, peerId: string, send: Function): ReceiveSyncMsg {
     return this.syncer.onPeerConnect(docId, peerId, send);
   }
 

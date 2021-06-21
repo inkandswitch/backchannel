@@ -603,7 +603,7 @@ export class Backchannel extends events.EventEmitter {
           let encoded = serialize({ msgType, docId, msg });
           if (isOpen(socket)) socket.send(encoded);
         };
-        return this.db.onPeerConnect(peerId, docId, automergeSend);
+        return this.db.onPeerConnect(docId, peerId, automergeSend);
       };
 
       let documentIds = this.db.getDocumentIds(contact);

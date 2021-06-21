@@ -275,7 +275,8 @@ test('integration send multiple messages', async () => {
 
   p = ondownload(alice);
   let blob = new File(['test text'], 'boop.txt', { type: 'text/plain' });
-  await bob.sendFile(petalice_id, blob);
+  let msg = await bob.createFileMessage(petalice_id, blob);
+  await bob.sendFile(msg, blob);
   await p;
 
   docId = alice.db.getContactById(petbob_id).discoveryKey;
