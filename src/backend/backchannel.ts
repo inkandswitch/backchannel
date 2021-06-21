@@ -24,7 +24,6 @@ import {
 } from './types';
 import { Wormhole } from './wormhole';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
-import { ReceiveSyncMsg } from './AutomergeDiscovery';
 
 export enum EVENTS {
   MESSAGE = 'MESSAGE',
@@ -59,7 +58,7 @@ export type BackchannelSettings = {
 };
 
 export interface Mailbox {
-  messages: Automerge.List<IMessage>;
+  messages: Automerge.List<EncryptedProtocolMessage>;
 }
 /**
  * The backchannel class manages the database and wormholes.
@@ -305,13 +304,10 @@ export class Backchannel extends events.EventEmitter {
     });
     return this.db.getDocument(docId);
   }
-  /**
-   * Get messages with another contact.
-   * @param contactId The ID of the contact
-   * @returns
-   */
-  getMessagesByContactId(contactId: ContactId): IMessage[] {
+
+  _getEncryptedMessages(contactId: ContactId): EncryptedProtocolMessage[] {
     let contact = this.db.getContactById(contactId);
+
     try {
       //@ts-ignore
       let doc: Automerge.Doc<Mailbox> = this.db.getDocument(
@@ -322,6 +318,21 @@ export class Backchannel extends events.EventEmitter {
       console.trace(err);
       throw new Error('Error getting messages, this should never happen.');
     }
+  }
+
+  /**
+   * Get messages with another contact.
+   * @param contactId The ID of the contact
+   * @returns
+   */
+  async getMessagesByContactId(contactId: ContactId): Promise<IMessage[]> {
+    let contact = this.db.getContactById(contactId);
+    let messages = this._getEncryptedMessages(contactId);
+    return Promise.all(
+      messages.map((cipher) => {
+        return this.decryptMessage(cipher, contact);
+      })
+    );
   }
 
   /**
@@ -340,6 +351,13 @@ export class Backchannel extends events.EventEmitter {
     return this.contacts;
   }
 
+  async hasTombstone(contact: IContact): Promise<boolean> {
+    let messages = this._getEncryptedMessages(contact.id);
+    if (messages.length === 0) return;
+    let maybe_tombstone = await this.decryptMessage(messages.pop(), contact);
+    return maybe_tombstone?.type === MessageType.TOMBSTONE;
+  }
+
   /**
    * Sends a tombstone message, which tells the other device
    * to unlink itself and self-destruct.
@@ -347,11 +365,8 @@ export class Backchannel extends events.EventEmitter {
    * @returns Once the message has been added to automerge
    */
   async sendTombstone(id: ContactId): Promise<void> {
-    let messages = this.getMessagesByContactId(id);
-    let maybe_tombstone = messages.pop();
-    if (maybe_tombstone?.type === MessageType.TOMBSTONE) return;
-    let contact = this.db.getContactById(id);
-
+    let contact = await this.db.getContactById(id);
+    if (await this.hasTombstone(contact)) return;
     let msg: IMessage = {
       type: MessageType.TOMBSTONE,
       target: id,
@@ -365,7 +380,7 @@ export class Backchannel extends events.EventEmitter {
    * connected with the contact from listening to the `contact.connected` event
    * @param {WebSocket} socket: the open socket for the contact
    */
-  async sendMessage(contactId: ContactId, text: string) {
+  async sendMessage(contactId: ContactId, text: string): Promise<IMessage> {
     let msg: TextMessage = {
       id: uuid(),
       target: contactId,
@@ -507,46 +522,30 @@ export class Backchannel extends events.EventEmitter {
   }
 
   async _encrypt(
-    msgType: string,
     msg: Uint8Array,
     contact: IContact
-  ): Promise<ArrayBuffer> {
+  ): Promise<EncryptedProtocolMessage> {
     let cipher = await symmetric.encrypt(
       contact.key,
       Buffer.from(msg).toString('hex')
     );
-    return serialize({ msgType, cipher });
+    return cipher;
   }
 
-  async _decrypt(msg: ArrayBuffer, contact: IContact): Promise<any> {
-    let decoded = deserialize(msg);
-    let cipher = decoded.cipher as EncryptedProtocolMessage;
+  async _decrypt(
+    cipher: EncryptedProtocolMessage,
+    contact: IContact
+  ): Promise<ArrayBuffer> {
     let plainText = await symmetric.decrypt(contact.key, cipher);
-    return {
-      msgType: decoded.msgType,
-      msg: Uint8Array.from(Buffer.from(plainText, 'hex')),
-    };
+    return Uint8Array.from(Buffer.from(plainText, 'hex'));
   }
 
-  private automerge(
-    socket: WebSocket,
-    contact: IContact,
-    docId: string,
-    peerId: string
-  ): ReceiveSyncMsg {
-    // Set up send event
-    let automergeSend = (msg: Uint8Array) => {
-      this._encrypt(docId, msg, contact).then((encoded) => {
-        this.log('sending', encoded);
-        socket.send(encoded);
-      });
-    };
-    let gotAutomergeSyncMsg: ReceiveSyncMsg = this.db.onPeerConnect(
-      peerId,
-      docId,
-      automergeSend
-    );
-    return gotAutomergeSyncMsg;
+  async decryptMessage(
+    cipher: EncryptedProtocolMessage,
+    contact: IContact
+  ): Promise<IMessage> {
+    let decoded = await this._decrypt(cipher, contact);
+    return deserialize(decoded) as IMessage;
   }
 
   private async _onPeerConnect(
@@ -572,35 +571,46 @@ export class Backchannel extends events.EventEmitter {
     socket.binaryType = 'arraybuffer';
     this.log('onpeer connect', documentId);
     try {
-      let fileSend = async (msg: Uint8Array) => {
-        let encoded = await this._encrypt('file', msg, contact);
+      this._blobs.addPeer(contact.id, async (msg: Uint8Array) => {
+        let cipher = await this._encrypt(msg, contact);
+        let encoded = serialize({ msgType: 'files', msg: cipher });
         if (isOpen(socket)) socket.send(encoded);
         else throw new Error('SOCKET CLOSED');
+      });
+
+      let getAutomergeListener = (socket, docId, peerId) => {
+        let automergeSend = (msg: Uint8Array) => {
+          let msgType = 'automerge';
+          // automerge document encrypts inside the document
+          // but not over the sync protocol.
+          let encoded = serialize({ msgType, docId, msg });
+          socket.send(encoded);
+        };
+        return this.db.onPeerConnect(peerId, docId, automergeSend);
       };
 
       let documentIds = this.db.getDocumentIds(contact);
       let listeners = {};
-
       documentIds.forEach((id) => {
-        listeners[id] = this.automerge(socket, contact, id, peerId);
+        listeners[id] = getAutomergeListener(socket, id, peerId);
       });
-      this._blobs.addPeer(contact.id, fileSend);
 
       // Setup onmessage event
       let onmessage = (e) => {
-        this._decrypt(e.data, contact).then((syncMsg) => {
-          this.log('onmessage', syncMsg);
-          switch (syncMsg.msgType) {
-            case 'files':
-              this._blobs.receiveFile(contact.id, syncMsg.msg);
-              break;
-            default:
-              // automerge document
-              let fn = listeners[syncMsg.msgType];
-              if (fn) fn(syncMsg.msg);
-              break;
-          }
-        });
+        let decoded = deserialize(e.data); // msgType, msg
+        this.log('onmessage', decoded);
+        switch (decoded.msgType) {
+          case 'files':
+            this._decrypt(decoded.msg, contact).then((syncMsg) => {
+              this._blobs.receiveFile(contact.id, syncMsg);
+            });
+            break;
+          case 'automerge':
+            let msg = Uint8Array.from(decoded.msg.buffer);
+            let fn = listeners[decoded.docId];
+            if (fn) fn(msg);
+            break;
+        }
       };
       socket.addEventListener('message', onmessage);
 
@@ -666,13 +676,14 @@ export class Backchannel extends events.EventEmitter {
 
   private async _addMessage(msg: IMessage, contact: IContact) {
     let docId = contact.discoveryKey;
-    let changeMessage = msg.type;
+    let commitMessage = msg.type;
+    let encrypted = await this._encrypt(serialize(msg), contact);
     let res = await this.db.change<Mailbox>(
       docId,
       (doc: Mailbox) => {
-        doc.messages.push(msg);
+        doc.messages.push(encrypted);
       },
-      changeMessage
+      commitMessage
     );
     return res;
   }

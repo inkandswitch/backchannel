@@ -47,7 +47,7 @@ function multidevice(done) {
       let synced_bob = android.db.getContactById(alices_bob.id);
       expect(synced_bob.key).toBe(alices_bob.key);
 
-      let messages = android.getMessagesByContactId(alices_bob.id);
+      let messages = await android.getMessagesByContactId(alices_bob.id);
       expect(messages).toStrictEqual([]);
 
       let msgText = 'hey alice';
@@ -59,8 +59,8 @@ function multidevice(done) {
       await bob.sendMessage(petalice_id, msgText);
 
       await allPatched;
-      let msgs = android.getMessagesByContactId(alices_bob.id);
-      let og = alice.getMessagesByContactId(alices_bob.id);
+      let msgs = await android.getMessagesByContactId(alices_bob.id);
+      let og = await alice.getMessagesByContactId(alices_bob.id);
       expect(msgs).toStrictEqual(og);
 
       done({
@@ -149,8 +149,8 @@ test('getMessagesByContactId', async () => {
   let msgs = ['hey .... whats up', 'h4x the planet', 'ok bob'];
 
   let contact = bob.db.getContactById(petalice_id);
-  msgs.map((msg) => bob.sendMessage(contact.id, msg));
-  let messages = bob.getMessagesByContactId(petalice_id);
+  await Promise.all(msgs.map((msg) => bob.sendMessage(contact.id, msg)));
+  let messages = await bob.getMessagesByContactId(petalice_id);
   expect(messages.length).toBe(msgs.length);
 });
 
@@ -168,7 +168,7 @@ test('integration send a message', async () => {
   let p = onmessage(bob, docId);
   await alice.sendMessage(outgoing.contact, outgoing.text);
   await p;
-  let messages = bob.getMessagesByContactId(petalice_id);
+  let messages = await bob.getMessagesByContactId(petalice_id);
   expect(messages.length).toBe(1);
   expect(messages[0].text).toBe(outgoing.text);
 });
@@ -255,7 +255,7 @@ test('integration send multiple messages', async () => {
   await alice.sendMessage(outgoing.contact, outgoing.text);
   await p;
 
-  let messages = bob.getMessagesByContactId(petalice_id);
+  let messages = await bob.getMessagesByContactId(petalice_id);
   expect(messages.length).toBe(1);
 
   p = onmessage(alice, docId);
@@ -263,10 +263,10 @@ test('integration send multiple messages', async () => {
   await p;
 
   docId = alice.db.getContactById(petbob_id).discoveryKey;
-  let alices = alice.getMessagesByContactId(petbob_id);
+  let alices = await alice.getMessagesByContactId(petbob_id);
   expect(alices[0].text).toBe(outgoing.text);
   expect(alices[1].text).toBe(response.text);
-  let bobs = bob.getMessagesByContactId(petalice_id);
+  let bobs = await bob.getMessagesByContactId(petalice_id);
   expect(alices).toStrictEqual(bobs);
 });
 

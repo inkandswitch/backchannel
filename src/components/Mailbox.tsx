@@ -19,6 +19,8 @@ import { ReactComponent as Dots } from '../components/icons/Dots.svg';
 import { ReactComponent as Paperclip } from '../components/icons/Paperclip.svg';
 import { ReactComponent as Paperplane } from '../components/icons/Paperplane.svg';
 import IndicatorDot, { StatusType } from './IndicatorDot';
+import { EncryptedProtocolMessage } from '../backend/crypto';
+import { IMessage } from '../backend/types';
 
 let backchannel = Backchannel();
 const PADDING_CHAT = 12;
@@ -65,11 +67,12 @@ export default function Mailbox(props: Props) {
       }
     }
 
-    let subscribeToConnections = () => {
-      let messages = backchannel.getMessagesByContactId(contactId);
-      setMessages(messages);
+    let subscribeToConnections = async () => {
       backchannel.on(EVENTS.CONTACT_CONNECTED, onContact);
       backchannel.on(EVENTS.CONTACT_DISCONNECTED, onContactDisconnected);
+      backchannel.getMessagesByContactId(contactId).then((messages) => {
+        setMessages(messages);
+      });
     };
 
     subscribeToConnections();
@@ -85,8 +88,9 @@ export default function Mailbox(props: Props) {
 
   useEffect(() => {
     function refreshMessages() {
-      let messages = backchannel.getMessagesByContactId(contactId);
-      setMessages(messages);
+      backchannel.getMessagesByContactId(contactId).then((messages) => {
+        setMessages(messages);
+      });
     }
 
     let onMessage = ({ docId }) => {
@@ -252,7 +256,7 @@ export default function Mailbox(props: Props) {
             padding: 0;
           `}
         >
-          {messages.map((message) => {
+          {messages.map((message: IMessage) => {
             message.incoming = contactId !== message.target;
             return (
               <li

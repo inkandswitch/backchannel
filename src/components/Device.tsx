@@ -100,12 +100,10 @@ export function UnlinkDevices() {
   useEffect(() => {
     if (backchannel.devices.length) {
       for (let device of backchannel.devices) {
-        let messages = backchannel.getMessagesByContactId(device.id);
-        let maybe_tombstone = messages.pop();
-        if (maybe_tombstone?.type === MessageType.TOMBSTONE) {
+        backchannel.hasTombstone(device).then((hasTombstone) => {
           setLoading(true);
           onTombstone(device);
-        }
+        });
       }
     }
   }, []);

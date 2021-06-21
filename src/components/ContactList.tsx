@@ -26,6 +26,7 @@ import { ReactComponent as Envelope } from './icons/Envelope.svg';
 import { ReactComponent as NavCurve } from './icons/NavCurve.svg';
 import * as storage from './storage';
 import IndicatorDot, { StatusType } from './IndicatorDot';
+import { EncryptedProtocolMessage } from '../backend/crypto';
 
 let backchannel = Backchannel();
 const APP_INITIATION_ANIMATION_MS = 2300;
@@ -80,15 +81,15 @@ export default function ContactList(props) {
         setAcknowledged(dismissedWelcome);
       }
       contacts.forEach(async (contact) => {
-        let messages = backchannel.getMessagesByContactId(contact.id);
+        let messages = await backchannel.getMessagesByContactId(contact.id);
 
         if (!messages) {
           let doc = (await backchannel._addContactDocument(
             contact
           )) as Automerge.Doc<Mailbox>;
-          messages = doc.messages;
+          messages = await backchannel.getMessagesByContactId(contact.id);
         }
-        const lastMessage: IMessage = messages[messages.length - 1];
+        const lastMessage = messages[messages.length - 1];
         setLatestMessages((latestMessages) => ({
           ...latestMessages,
           [contact.id]: lastMessage,
