@@ -4,8 +4,6 @@ import { css } from '@emotion/react/macro';
 import { Link } from 'wouter';
 import Backchannel, { EVENTS } from '../backend';
 import { color, fontSize } from './tokens';
-import Automerge from 'automerge';
-import { Mailbox } from '../backend/backchannel';
 import { timestampToDate } from './util';
 import {
   BottomNav,

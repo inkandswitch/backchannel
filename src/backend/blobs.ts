@@ -98,7 +98,7 @@ export class Blobs extends EventEmitter {
         )
       );
       let reader;
-      if (!file.stream) {
+      if (file.stream) {
         reader = file.stream().getReader();
       } else {
         reader = this._read(file);

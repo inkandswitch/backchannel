@@ -1,13 +1,14 @@
 import { Backchannel, EVENTS } from './backchannel';
 import { generateKey } from './crypto';
 import { randomBytes } from 'crypto';
-import { DiscoveryKey } from './types';
+import { FileProgress } from './blobs';
+import { FileState } from './types';
 
 let doc,
   petbob_id,
   android_id,
   petalice_id = null;
-let alice, bob, android: Backchannel;
+let alice, bob: Backchannel, android: Backchannel;
 let server,
   port = 3001;
 let relay = `ws://localhost:${port}`;
@@ -21,6 +22,18 @@ async function connected(device: Backchannel, id: string) {
   device.connectToContactId(id);
   return p;
 }
+
+async function ondownload(d) {
+  return new Promise<void>((resolve) => {
+    let onPatch = async (event: FileProgress) => {
+      d.removeListener(EVENTS.FILE_DOWNLOAD, onPatch);
+      resolve();
+    };
+    d.on(EVENTS.FILE_DOWNLOAD, onPatch);
+  });
+}
+
+
 
 async function onmessage(device, id) {
   return new Promise<any>((resolve) => {
@@ -262,12 +275,19 @@ test('integration send multiple messages', async () => {
   await bob.sendMessage(response.contact, response.text);
   await p;
 
+  p = ondownload(alice)
+  let blob = new File(['test text'], 'boop.txt', { type: 'text/plain'})
+  await bob.sendFile(petalice_id, blob);
+  await p;
+
   docId = alice.db.getContactById(petbob_id).discoveryKey;
   let alices = await alice.getMessagesByContactId(petbob_id);
   expect(alices[0].text).toBe(outgoing.text);
   expect(alices[1].text).toBe(response.text);
   let bobs = await bob.getMessagesByContactId(petalice_id);
   expect(alices).toStrictEqual(bobs);
+  expect(alices[2].state).toEqual(FileState.SUCCESS)
+  expect(bobs[2].state).toEqual(FileState.SUCCESS)
 });
 
 test('unlink device', (done) => {

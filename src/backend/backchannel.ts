@@ -100,8 +100,8 @@ export class Backchannel extends events.EventEmitter {
       this.emit(EVENTS.FILE_SENT, p);
     });
 
-    this._blobs.on('download', (p: FileProgress) => {
-      this._updateFileState(p.id, p.contactId, FileState.SUCCESS);
+    this._blobs.on('download', async (p: FileProgress) => {
+      await this._updateFileState(p.id, p.contactId, FileState.SUCCESS);
       this.db.saveBlob(p.id, p.data);
       this.emit(EVENTS.FILE_DOWNLOAD, p);
     });
@@ -110,7 +110,7 @@ export class Backchannel extends events.EventEmitter {
       changes.forEach((c) => {
         let change = Automerge.decodeChange(c);
 
-        if (change.message === MessageType.TEXT) {
+        if (change.message === MessageType.TEXT || change.message === MessageType.FILE) {
           let contact = this.db.getContactByDiscoveryKey(docId);
           this.emit(EVENTS.MESSAGE, { contactId: contact.id, docId });
         }
@@ -392,7 +392,7 @@ export class Backchannel extends events.EventEmitter {
     return msg;
   }
 
-  async sendFile(contactId: ContactId, file: File): Promise<FileMessage> {
+  async createFileMessage(contactId: ContactId, file: File): Promise<FileMessage> {
     let msg: FileMessage = {
       id: uuid(),
       target: contactId,
@@ -406,6 +406,11 @@ export class Backchannel extends events.EventEmitter {
     };
     let contact = this.db.getContactById(contactId);
     await this._addMessage(msg, contact);
+    return msg
+  }
+
+  async sendFile(msg: FileMessage, file: File): Promise<FileMessage> {
+    let contactId = msg.target
     let meta = {
       id: msg.id,
       lastModified: msg.lastModified,
@@ -415,14 +420,13 @@ export class Backchannel extends events.EventEmitter {
     };
     try {
       let sent = await this._blobs.sendFile({
-        contactId: contact.id,
+        contactId,
         meta,
         file,
       });
-
       await this._updateFileState(
         msg.id,
-        contact.id,
+        contactId,
         sent ? FileState.SUCCESS : FileState.QUEUED
       );
     } catch (err) {
@@ -539,6 +543,13 @@ export class Backchannel extends events.EventEmitter {
     return Uint8Array.from(Buffer.from(plainText, 'hex'));
   }
 
+  async encryptMessage(
+    msg: IMessage,
+    contact: IContact
+  ): Promise<EncryptedProtocolMessage> {
+    return this._encrypt(serialize(msg), contact)
+  }
+
   async decryptMessage(
     cipher: EncryptedProtocolMessage,
     contact: IContact
@@ -570,11 +581,12 @@ export class Backchannel extends events.EventEmitter {
     socket.binaryType = 'arraybuffer';
     this.log('onpeer connect', documentId);
     try {
-      this._blobs.addPeer(contact.id, async (msg: Uint8Array) => {
-        let cipher = await this._encrypt(msg, contact);
-        let encoded = serialize({ msgType: 'files', msg: cipher });
-        if (isOpen(socket)) socket.send(encoded);
-        else throw new Error('SOCKET CLOSED');
+      this._blobs.addPeer(contact.id, (msg: Uint8Array) => {
+        this._encrypt(msg, contact).then(cipher => {
+          let encoded = serialize({ msgType: 'files', msg: cipher });
+          if (isOpen(socket)) socket.send(encoded);
+          else this.log('SOCKET CLOSED, no blob peer added');
+        })
       });
 
       let getAutomergeListener = (socket, docId, peerId) => {
@@ -583,7 +595,7 @@ export class Backchannel extends events.EventEmitter {
           // automerge wants you to encrypt inside the document
           // but not over the sync protocol.
           let encoded = serialize({ msgType, docId, msg });
-          socket.send(encoded);
+          if (isOpen(socket)) socket.send(encoded);
         };
         return this.db.onPeerConnect(peerId, docId, automergeSend);
       };
@@ -597,9 +609,9 @@ export class Backchannel extends events.EventEmitter {
       // Setup onmessage event
       let onmessage = (e) => {
         let decoded = deserialize(e.data); // msgType, msg
-        this.log('onmessage', decoded);
         switch (decoded.msgType) {
           case 'files':
+            this.log('onmessage', decoded);
             this._decrypt(decoded.msg, contact).then((syncMsg) => {
               this._blobs.receiveFile(contact.id, syncMsg);
             });
@@ -676,7 +688,7 @@ export class Backchannel extends events.EventEmitter {
   private async _addMessage(msg: IMessage, contact: IContact) {
     let docId = contact.discoveryKey;
     let commitMessage = msg.type;
-    let encrypted = await this._encrypt(serialize(msg), contact);
+    let encrypted = await this.encryptMessage(msg, contact);
     let res = await this.db.change<Mailbox>(
       docId,
       (doc: Mailbox) => {
@@ -698,12 +710,14 @@ export class Backchannel extends events.EventEmitter {
 
     let doc = this.db.getDocument(docId) as Automerge.Doc<Mailbox>
     return new Promise((resolve, reject) => {
-      doc.messages.map((cipher: EncryptedProtocolMessage, idx: number) => {
-        return this.decryptMessage(cipher, contact).then(message => {
+      doc.messages.forEach((cipher: EncryptedProtocolMessage, idx: number) => {
+        return this.decryptMessage(cipher, contact).then(async (message: FileMessage) => {
           if (message.id === msgId) {
+            let withState = { ...message, state }
+            let newMessage = await this.encryptMessage(withState, contact)
             this.db.change(docId, (doc: Mailbox) => {
               //@ts-ignore
-              doc.messages[idx].state = state
+              doc.messages[idx] = newMessage
             }).then(resolve).catch(reject);
           }
         })

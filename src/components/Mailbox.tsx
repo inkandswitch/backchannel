@@ -98,7 +98,9 @@ export default function Mailbox(props: Props) {
     };
 
     let onMessagesChanged = (progress: FileProgress) => {
+      console.log('got progress', progress)
       setProgress({ ...progress, [progress.id]: progress.progress });
+      refreshMessages();
     };
 
     refreshMessages();
@@ -133,10 +135,14 @@ export default function Mailbox(props: Props) {
     setMessageText(event.target.value);
   }
 
-  function uploadFiles(files: Array<File>) {
+  async function uploadFiles(files: Array<File>) {
     if (files.length !== 0) {
       for (let i = 0; i < files.length; i++) {
-        backchannel.sendFile(contactId, files[i]);
+        console.log('sent file')
+        let file = files[i]
+        let msg = await backchannel.createFileMessage(contactId, file)
+        setMessages(messages.concat(msg))
+        backchannel.sendFile(msg, file)
       }
     }
   }
@@ -375,6 +381,7 @@ type FileDownloaderProps = { progress: number; message: FileMessage };
 
 function FileDownloader(props: FileDownloaderProps) {
   let { progress, message } = props;
+  console.log(props.progress)
 
   let state = message.state;
   if (state !== FileState.ERROR) {
