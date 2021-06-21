@@ -1,6 +1,5 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState } from 'react';
-import { css } from '@emotion/react/macro';
 import { Link } from 'wouter';
 
 import config from '../backend/config';
@@ -82,11 +81,7 @@ export function RelaySettings() {
         <Instructions>
           This is Backchannel relay URL, you can also specify your own:
         </Instructions>
-        <SettingsContent
-          css={css`
-            max-width: unset;
-          `}
-        >
+        <SettingsContent>
           <UnderlineInput
             name="relay"
             onChange={updateValues}
