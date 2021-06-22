@@ -52,6 +52,7 @@ export const color = {
   codeShareToggleBackground: rawColor.darkestBlue,
   codeShareToggleBackgroundActive: rawColor.white,
   codeShareToggleText: rawColor.white,
+  deviceLinkToggleBackground: rawColor.darkBlue,
   nicknameToggleBackground: rawColor.darkBlue,
   chatSecondaryText: rawColor.lightPurple,
   warningText: rawColor.white,

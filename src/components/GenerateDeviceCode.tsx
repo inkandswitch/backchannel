@@ -6,14 +6,12 @@ import { useLocation } from 'wouter';
 import useCode, { CodeType } from '../hooks/useCode';
 import { copyToClipboard } from '../web';
 import { Button, Spinner, Toggle, ToggleWrapper, IconButton } from '.';
-import CodeView, {
-  AnimationMode,
-  codeViewAnimation,
-  useAnimation,
-} from './CodeView';
+import { AnimationMode } from './CodeView';
+import DeviceCodeView, { DeviceCodeLoading } from './DeviceCodeView';
 import { Key, ContactId } from '../backend/types';
 import { ReactComponent as Copy } from './icons/Copy.svg';
 import Backchannel from '../backend';
+import { color } from './tokens';
 
 let backchannel = Backchannel();
 
@@ -28,15 +26,14 @@ enum Tab {
   QRCODE = 'qrcode',
 }
 
-export default function GenerateCode() {
+export default function GenerateDeviceCode() {
   let [codeType, setCodeType] = useState<CodeType>(CodeType.WORDS);
   let [code, qrCode] = useCode(codeType, CODE_REGENERATE_TIMER_SEC);
 
-  let [tab, setTab] = useState<Tab>(Tab.WORDS);
+  let [tab, setTab] = useState<Tab>(Tab.QRCODE);
   let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
-  const [redirectUrl, setRedirectUrl] = useState<string>('');
-  const [animationMode, setAnimationMode] = useAnimation();
+  const [animationMode, setAnimationMode] = useState(AnimationMode.None);
 
   //eslint-disable-next-line
   let [location, setLocation] = useLocation();
@@ -68,11 +65,11 @@ export default function GenerateCode() {
           code,
           (CODE_REGENERATE_TIMER_SEC + 2) * 1000 // be permissive, give extra time to redeem after timeout ends
         );
+        setAnimationMode(AnimationMode.Connecting);
 
-        let cid: ContactId = await backchannel.addContact(key);
+        let deviceId: ContactId = await backchannel.addDevice(key);
         setErrorMsg('');
-        setAnimationMode(AnimationMode.Connected);
-        setRedirectUrl(`/contact/${cid}/add`);
+        setLocation(`/device/${deviceId}`);
       } catch (err) {
         if (err.message.startsWith('This code has expired')) {
           // TODO differentiate between an actual backend err (which should be displayed) vs the code timing out (which should happen quietly).
@@ -81,7 +78,7 @@ export default function GenerateCode() {
         }
       }
     },
-    [setRedirectUrl, setAnimationMode]
+    [setLocation, setAnimationMode]
   );
 
   // join backchannel when code regenerates
@@ -99,13 +96,12 @@ export default function GenerateCode() {
   }
 
   async function onClickShareURL() {
-    let url = window.location.origin + '/redeem/contact';
+    let url = window.location.origin + '/devices/redeem';
     if (sharable) {
       navigator
         .share({
-          title: 'Chat on backchannel',
-          text: `I want to chat with you securely with you on Backchannel. Go to ${url} and use the following invitation code: 
-          ${code}`,
+          title: 'Link devices on backchannel',
+          text: code,
         })
         .then(() => console.log('Successful share'))
         .catch((error) => console.log('Error sharing', error));
@@ -126,40 +122,39 @@ export default function GenerateCode() {
     };
   }
 
-  if (animationMode === AnimationMode.Redirect) {
-    setLocation(redirectUrl);
-  }
-
-  if (animationMode !== AnimationMode.None) {
-    return codeViewAnimation(animationMode);
+  if (animationMode === AnimationMode.Connecting) {
+    return <DeviceCodeLoading />;
   }
 
   return (
-    <CodeView
+    <DeviceCodeView
       header={
-        <ToggleWrapper>
+        <ToggleWrapper
+          css={css`
+            background: ${color.deviceLinkToggleBackground};
+          `}
+        >
           <Toggle
             onClick={handleToggleClick(Tab.WORDS, CodeType.WORDS)}
             isActive={tab === Tab.WORDS}
           >
-            Via text
+            Words
           </Toggle>
           <Toggle
             onClick={handleToggleClick(Tab.NUMBERS, CodeType.NUMBERS)}
             isActive={tab === Tab.NUMBERS}
           >
-            On a Call
+            Numbers
           </Toggle>
           <Toggle
             onClick={handleToggleClick(Tab.QRCODE)}
             isActive={tab === Tab.QRCODE}
           >
-            In person
+            QR Code
           </Toggle>
         </ToggleWrapper>
       }
-      instructions="Share this temporary invite with the other party. Once used, you’ll
-    be added as each other's contact."
+      instructions="Use this temporary code in Backchannel on the device you wish to synchronise the data with:"
       content={
         tab === Tab.QRCODE ? (
           <img src={qrCode} alt="Scan me with your camera" />

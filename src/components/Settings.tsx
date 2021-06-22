@@ -140,10 +140,10 @@ export function DevicesSettings() {
       <TopBar title="Synchronise devices" />
       <ContentWithTopNav>
         <SettingsContent>
-          <Link href="/generate/device">
+          <Link href="/devices/generate">
             <IconButton icon={PlusSmall}>Create sync code</IconButton>
           </Link>
-          <Link href="/redeem/device">
+          <Link href="/devices/redeem">
             <IconButton icon={EnvelopeSmall}>Use sync code</IconButton>
           </Link>
           <Link href="/settings/unlink">

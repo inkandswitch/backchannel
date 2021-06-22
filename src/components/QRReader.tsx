@@ -100,13 +100,15 @@ export default class QRReader extends React.Component<QRReaderProps> {
       case QRState.ERROR:
         message = (
           <>
-            <span>
+            <div
+              css={css`
+                margin-bottom: 20px;
+              `}
+            >
               Unable to access video stream. Please make sure you have a webcam
               enabled.
-            </span>
-            <div>
-              <Button onClick={this.requestCamera}>Try Again</Button>
             </div>
+            <Button onClick={this.requestCamera}>Try Again</Button>
           </>
         );
         break;
@@ -115,7 +117,7 @@ export default class QRReader extends React.Component<QRReaderProps> {
         break;
     }
     return (
-      <div>
+      <>
         {message}
         <canvas
           css={css`
@@ -124,7 +126,7 @@ export default class QRReader extends React.Component<QRReaderProps> {
           `}
           id="qrCanvas"
         />
-      </div>
+      </>
     );
   }
 }

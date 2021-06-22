@@ -4,15 +4,13 @@ import { css } from '@emotion/react/macro';
 import { useLocation } from 'wouter';
 
 import { UnderlineInput, Toggle, ToggleWrapper, IconButton } from '.';
-import CodeView, {
-  AnimationMode,
-  codeViewAnimation,
-  useAnimation,
-} from './CodeView';
+import { AnimationMode } from './CodeView';
+import DeviceCodeView, { DeviceCodeLoading } from './DeviceCodeView';
 import { Key, ContactId } from '../backend/types';
 import QRReader from './QRReader';
-import { ReactComponent as People } from './icons/People.svg';
+import { ReactComponent as CloudCycleSmall } from './icons/CloudCycleSmall.svg';
 import Backchannel from '../backend';
+import { color } from './tokens';
 
 let backchannel = Backchannel();
 
@@ -21,13 +19,12 @@ enum Tab {
   SCAN,
 }
 
-export default function RedeemCode() {
+export default function RedeemDeviceCode() {
   let [code, setCode] = useState('');
+  const [animationMode, setAnimationMode] = useState(AnimationMode.None);
 
-  let [tab, setTab] = useState<Tab>(Tab.INPUT);
+  let [tab, setTab] = useState<Tab>(Tab.SCAN);
   let [errorMsg, setErrorMsg] = useState('');
-  const [redirectUrl, setRedirectUrl] = useState<string>('');
-  const [animationMode, setAnimationMode] = useAnimation();
 
   //eslint-disable-next-line
   let [location, setLocation] = useLocation();
@@ -45,17 +42,16 @@ export default function RedeemCode() {
         setAnimationMode(AnimationMode.Connecting);
         let key: Key = await backchannel.accept(code);
 
-        let cid: ContactId = await backchannel.addContact(key);
+        let deviceId: ContactId = await backchannel.addDevice(key);
         setErrorMsg('');
-        setAnimationMode(AnimationMode.Connected);
-        setRedirectUrl(`/contact/${cid}/add`);
+        setLocation(`/device/${deviceId}`);
       } catch (err) {
         console.log('got error', err);
         onError(err);
         setCode('');
       }
     },
-    [animationMode, setRedirectUrl, setAnimationMode]
+    [animationMode, setLocation, setAnimationMode]
   );
 
   // attempt to redeem code if it's in the url hash
@@ -86,18 +82,18 @@ export default function RedeemCode() {
     await redeemCode(code);
   }
 
-  if (animationMode === AnimationMode.Redirect) {
-    setLocation(redirectUrl);
-  }
-
-  if (animationMode !== AnimationMode.None) {
-    return codeViewAnimation(animationMode);
+  if (animationMode === AnimationMode.Connecting) {
+    return <DeviceCodeLoading />;
   }
 
   return (
-    <CodeView
+    <DeviceCodeView
       header={
-        <ToggleWrapper>
+        <ToggleWrapper
+          css={css`
+            background: ${color.deviceLinkToggleBackground};
+          `}
+        >
           <Toggle
             onClick={handleToggleClick(Tab.INPUT)}
             isActive={tab === Tab.INPUT}
@@ -112,8 +108,7 @@ export default function RedeemCode() {
           </Toggle>
         </ToggleWrapper>
       }
-      instructions="Enter the invite you were given by the other party. You’ll be added as
-      each other's contact."
+      instructions="Enter the temporary code you created on the other device:"
       content={
         tab === Tab.SCAN ? (
           <QRReader onFind={handleScanQRCode} />
@@ -138,12 +133,12 @@ export default function RedeemCode() {
         tab !== Tab.SCAN && (
           <IconButton
             onClick={handleClickRedeem}
-            icon={People}
+            icon={CloudCycleSmall}
             form="code-input"
             type="submit"
             disabled={code.length === 0}
           >
-            Add Contact
+            Synchronise devices
           </IconButton>
         )
       }
