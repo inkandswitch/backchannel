@@ -6,7 +6,7 @@ import Automerge from 'automerge';
 import { v4 as uuid } from 'uuid';
 import { serialize, deserialize } from 'bson';
 
-import { ContactList, Database } from './db';
+import { ContactList, CONTACT_LIST, Database } from './db';
 import { FileProgress, Blobs } from './blobs';
 import {
   DocumentId,
@@ -596,10 +596,13 @@ export class Backchannel extends events.EventEmitter {
       });
 
       let getAutomergeListener = (socket, docId, peerId) => {
-        let automergeSend = (msg: Uint8Array) => {
+        let automergeSend = async (syncMsg: Uint8Array) => {
           let msgType = 'automerge';
-          // automerge wants you to encrypt inside the document
-          // but not over the sync protocol.
+          // mailbox will encrypt inside the document
+          // but contact list encrypts over the sync protocol.
+          let msg = (docId === CONTACT_LIST)
+            ? await this._encrypt(syncMsg, contact)
+            : syncMsg;
           let encoded = serialize({ msgType, docId, msg });
           if (isOpen(socket)) socket.send(encoded);
         };
@@ -613,7 +616,7 @@ export class Backchannel extends events.EventEmitter {
       });
 
       // Setup onmessage event
-      let onmessage = (e) => {
+      let onmessage = async (e) => {
         let decoded = deserialize(e.data); // msgType, msg
         switch (decoded.msgType) {
           case 'files':
@@ -623,7 +626,9 @@ export class Backchannel extends events.EventEmitter {
             });
             break;
           case 'automerge':
-            let msg = Uint8Array.from(decoded.msg.buffer);
+            let msg = (decoded.docId === CONTACT_LIST)
+              ? await this._decrypt(decoded.msg, contact)
+              : Uint8Array.from(decoded.msg.buffer);
             let fn = listeners[decoded.docId];
             if (fn) fn(msg);
             break;

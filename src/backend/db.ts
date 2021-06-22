@@ -9,6 +9,7 @@ import { Key, ContactId, IContact, IDevice } from './types';
 import { MultipleDocuments, ReceiveSyncMsg } from 'automerge-sync';
 import { DB } from './automerge-db';
 import { randomBytes } from 'crypto';
+import { symmetric } from './crypto';
 
 type DocumentId = string;
 
@@ -26,8 +27,8 @@ export interface DeviceList {
   devices: Automerge.List<IDevice>;
 }
 
-const CONTACT_LIST = 'BACKCHANNEL_ROOT_DOCUMENT';
-const DEVICE_LIST = 'BACKCHANNEL_DEVICE_LIST';
+export const CONTACT_LIST = 'BACKCHANNEL_ROOT_DOCUMENT';
+export const DEVICE_LIST = 'BACKCHANNEL_DEVICE_LIST';
 
 export class Database<T> extends EventEmitter {
   public onContactListChange: Function;
@@ -74,10 +75,6 @@ export class Database<T> extends EventEmitter {
 
   get all() {
     return Array.from(this.root.contacts).concat(this.devices);
-  }
-
-  set root(doc: Automerge.Doc<ContactList>) {
-    this.syncer.add(CONTACT_LIST, doc);
   }
 
   get root(): Automerge.Doc<ContactList> {
