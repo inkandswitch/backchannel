@@ -5,10 +5,18 @@ import { css } from '@emotion/react/macro';
 import { useLocation } from 'wouter';
 
 import { color } from './tokens';
-import { Button, Instructions, Spinner, Page, TopBar } from '.';
+import {
+  Button,
+  Instructions,
+  Spinner,
+  Page,
+  TopBar,
+  IconWithMessage,
+} from '.';
 import { ContactId, MessageType } from '../backend/types';
 import { ReactComponent as Checkmark } from './icons/Checkmark.svg';
 import { ContentWithTopNav, SettingsContent } from './index';
+import DeviceCodeView from './DeviceCodeView';
 
 let backchannel = Backchannel();
 
@@ -16,7 +24,7 @@ type Props = {
   deviceId: ContactId;
 };
 
-function Done({ message }) {
+function Status({ loadingMessage = '', message = '', isLoading = false }) {
   let [, setLocation] = useLocation();
 
   return (
@@ -26,15 +34,19 @@ function Done({ message }) {
         color: ${color.textSecondary};
       `}
     >
-      <Checkmark />
-      <div
+      {' '}
+      <IconWithMessage
+        icon={isLoading ? Spinner : Checkmark}
+        text={isLoading ? loadingMessage : message}
+      />
+      <Button
         css={css`
-          margin: 20px;
+          opacity: ${isLoading ? 0 : 1};
         `}
+        onClick={() => setLocation('/')}
       >
-        {message}
-      </div>
-      <Button onClick={() => setLocation('/')}>OK</Button>
+        OK
+      </Button>
     </div>
   );
 }
@@ -53,7 +65,6 @@ export function Device({ deviceId }: Props) {
       // if the device is connected for 10 seconds but still doesn't
       // get the CONTACT_LIST_SYNC event, we assume it's already up to date
       setTimeout((_) => {
-        console.log('boop', loading);
         if (loading === true) setLoading(false);
       }, 1000);
     };
@@ -67,17 +78,15 @@ export function Device({ deviceId }: Props) {
   }, [device, loading, deviceId]);
 
   return (
-    <Page>
-      <TopBar></TopBar>
-      <ContentWithTopNav
-        css={css`
-          justify-content: center;
-          margin: auto;
-        `}
-      >
-        {loading ? <Spinner /> : <Done message={'Device Syncronized!'} />}
-      </ContentWithTopNav>
-    </Page>
+    <DeviceCodeView
+      content={
+        <Status
+          isLoading={loading}
+          message="Devices linked"
+          loadingMessage="Searching for device"
+        />
+      }
+    />
   );
 }
 
@@ -153,7 +162,7 @@ export function UnlinkDevices() {
       </SettingsContent>
     </>
   );
-  if (devices === 0) body = <Done message={'You have no linked devices'} />;
+  if (devices === 0) body = <Status message={'You have no linked devices'} />;
   else if (loading) {
     body = (
       <>
@@ -167,7 +176,7 @@ export function UnlinkDevices() {
       </>
     );
     if (acks === devices) {
-      body = <Done message={'All devices unlinked!'} />;
+      body = <Status message={'All devices unlinked!'} />;
     }
   }
 

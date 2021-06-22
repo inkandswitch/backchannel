@@ -326,7 +326,7 @@ export default function ContactList(props) {
             `}
           >
             <LinkWrapper>
-              <Link href="/generate/contact">
+              <Link href="/generate">
                 <InviteButton>
                   <Plus />
                 </InviteButton>
@@ -334,7 +334,7 @@ export default function ContactList(props) {
               Create invite
             </LinkWrapper>
             <LinkWrapper>
-              <Link href="/redeem/contact">
+              <Link href="/redeem">
                 <InviteButton>
                   <Envelope />
                 </InviteButton>
