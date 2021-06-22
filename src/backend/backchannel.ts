@@ -224,19 +224,19 @@ export class Backchannel extends events.EventEmitter {
    */
   async accept(code: Code, timeout = 60000): Promise<ContactId> {
     let sanitizedCode = code.toLowerCase().trim();
+    let [nameplate, password] = this.codeToParts(sanitizedCode);
     let TWENTY_SECONDS = timeout;
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
-        this._wormhole.leave(sanitizedCode);
+        this._wormhole.leave(nameplate);
         reject(
           new Error(`This code has expired. Try again with a different one.`)
         );
       }, TWENTY_SECONDS);
       try {
-        let key: Key = await this._wormhole.accept(sanitizedCode);
+        let key: Key = await this._wormhole.accept(nameplate, password);
         return resolve(key);
       } catch (err) {
-        this._wormhole.leave(sanitizedCode);
         reject(
           new Error(
             'Secure connection failed. Did you type the code correctly? Try again.'
@@ -377,6 +377,19 @@ export class Backchannel extends events.EventEmitter {
     let contact = this.db.getContactById(contactId);
     await this._addMessage(msg, contact);
     return msg;
+  }
+
+  /**
+   * Turn a code into it's parts
+   * @param code
+   * @returns An array of two strings, [nameplate, password]
+   */
+  codeToParts(code: string): [string, string] {
+    let parts = code.split('-');
+    let nameplate = parts.shift();
+    let discoveryKey = `wormhole-${nameplate}`;
+    let password = parts.join('-');
+    return [discoveryKey, password];
   }
 
   async sendFile(contactId: ContactId, file: File): Promise<FileMessage> {
