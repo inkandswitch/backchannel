@@ -1,6 +1,5 @@
 import { Client } from '@localfirst/relay-client';
 import events from 'events';
-import catnames from 'cat-names';
 import debug from 'debug';
 import Automerge from 'automerge';
 import { v4 as uuid } from 'uuid';
@@ -285,7 +284,7 @@ export class Backchannel extends events.EventEmitter {
   }
 
   async _addContact(key: Key, device?: boolean): Promise<ContactId> {
-    let moniker = catnames.random();
+    let moniker = 'UNKNOWN CONTACT!'
     let id;
     if (device) {
       id = await this.db.addDevice(key);
