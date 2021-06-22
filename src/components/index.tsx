@@ -304,6 +304,7 @@ export const Instructions = (props) => (
       font-size: ${fontSize[1]}px;
       margin: 18px 18px 0;
       flex: 0 0 auto;
+      text-align: center;
     `}
     {...props}
   />
@@ -345,8 +346,9 @@ export const Message = (props) => (
   <div
     css={css`
       height: 24px;
-      margin: 16px 0;
+      margin: 16px 24px;
       color: ${color.textBold};
+      text-align: center;
     `}
     {...props}
   />

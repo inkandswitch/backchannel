@@ -5,25 +5,14 @@ import { useLocation } from 'wouter';
 
 import useCode, { CodeType } from '../hooks/useCode';
 import { copyToClipboard } from '../web';
-import {
-  Button,
-  ContentWithTopNav,
-  Instructions,
-  CodeDisplayOrInput,
-  BottomActions,
-  Message,
-  Page,
-  Spinner,
-  IconWithMessage,
-  TopBar,
-  Toggle,
-  ToggleWrapper,
-  IconButton,
-} from '.';
+import { Button, Spinner, Toggle, ToggleWrapper, IconButton } from '.';
+import CodeView, {
+  AnimationMode,
+  codeViewAnimation,
+  useAnimation,
+} from './CodeView';
 import { Key, ContactId } from '../backend/types';
-import { color } from './tokens';
 import { ReactComponent as Copy } from './icons/Copy.svg';
-import { ReactComponent as Checkmark } from './icons/Checkmark.svg';
 import Backchannel from '../backend';
 
 let backchannel = Backchannel();
@@ -38,12 +27,6 @@ enum Tab {
   NUMBERS = 'numbers',
   QRCODE = 'qrcode',
 }
-enum AnimationMode {
-  None = 0,
-  Connecting = 1,
-  Connected = 2,
-  Redirecting = 3,
-}
 
 type Props = {
   object: string;
@@ -51,14 +34,14 @@ type Props = {
 
 export default function GenerateCode({ object }: Props) {
   let [codeType, setCodeType] = useState<CodeType>(CodeType.WORDS);
+  let [code, qrCode] = useCode(codeType, CODE_REGENERATE_TIMER_SEC);
+
   let [tab, setTab] = useState<Tab>(Tab.WORDS);
   let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
-  let [code, qrCode] = useCode(codeType, CODE_REGENERATE_TIMER_SEC);
   const [redirectUrl, setRedirectUrl] = useState<string>('');
-  const [animationMode, setAnimationMode] = useState<AnimationMode>(
-    AnimationMode.None
-  );
+  const [animationMode, setAnimationMode] = useAnimation();
+
   //eslint-disable-next-line
   let [location, setLocation] = useLocation();
 
@@ -75,15 +58,15 @@ export default function GenerateCode({ object }: Props) {
     }
   }, [message]);
 
-  let onError = (err: Error) => {
-    console.error('got error from backend', err);
-    setAnimationMode(AnimationMode.None);
-    setErrorMsg(err.message);
-  };
-
   // Generate a new code and wait for other party to enter the code.
   let redeemGeneratedCode = useCallback(
     async (code) => {
+      const onError = (err: Error) => {
+        console.error('got error from backend', err);
+        setAnimationMode(AnimationMode.None);
+        setErrorMsg(err.message);
+      };
+
       try {
         let key: Key = await backchannel.accept(
           code,
@@ -109,7 +92,7 @@ export default function GenerateCode({ object }: Props) {
         }
       }
     },
-    [setRedirectUrl, object]
+    [setRedirectUrl, object, setAnimationMode]
   );
 
   // join backchannel when code regenerates
@@ -118,23 +101,6 @@ export default function GenerateCode({ object }: Props) {
       redeemGeneratedCode(code);
     }
   }, [code, redeemGeneratedCode]);
-
-  // Move from one animation step to the next
-  useEffect(() => {
-    let timeoutId;
-    switch (animationMode) {
-      case AnimationMode.Connected:
-        timeoutId = setTimeout(() => {
-          setAnimationMode((mode) => mode + 1);
-        }, 2000);
-        return () => clearTimeout(timeoutId);
-      case AnimationMode.Redirecting:
-        timeoutId = setTimeout(() => {
-          setLocation(redirectUrl);
-        }, 3000);
-        return () => clearTimeout(timeoutId);
-    }
-  }, [animationMode, redirectUrl, setLocation]);
 
   async function onClickCopy() {
     const copySuccess = await copyToClipboard(code);
@@ -171,81 +137,17 @@ export default function GenerateCode({ object }: Props) {
     };
   }
 
-  switch (animationMode) {
-    case AnimationMode.Connecting:
-      // Show connection loading page
-      return (
-        <Page>
-          <TopBar />
-          <ContentWithTopNav
-            css={css`
-              background: ${color.codeShareBackground};
-            `}
-          >
-            <CodeDisplayOrInput>
-              <IconWithMessage icon={Spinner} text="Connecting" />
-            </CodeDisplayOrInput>
-            <BottomActions
-              css={css`
-                height: 76px;
-              `}
-            />
-          </ContentWithTopNav>
-        </Page>
-      );
+  if (animationMode === AnimationMode.Redirect) {
+    setLocation(redirectUrl);
+  }
 
-    case AnimationMode.Connected:
-      // Show successful connection message
-      return (
-        <Page>
-          <TopBar />
-          <ContentWithTopNav
-            css={css`
-              background: ${color.codeShareBackground};
-            `}
-          >
-            <CodeDisplayOrInput>
-              <IconWithMessage
-                icon={Checkmark}
-                text={`${
-                  object === 'device' ? 'Device' : 'Correspondant'
-                } found`}
-              />
-            </CodeDisplayOrInput>
-            <BottomActions
-              css={css`
-                height: 76px;
-              `}
-            />
-          </ContentWithTopNav>
-        </Page>
-      );
-    case AnimationMode.Redirecting:
-      // Redirect to the contact/device naming step
-      return (
-        <Page>
-          <TopBar />
-          <ContentWithTopNav
-            css={css`
-              background: ${color.codeShareBackground};
-            `}
-          >
-            <CodeDisplayOrInput>
-              <IconWithMessage icon={Spinner} text="Creating Secure Channel" />
-            </CodeDisplayOrInput>
-            <BottomActions
-              css={css`
-                height: 76px;
-              `}
-            />
-          </ContentWithTopNav>
-        </Page>
-      );
+  if (animationMode !== AnimationMode.None) {
+    return codeViewAnimation(animationMode);
   }
 
   return (
-    <Page>
-      <TopBar>
+    <CodeView
+      header={
         <ToggleWrapper>
           <Toggle
             onClick={handleToggleClick(Tab.WORDS, CodeType.WORDS)}
@@ -266,57 +168,40 @@ export default function GenerateCode({ object }: Props) {
             In person
           </Toggle>
         </ToggleWrapper>
-        <div
-          css={css`
-            width: 50px;
-          `}
-        />
-      </TopBar>
-      <ContentWithTopNav
-        css={css`
-          background: ${color.codeShareBackground};
-          text-align: center;
-        `}
-      >
-        <React.Fragment>
-          <Instructions>
-            Share this temporary invite with the other party. Once used, you’ll
-            be added as each other's contact.
-          </Instructions>
-          <CodeDisplayOrInput>
-            {tab === Tab.QRCODE ? (
-              <img src={qrCode} alt="Scan me with your camera" />
-            ) : code ? (
-              code
-            ) : (
-              <Spinner />
+      }
+      instructions="Share this temporary invite with the other party. Once used, you’ll
+    be added as each other's contact."
+      content={
+        tab === Tab.QRCODE ? (
+          <img src={qrCode} alt="Scan me with your camera" />
+        ) : code ? (
+          code
+        ) : (
+          <Spinner />
+        )
+      }
+      message={errorMsg || message}
+      footer={
+        tab !== Tab.QRCODE && (
+          <>
+            <IconButton onClick={onClickCopy} icon={Copy}>
+              Copy invite
+            </IconButton>
+            {sharable && (
+              <Button
+                variant="transparent"
+                onClick={onClickShareURL}
+                css={css`
+                  margin: 16px;
+                  margin-bottom: 24px;
+                `}
+              >
+                Share
+              </Button>
             )}
-            <Message>{errorMsg}</Message>
-          </CodeDisplayOrInput>
-          <BottomActions>
-            <Message>{message}</Message>
-            {tab !== Tab.QRCODE && (
-              <>
-                <IconButton onClick={onClickCopy} icon={Copy}>
-                  Copy invite
-                </IconButton>
-                {sharable && (
-                  <Button
-                    variant="transparent"
-                    onClick={onClickShareURL}
-                    css={css`
-                      margin: 16px;
-                      margin-bottom: 24px;
-                    `}
-                  >
-                    Share
-                  </Button>
-                )}
-              </>
-            )}
-          </BottomActions>
-        </React.Fragment>
-      </ContentWithTopNav>
-    </Page>
+          </>
+        )
+      }
+    />
   );
 }

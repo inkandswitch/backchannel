@@ -3,26 +3,15 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { css } from '@emotion/react/macro';
 import { useLocation } from 'wouter';
 
-import {
-  ContentWithTopNav,
-  Instructions,
-  CodeDisplayOrInput,
-  BottomActions,
-  Message,
-  UnderlineInput,
-  Page,
-  Spinner,
-  IconWithMessage,
-  TopBar,
-  Toggle,
-  ToggleWrapper,
-  IconButton,
-} from '.';
+import { UnderlineInput, Toggle, ToggleWrapper, IconButton } from '.';
+import CodeView, {
+  AnimationMode,
+  codeViewAnimation,
+  useAnimation,
+} from './CodeView';
 import { Key, ContactId } from '../backend/types';
-import { color } from './tokens';
 import QRReader from './QRReader';
 import { ReactComponent as People } from './icons/People.svg';
-import { ReactComponent as Checkmark } from './icons/Checkmark.svg';
 import Backchannel from '../backend';
 
 let backchannel = Backchannel();
@@ -34,26 +23,20 @@ enum Tab {
   INPUT,
   SCAN,
 }
-enum AnimationMode {
-  None = 0,
-  Connecting = 1,
-  Connected = 2,
-  Redirecting = 3,
-}
 
 type Props = {
   object: string;
 };
 
 export default function RedeemCode({ object }: Props) {
-  let [tab, setTab] = useState<Tab>(Tab.INPUT);
   let [code, setCode] = useState('');
+
+  let [tab, setTab] = useState<Tab>(Tab.INPUT);
   let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
   const [redirectUrl, setRedirectUrl] = useState<string>('');
-  const [animationMode, setAnimationMode] = useState<AnimationMode>(
-    AnimationMode.None
-  );
+  const [animationMode, setAnimationMode] = useAnimation();
+
   //eslint-disable-next-line
   let [location, setLocation] = useLocation();
 
@@ -68,36 +51,14 @@ export default function RedeemCode({ object }: Props) {
     }
   }, [message]);
 
-  let onError = (err: Error) => {
-    console.error('got error from backend', err);
-    setAnimationMode(AnimationMode.Connecting);
-    setErrorMsg(err.message);
-  };
-
-  function handleInputChange(event) {
-    setErrorMsg('');
-    setCode(event.target.value);
-  }
-
-  // Move from one animation step to the next
-  useEffect(() => {
-    let timeoutId;
-    switch (animationMode) {
-      case AnimationMode.Connected:
-        timeoutId = setTimeout(() => {
-          setAnimationMode((mode) => mode + 1);
-        }, 2000);
-        return () => clearTimeout(timeoutId);
-      case AnimationMode.Redirecting:
-        timeoutId = setTimeout(() => {
-          setLocation(redirectUrl);
-        }, 3000);
-        return () => clearTimeout(timeoutId);
-    }
-  }, [animationMode, redirectUrl, setLocation]);
-
   let redeemCode = useCallback(
     async (code) => {
+      const onError = (err: Error) => {
+        console.error(err);
+        setAnimationMode(AnimationMode.Connecting);
+        setErrorMsg(err.message);
+      };
+
       if (animationMode === AnimationMode.Connecting) return;
       try {
         setAnimationMode(AnimationMode.Connecting);
@@ -121,7 +82,7 @@ export default function RedeemCode({ object }: Props) {
         setCode('');
       }
     },
-    [animationMode, object, setRedirectUrl]
+    [animationMode, object, setRedirectUrl, setAnimationMode]
   );
 
   // attempt to redeem code if it's in the url hash
@@ -132,97 +93,37 @@ export default function RedeemCode({ object }: Props) {
     }
   }, [code, redeemCode]);
 
-  // Enter backchannel from 'input' code view
-  async function onClickRedeem(e) {
-    e.preventDefault();
-    await redeemCode(code);
-  }
-
-  function onScanQRCode(value) {
-    window.location.href = value;
-  }
-
   function handleToggleClick(tab: Tab) {
     return () => {
       setTab(tab);
     };
   }
 
-  switch (animationMode) {
-    case AnimationMode.Connecting:
-      // Show connection loading page
-      return (
-        <Page>
-          <TopBar />
-          <ContentWithTopNav
-            css={css`
-              background: ${color.codeShareBackground};
-            `}
-          >
-            <CodeDisplayOrInput>
-              <IconWithMessage icon={Spinner} text="Connecting" />
-            </CodeDisplayOrInput>
-            <BottomActions
-              css={css`
-                height: 76px;
-              `}
-            />
-          </ContentWithTopNav>
-        </Page>
-      );
+  function handleScanQRCode(value) {
+    window.location.href = value;
+  }
 
-    case AnimationMode.Connected:
-      // Show successful connection message
-      return (
-        <Page>
-          <TopBar />
-          <ContentWithTopNav
-            css={css`
-              background: ${color.codeShareBackground};
-            `}
-          >
-            <CodeDisplayOrInput>
-              <IconWithMessage
-                icon={Checkmark}
-                text={`${
-                  object === 'device' ? 'Device' : 'Correspondant'
-                } found`}
-              />
-            </CodeDisplayOrInput>
-            <BottomActions
-              css={css`
-                height: 76px;
-              `}
-            />
-          </ContentWithTopNav>
-        </Page>
-      );
-    case AnimationMode.Redirecting:
-      // Redirect to the contact/device naming step
-      return (
-        <Page>
-          <TopBar />
-          <ContentWithTopNav
-            css={css`
-              background: ${color.codeShareBackground};
-            `}
-          >
-            <CodeDisplayOrInput>
-              <IconWithMessage icon={Spinner} text="Creating Secure Channel" />
-            </CodeDisplayOrInput>
-            <BottomActions
-              css={css`
-                height: 76px;
-              `}
-            />
-          </ContentWithTopNav>
-        </Page>
-      );
+  function handleInputChange(event) {
+    setErrorMsg('');
+    setCode(event.target.value);
+  }
+
+  async function handleClickRedeem(e) {
+    e.preventDefault();
+    await redeemCode(code);
+  }
+
+  if (animationMode === AnimationMode.Redirect) {
+    setLocation(redirectUrl);
+  }
+
+  if (animationMode !== AnimationMode.None) {
+    return codeViewAnimation(animationMode);
   }
 
   return (
-    <Page>
-      <TopBar>
+    <CodeView
+      header={
         <ToggleWrapper>
           <Toggle
             onClick={handleToggleClick(Tab.INPUT)}
@@ -237,57 +138,42 @@ export default function RedeemCode({ object }: Props) {
             Scan Invite
           </Toggle>
         </ToggleWrapper>
-
-        <div
-          css={css`
-            width: 50px;
-          `}
-        />
-      </TopBar>
-      <ContentWithTopNav
-        css={css`
-          background: ${color.codeShareBackground};
-          text-align: center;
-        `}
-      >
-        <Instructions>
-          Enter the invite you were given by the other party. You’ll be added as
-          each other's contact.
-        </Instructions>
-        <CodeDisplayOrInput>
-          {tab === Tab.SCAN ? (
-            <QRReader onFind={onScanQRCode} />
-          ) : (
-            <form id="code-input">
-              <UnderlineInput
-                value={code}
-                css={css`
-                  font-size: inherit;
-                  width: 100%;
-                  text-align: center;
-                `}
-                placeholder="Enter the code"
-                onChange={handleInputChange}
-                autoFocus
-              />
-            </form>
-          )}
-        </CodeDisplayOrInput>
-        <BottomActions>
-          <Message>{errorMsg || message}</Message>
-          {tab !== Tab.SCAN && (
-            <IconButton
-              onClick={onClickRedeem}
-              icon={People}
-              form="code-input"
-              type="submit"
-              disabled={code.length === 0}
-            >
-              Add {object}
-            </IconButton>
-          )}
-        </BottomActions>
-      </ContentWithTopNav>
-    </Page>
+      }
+      instructions="Enter the invite you were given by the other party. You’ll be added as
+      each other's contact."
+      content={
+        tab === Tab.SCAN ? (
+          <QRReader onFind={handleScanQRCode} />
+        ) : (
+          <form id="code-input">
+            <UnderlineInput
+              value={code}
+              css={css`
+                font-size: inherit;
+                width: 100%;
+                text-align: center;
+              `}
+              placeholder="Enter the code"
+              onChange={handleInputChange}
+              autoFocus
+            />
+          </form>
+        )
+      }
+      message={errorMsg || message}
+      footer={
+        tab !== Tab.SCAN && (
+          <IconButton
+            onClick={handleClickRedeem}
+            icon={People}
+            form="code-input"
+            type="submit"
+            disabled={code.length === 0}
+          >
+            Add {object}
+          </IconButton>
+        )
+      }
+    />
   );
 }
