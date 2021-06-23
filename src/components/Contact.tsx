@@ -4,28 +4,19 @@ import { css } from '@emotion/react/macro';
 import { useLocation } from 'wouter';
 import { ReactSketchCanvas } from 'react-sketch-canvas';
 
-import {
-  ContentWithTopNav,
-  Instructions,
-  CodeDisplayOrInput,
-  BottomActions,
-  Message,
-  UnderlineInput,
-  Page,
-  TopBar,
-  Toggle,
-  ToggleWrapper,
-  IconButton,
-} from './';
+import { UnderlineInput, Toggle, ToggleWrapper, IconButton } from './';
 import { color } from './tokens';
-import WormholePlaceholder from './images/WormholePlaceholder.png';
+import CodeView from './CodeView';
 import { ReactComponent as HatPerson } from './icons/HatPerson.svg';
 import { ContactId, IContact } from '../backend/types';
 import Backchannel from '../backend';
 
 let backchannel = Backchannel();
 
-type ViewType = 'write' | 'draw';
+enum Tab {
+  Write,
+  Draw,
+}
 
 type Props = {
   contactId: ContactId;
@@ -34,10 +25,9 @@ type Props = {
 export default function Contact({ contactId }: Props) {
   let [nickname, setNickname] = useState<string>('');
   let [contact, setContact] = useState<IContact>();
-  let [view, setView] = useState<ViewType>('draw');
+  let [tab, setTab] = useState<Tab>(Tab.Draw);
   let [errorMsg, setErrorMsg] = useState('');
-  //eslint-disable-next-line
-  let [_, setLocation] = useLocation();
+  let [, setLocation] = useLocation();
   const canvasRef = useRef(null);
 
   async function handleSaveNicknameDrawing(e) {
@@ -81,9 +71,10 @@ export default function Contact({ contactId }: Props) {
     setNickname(event.target.value);
   }
 
-  function handleToggleClick(e) {
-    e.preventDefault();
-    setView(e.target.name);
+  function handleToggleClick(tab: Tab) {
+    return () => {
+      setTab(tab);
+    };
   }
 
   let onError = (err: Error) => {
@@ -92,71 +83,39 @@ export default function Contact({ contactId }: Props) {
   };
 
   return (
-    <Page
-      css={css`
-        background-color: #001e93; /* TODO wormhole animation */
-        background-image: url('${WormholePlaceholder}'); /* TODO wormhole animation */
-        background-size: cover;
-        background-position: center;
-      `}
-    >
-      <TopBar
-        css={css`
-          background: none;
-        `}
-      />
-      <ContentWithTopNav
-        css={css`
-          text-align: center;
-        `}
-      >
-        <Message>{errorMsg}</Message>
-        <Instructions></Instructions>
-        <CodeDisplayOrInput
-          css={css`
-            justify-content: flex-start;
-          `}
-        >
-          <ToggleWrapper
-            css={css`
-              margin-bottom: 12px;
-              background: ${color.nicknameToggleBackground};
-            `}
+    <CodeView
+      header={
+        <ToggleWrapper>
+          <Toggle
+            name="write"
+            onClick={handleToggleClick(Tab.Write)}
+            isActive={tab === Tab.Write}
           >
-            <Toggle
-              name="write"
-              onClick={handleToggleClick}
-              isActive={view === 'write'}
-            >
-              Write
-            </Toggle>
-            <Toggle
-              name="draw"
-              onClick={handleToggleClick}
-              isActive={view === 'draw'}
-            >
-              Draw
-            </Toggle>
-          </ToggleWrapper>
-          {view === 'write' && (
+            Write
+          </Toggle>
+          <Toggle
+            name="draw"
+            onClick={handleToggleClick(Tab.Draw)}
+            isActive={tab === Tab.Draw}
+          >
+            Draw
+          </Toggle>
+        </ToggleWrapper>
+      }
+      content={
+        <>
+          {tab === Tab.Write && (
             <form
               css={css`
-                background: white;
                 padding: 22px 30px;
               `}
               id="input-nickname"
             >
               <UnderlineInput
                 css={css`
-                  border-bottom: 2px solid ${color.borderInverse};
-                  color: ${color.textInverse};
-                  font-family: monospace;
-                  padding: 2px 0;
-
-                  &:focus {
-                    border-bottom: 2px solid ${color.borderInverseFocus};
-                    transition: 0.2s;
-                  }
+                  font-size: inherit;
+                  width: 100%;
+                  text-align: center;
                 `}
                 type="text"
                 onChange={handleChange}
@@ -166,38 +125,50 @@ export default function Contact({ contactId }: Props) {
               />
             </form>
           )}
-          {view === 'draw' && (
+          {tab === Tab.Draw && (
             <div
               css={css`
-                background: white;
+                background: ${color.primary};
               `}
             >
-              {' '}
               <ReactSketchCanvas
+                css={css`
+                  border: none;
+                `}
                 width="400"
                 height="80"
                 strokeWidth={4}
-                strokeColor="black"
+                strokeColor="white"
+                canvasColor="none" // transparent
                 ref={canvasRef}
               />
             </div>
           )}
-        </CodeDisplayOrInput>
-        <BottomActions>
+        </>
+      }
+      message={errorMsg}
+      footer={
+        tab === Tab.Draw ? (
           <IconButton
-            onClick={
-              view === 'write'
-                ? handleSaveNicknameText
-                : handleSaveNicknameDrawing
-            }
+            onClick={handleSaveNicknameDrawing}
             type="submit"
             form="input-nickname"
             icon={HatPerson}
           >
             Confirm nickname
           </IconButton>
-        </BottomActions>
-      </ContentWithTopNav>
-    </Page>
+        ) : (
+          <IconButton
+            onClick={handleSaveNicknameText}
+            type="submit"
+            form="input-nickname"
+            icon={HatPerson}
+            disabled={nickname.length === 0}
+          >
+            Confirm nickname
+          </IconButton>
+        )
+      }
+    />
   );
 }
