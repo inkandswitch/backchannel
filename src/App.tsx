@@ -62,7 +62,12 @@ export default function App() {
         {(params) => <ContactSettings contactId={params.cid} />}
       </Route>
       <Route path="/contact/:cid/add">
-        {(params) => <Contact contactId={params.cid} />}
+        {(params) => <Contact contactId={params.cid} backHref={null} />}
+      </Route>
+      <Route path="/contact/:cid/edit">
+        {(params) => (
+          <Contact contactId={params.cid} backHref={`/mailbox/${params.cid}`} />
+        )}
       </Route>
       <Route path="/">
         <ContactList />
