@@ -36,7 +36,7 @@ export function TopBar({
       `}
       {...props}
     >
-      <BackLink href={backHref} />
+      {backHref !== null && <BackLink href={backHref} />}
       <div
         css={css`
           flex: 0 1 auto;

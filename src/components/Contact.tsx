@@ -29,9 +29,10 @@ type ViewType = 'write' | 'draw';
 
 type Props = {
   contactId: ContactId;
+  backHref?: string | null;
 };
 
-export default function Contact({ contactId }: Props) {
+export default function Contact({ contactId, backHref }: Props) {
   let [nickname, setNickname] = useState<string>('');
   let [contact, setContact] = useState<IContact>();
   let [view, setView] = useState<ViewType>('draw');
@@ -101,6 +102,7 @@ export default function Contact({ contactId }: Props) {
       `}
     >
       <TopBar
+        backHref={backHref}
         css={css`
           background: none;
         `}

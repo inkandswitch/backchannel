@@ -225,9 +225,8 @@ export default function Mailbox(props: Props) {
             )}
           </div>
         }
-        // TODO set location back to the contact settings rather than petname assigning page
         icon={
-          <Dots onClick={() => setLocation(`/contact/${contact?.id}/add`)} />
+          <Dots onClick={() => setLocation(`/contact/${contact?.id}/edit`)} />
         }
       />
       <div
