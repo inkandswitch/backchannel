@@ -36,7 +36,7 @@ export function TopBar({
       `}
       {...props}
     >
-      {backHref !== null && <BackLink href={backHref} />}
+      {backHref ? <BackLink href={backHref} /> : <TopBarPlaceholder />}
       <div
         css={css`
           flex: 0 1 auto;
@@ -60,15 +60,20 @@ export function TopBar({
           {icon}
         </div>
       ) : (
-        <div
-          css={css`
-            width: 50px;
-          `}
-        />
+        <TopBarPlaceholder />
       )}
     </div>
   );
 }
+
+const TopBarPlaceholder = (props) => (
+  <div
+    css={css`
+      width: 50px;
+    `}
+    {...props}
+  />
+);
 
 export function BottomNav(props) {
   return (
