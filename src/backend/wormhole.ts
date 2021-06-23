@@ -70,34 +70,19 @@ export class Wormhole {
     else return password.join('-');
   }
 
-  /**
-   * Turn a code into it's parts
-   * @param code
-   * @returns An array of two strings, [discoveryKey, password]
-   */
-  private _codeToParts(code: string): [string, string] {
-    let parts = code.split('-');
-    let nameplate = parts.shift();
-    let discoveryKey = `wormhole-${nameplate}`;
-    let password = parts.join('-');
-    return [discoveryKey, password];
+  leave(nameplate: string) {
+    this.client.leave(nameplate);
   }
 
-  leave(code: string) {
-    let [discoveryKey] = this._codeToParts(code);
-    this.client.leave(discoveryKey);
-  }
-
-  async accept(code: string): Promise<string> {
-    let [discoveryKey, password] = this._codeToParts(code);
+  async accept(nameplate: string, password: string): Promise<string> {
     return new Promise((resolve, reject) => {
       let listener = onPeerConnect.bind(this);
-      this.log('joining', discoveryKey);
-      this.client.join(discoveryKey).on('peer.connect', listener);
+      this.log('joining', nameplate);
+      this.client.join(nameplate).on('peer.connect', listener);
 
       function onPeerConnect({ socket, documentId }) {
         this.log('onPeerConnect', documentId);
-        if (documentId === discoveryKey) {
+        if (documentId === nameplate) {
           let spake2State = window.spake2.start(appid, password);
           let outbound = window.spake2.msg(spake2State);
           let outboundString = Buffer.from(outbound).toString('hex');
@@ -141,7 +126,7 @@ export class Wormhole {
               } finally {
                 socket.removeEventListener('peer.connect', listener);
                 socket.removeEventListener('message', onmessage);
-                this.client.leave(discoveryKey);
+                this.leave(nameplate);
                 socket.close();
               }
             }
