@@ -7,7 +7,7 @@ import { color, fontSize } from './tokens';
 import { IMessage } from '../backend/types';
 import Automerge from 'automerge';
 import { Mailbox } from '../backend/backchannel';
-import { timestampToDate } from './util';
+import { timestampToDate, Nickname } from './util';
 import {
   BottomNav,
   Button,
@@ -235,17 +235,7 @@ export default function ContactList(props) {
                           font-size: ${fontSize[2]};
                         `}
                       >
-                        {contact.avatar ? (
-                          <img
-                            alt={`nickname for contact ${contact.id}`}
-                            css={css`
-                              max-width: 200px;
-                            `}
-                            src={contact.avatar}
-                          />
-                        ) : (
-                          contact?.moniker
-                        )}
+                        <Nickname contact={contact} />
                       </div>
                       <div
                         css={css`
