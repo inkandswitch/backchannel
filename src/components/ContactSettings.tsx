@@ -1,13 +1,16 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState } from 'react';
-import { css } from '@emotion/react/macro';
+import { Link } from 'wouter';
 import { useLocation } from 'wouter';
 
-import { Button, TopBar, UnderlineInput, SettingsContent } from '.';
-import { Page, ContentWithTopNav } from './';
-import { Nickname } from './util';
+import { TopBar, SettingsContent } from '.';
+import { Page, ContentWithTopNav, IconButton } from './';
+import TopBarNickname from './TopBarNickname';
 import Backchannel from '../backend';
 import { IContact, ContactId } from '../backend/types';
+import { ReactComponent as PersonSmall } from '../components/icons/PersonSmall.svg';
+import { ReactComponent as HatPerson } from '../components/icons/HatPerson.svg';
+import { ReactComponent as ExportSmall } from '../components/icons/ExportSmall.svg';
 
 let backchannel = Backchannel();
 
@@ -16,33 +19,10 @@ type Props = {
 };
 
 export default function ContactSettings(props: Props) {
-  const [contact, setContact] = useState<IContact>(
+  const [contact] = useState<IContact>(
     backchannel.db.getContactById(props.contactId)
   );
-  const [nickname, setNickname] = useState<string>();
-  //eslint-disable-next-line
-  let [_, setLocation] = useLocation();
-
-  async function updateNickname(e) {
-    e.preventDefault();
-    try {
-      const updatedContact = await backchannel.editMoniker(
-        contact.id,
-        nickname
-      );
-      setContact(updatedContact);
-    } catch (err) {
-      onError(err);
-    }
-  }
-
-  const onError = (err: Error) => {
-    console.error('got error from backend', err);
-  };
-
-  function handleChange(e) {
-    setNickname(e.target.value);
-  }
+  let [, setLocation] = useLocation();
 
   async function handleContactDelete(e) {
     e.preventDefault();
@@ -59,29 +39,24 @@ export default function ContactSettings(props: Props) {
   return (
     <Page align="center">
       <TopBar
-        title={<Nickname contact={contact} />}
+        title={<TopBarNickname contact={contact} hideIndicator />}
         backHref={`/mailbox/${contact.id}`}
       />
       <ContentWithTopNav>
-        <SettingsContent
-          css={css`
-            max-width: unset;
-          `}
-        >
-          <form id="contact-info">
-            <UnderlineInput
-              onChange={handleChange}
-              defaultValue={contact.moniker}
-              placeholder="Contact nickname"
-              autoFocus
-            />
-          </form>
-          <Button type="submit" onClick={updateNickname} form="contact-info">
-            Save
-          </Button>
-          <Button onClick={handleContactDelete} variant="destructive">
+        <SettingsContent>
+          <Link href={`/contact/${contact?.id}/edit`}>
+            <IconButton icon={HatPerson}>Edit Nickname</IconButton>
+          </Link>
+          <IconButton
+            onClick={handleContactDelete}
+            variant="destructive"
+            icon={PersonSmall}
+          >
             Delete Contact
-          </Button>
+          </IconButton>
+          <IconButton disabled variant="transparent" icon={ExportSmall}>
+            Export message history
+          </IconButton>
         </SettingsContent>
       </ContentWithTopNav>
     </Page>

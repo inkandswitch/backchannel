@@ -12,13 +12,13 @@ import {
 import { Button, Spinner, TopBar, UnderlineInput } from './';
 import Backchannel, { EVENTS } from '../backend';
 import { color, fontSize } from './tokens';
-import { timestampToDate, Nickname } from './util';
-import { Instructions } from '../components';
+import { timestampToDate } from './util';
+import { Instructions } from '.';
 import { FileProgress } from '../backend/blobs';
-import { ReactComponent as Dots } from '../components/icons/Dots.svg';
-import { ReactComponent as Paperclip } from '../components/icons/Paperclip.svg';
-import { ReactComponent as Paperplane } from '../components/icons/Paperplane.svg';
-import IndicatorDot, { StatusType } from './IndicatorDot';
+import { ReactComponent as Dots } from './icons/Dots.svg';
+import { ReactComponent as Paperclip } from './icons/Paperclip.svg';
+import { ReactComponent as Paperplane } from './icons/Paperplane.svg';
+import TopBarNickname from './TopBarNickname';
 
 let backchannel = Backchannel();
 const PADDING_CHAT = 12;
@@ -195,28 +195,8 @@ export default function Mailbox(props: Props) {
       onDrop={handleDrop}
     >
       <TopBar
-        title={
-          <div
-            css={css`
-              display: flex;
-              flex-direction: row;
-              align-items: center;
-            `}
-          >
-            <IndicatorDot
-              css={css`
-                margin-right: 6px;
-              `}
-              status={
-                connected ? StatusType.CONNECTED : StatusType.DISCONNECTED
-              }
-            />
-            <Nickname contact={contact} />
-          </div>
-        }
-        icon={
-          <Dots onClick={() => setLocation(`/contact/${contact?.id}/edit`)} />
-        }
+        title={<TopBarNickname contact={contact} connected={connected} />}
+        icon={<Dots onClick={() => setLocation(`/contact/${contact?.id}`)} />}
       />
       <div
         css={css`
