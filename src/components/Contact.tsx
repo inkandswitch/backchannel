@@ -20,9 +20,10 @@ enum Tab {
 
 type Props = {
   contactId: ContactId;
+  backHref?: string | null;
 };
 
-export default function Contact({ contactId }: Props) {
+export default function Contact({ contactId, backHref }: Props) {
   let [nickname, setNickname] = useState<string>('');
   let [contact, setContact] = useState<IContact>();
   let [tab, setTab] = useState<Tab>(Tab.Draw);
@@ -84,6 +85,7 @@ export default function Contact({ contactId }: Props) {
 
   return (
     <CodeView
+      backHref={backHref}
       header={
         <ToggleWrapper>
           <Toggle
@@ -101,6 +103,9 @@ export default function Contact({ contactId }: Props) {
             Draw
           </Toggle>
         </ToggleWrapper>
+      }
+      instructions={
+        tab === Tab.Draw ? 'Doodle a nickname for your contact.' : ''
       }
       content={
         <>

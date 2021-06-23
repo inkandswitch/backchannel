@@ -18,6 +18,7 @@ import {
 import { ReactComponent as Checkmark } from './icons/Checkmark.svg';
 
 export default function CodeView({
+  backHref = '/',
   header = null,
   instructions = null,
   content = null,
@@ -30,7 +31,7 @@ export default function CodeView({
         background: ${color.codeShareBackground};
       `}
     >
-      <TopBar>
+      <TopBar backHref={backHref}>
         {header}
         <div
           css={css`
