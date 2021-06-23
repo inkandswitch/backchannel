@@ -23,7 +23,7 @@ export function Nickname({ contact }: { contact: IContact }) {
   }
 
   if (contact.moniker) {
-    return <>contact.moniker</>;
+    return <>{contact.moniker}</>;
   }
 
   // No nickname was ever assigned, show placeholder
