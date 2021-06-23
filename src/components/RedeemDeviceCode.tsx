@@ -33,7 +33,7 @@ export default function RedeemDeviceCode() {
     async (code) => {
       const onError = (err: Error) => {
         console.error(err);
-        setAnimationMode(AnimationMode.Connecting);
+        setAnimationMode(AnimationMode.None);
         setErrorMsg(err.message);
       };
 
@@ -58,6 +58,8 @@ export default function RedeemDeviceCode() {
   useEffect(() => {
     let maybeCode = window.location.hash;
     if (maybeCode.length > 1 && code !== maybeCode) {
+      // remove maybeCode from hash so it doesn't get retried
+      window.history.pushState('', document.title, window.location.pathname);
       redeemCode(maybeCode.slice(1));
     }
   }, [code, redeemCode]);

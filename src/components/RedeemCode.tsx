@@ -36,10 +36,9 @@ export default function RedeemCode() {
     async (code) => {
       const onError = (err: Error) => {
         console.error(err);
-        setAnimationMode(AnimationMode.Connecting);
+        setAnimationMode(AnimationMode.None);
         setErrorMsg(err.message);
       };
-
       if (animationMode === AnimationMode.Connecting) return;
       try {
         setAnimationMode(AnimationMode.Connecting);
@@ -62,6 +61,8 @@ export default function RedeemCode() {
   useEffect(() => {
     let maybeCode = window.location.hash;
     if (maybeCode.length > 1 && code !== maybeCode) {
+      // remove maybeCode from hash so it doesn't get retried
+      window.history.pushState('', document.title, window.location.pathname);
       redeemCode(maybeCode.slice(1));
     }
   }, [code, redeemCode]);

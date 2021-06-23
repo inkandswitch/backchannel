@@ -21,6 +21,7 @@ let backchannel = Backchannel();
 const USER_FEEDBACK_TIMER = 5000;
 // Amount of seconds the user has to share code before it regenerates
 const CODE_REGENERATE_TIMER_SEC = 60;
+const REDEEM_URL_PATH = '/redeem';
 
 enum Tab {
   WORDS = 'words',
@@ -30,16 +31,18 @@ enum Tab {
 
 export default function GenerateCode() {
   let [codeType, setCodeType] = useState<CodeType>(CodeType.WORDS);
-  let [code, qrCode] = useCode(codeType, CODE_REGENERATE_TIMER_SEC);
+  let [code, qrCode] = useCode(
+    codeType,
+    CODE_REGENERATE_TIMER_SEC,
+    REDEEM_URL_PATH
+  );
 
   let [tab, setTab] = useState<Tab>(Tab.WORDS);
   let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
   const [redirectUrl, setRedirectUrl] = useState<string>('');
   const [animationMode, setAnimationMode] = useAnimation();
-
-  //eslint-disable-next-line
-  let [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
 
   let sharable = navigator.share;
 
@@ -99,7 +102,7 @@ export default function GenerateCode() {
   }
 
   async function onClickShareURL() {
-    let url = window.location.origin + '/redeem/contact';
+    let url = window.location.origin + REDEEM_URL_PATH;
     if (sharable) {
       navigator
         .share({

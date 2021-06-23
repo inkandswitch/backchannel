@@ -26,7 +26,8 @@ let backchannel = Backchannel();
  */
 export default function useCode(
   codeType: CodeType,
-  timeout: number = 60
+  timeout: number = 60,
+  redeemUrlPath: string
 ): [code: Code, qrCode: QRCodeImage] {
   const [code, setCode] = useState('');
   const [qrCode, setQRCode] = useState('');
@@ -44,12 +45,18 @@ export default function useCode(
 
       getCode(codeType).then((code) => {
         setCode(code);
-        const url = getReedemURL(code);
+        const url = getReedemURL(redeemUrlPath, code);
         generateQRCode(url).then((qrCode) => setQRCode(qrCode));
         resetCountdown();
       });
     }
-  }, [timeRemaining, codeType, previousCodeType, resetCountdown]);
+  }, [
+    timeRemaining,
+    codeType,
+    previousCodeType,
+    resetCountdown,
+    redeemUrlPath,
+  ]);
 
   return [code, qrCode];
 }
@@ -74,6 +81,7 @@ const getCode = async (codeType): Promise<Code> => {
   }
 };
 
-function getReedemURL(code) {
-  return `${window.location.origin}/redeem/contact#${code}`;
+// `urlPath` should have a leading slash, e.g. `/redeem`
+function getReedemURL(urlPath, code) {
+  return `${window.location.origin}${urlPath}#${code}`;
 }
