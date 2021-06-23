@@ -1,5 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState } from 'react';
+import { css } from '@emotion/react/macro';
 import { Link } from 'wouter';
 
 import config from '../backend/config';
@@ -10,6 +11,7 @@ import {
   UnderlineInput,
   SettingsContent,
   IconButton,
+  BottomActions,
 } from '.';
 import * as storage from './storage';
 import { Page, ContentWithTopNav } from './';
@@ -18,6 +20,11 @@ import { ReactComponent as PlusSmall } from '../components/icons/PlusSmall.svg';
 import { ReactComponent as EnvelopeSmall } from '../components/icons/EnvelopeSmall.svg';
 import { ReactComponent as CloudCrossedSmall } from '../components/icons/CloudCrossedSmall.svg';
 import { ReactComponent as ExportSmall } from '../components/icons/ExportSmall.svg';
+import { ReactComponent as CloudCycleSmall } from '../components/icons/CloudCycleSmall.svg';
+import { ReactComponent as RelaySmall } from '../components/icons/RelaySmall.svg';
+import { ReactComponent as TrashSmall } from '../components/icons/TrashSmall.svg';
+import { ReactComponent as Checkmark } from '../components/icons/Checkmark.svg';
+import { ReactComponent as CycleSmall } from '../components/icons/CycleSmall.svg';
 
 let backchannel = Backchannel();
 
@@ -28,17 +35,19 @@ export default function Settings() {
       <ContentWithTopNav>
         <SettingsContent>
           <Link href="/settings/devices">
-            <Button>Syncronize Devices</Button>
+            <IconButton icon={CloudCycleSmall}>Syncronize Devices</IconButton>
           </Link>
           <Link href="/settings/relay">
-            <Button>Relay URL</Button>
+            <IconButton icon={RelaySmall}>Relay URL</IconButton>
           </Link>
           <Link href="/settings/reset">
-            <Button variant="destructive">Clear all Data</Button>
+            <IconButton icon={TrashSmall} variant="destructive">
+              Clear all Data
+            </IconButton>
           </Link>
-          <Button disabled variant="transparent">
+          <IconButton icon={ExportSmall} disabled variant="transparent">
             Export message history
-          </Button>
+          </IconButton>
         </SettingsContent>
       </ContentWithTopNav>
     </Page>
@@ -79,22 +88,37 @@ export function RelaySettings() {
       <TopBar title="Relay URL" backHref="/settings" />
       <ContentWithTopNav>
         <Instructions>
-          This is Backchannel relay URL, you can also specify your own:
+          This is Backchannel relay URL,
+          <br /> you can also specify your own:
         </Instructions>
         <SettingsContent>
           <UnderlineInput
+            css={css`
+              margin: 0 24px;
+              width: unset;
+            `}
             name="relay"
             onChange={updateValues}
             defaultValue={settings.relay}
             placeholder="https://relay.yourdomain.org"
           />
-          <Button type="submit" onClick={updateSettings}>
-            Save
-          </Button>
-          <Button variant="transparent" type="submit" onClick={restoreDefault}>
-            Restore Default
-          </Button>
         </SettingsContent>
+        <BottomActions>
+          <IconButton
+            css={css`
+              margin-bottom: 18px;
+            `}
+            icon={CycleSmall}
+            variant="transparent"
+            type="submit"
+            onClick={restoreDefault}
+          >
+            Restore Default
+          </IconButton>
+          <IconButton icon={Checkmark} type="submit" onClick={updateSettings}>
+            Save
+          </IconButton>
+        </BottomActions>
       </ContentWithTopNav>
     </Page>
   );
@@ -137,7 +161,7 @@ export function ClearAllSettings() {
 export function DevicesSettings() {
   return (
     <Page align="center">
-      <TopBar title="Synchronise devices" />
+      <TopBar title="Synchronise devices" backHref="/settings" />
       <ContentWithTopNav>
         <SettingsContent>
           <Link href="/devices/generate">
