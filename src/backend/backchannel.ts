@@ -284,7 +284,7 @@ export class Backchannel extends events.EventEmitter {
   }
 
   async _addContact(key: Key, device?: boolean): Promise<ContactId> {
-    let moniker = 'UNKNOWN CONTACT!';
+    let moniker = '';
     let id;
     if (device) {
       id = await this.db.addDevice(key);
