@@ -8,13 +8,17 @@ import Mailbox from './components/Mailbox';
 import ContactList from './components/ContactList';
 import Contact from './components/Contact';
 import { UnlinkDevices, Device } from './components/Device';
-import AddContact from './components/AddContact';
 import NetworkError from './components/Error';
 import Settings, {
   ClearAllSettings,
   RelaySettings,
+  DevicesSettings,
 } from './components/Settings';
 import ContactSettings from './components/ContactSettings';
+import RedeemCode from './components/RedeemCode';
+import GenerateCode from './components/GenerateCode';
+import RedeemDeviceCode from './components/RedeemDeviceCode';
+import GenerateDeviceCode from './components/GenerateDeviceCode';
 
 export default function App() {
   return (
@@ -36,11 +40,17 @@ export default function App() {
         }
       `}
     >
-      <Route path="/redeem/:object">
-        {(params) => <AddContact view={'redeem'} object={params.object} />}
+      <Route path="/redeem">
+        <RedeemCode />
       </Route>
-      <Route path="/generate/:object">
-        {(params) => <AddContact view={'generate'} object={params.object} />}
+      <Route path="/generate">
+        <GenerateCode />
+      </Route>
+      <Route path="/devices/redeem">
+        <RedeemDeviceCode />
+      </Route>
+      <Route path="/devices/generate">
+        <GenerateDeviceCode />
       </Route>
       <Route path="/settings/reset">
         <ClearAllSettings />
@@ -48,10 +58,15 @@ export default function App() {
       <Route path="/settings/relay">
         <RelaySettings />
       </Route>
+      <Route path="/settings/devices">
+        <DevicesSettings />
+      </Route>
       <Route path="/settings">
         <Settings />
       </Route>
-      <Route path="/settings/unlink">{(params) => <UnlinkDevices />}</Route>
+      <Route path="/settings/unlink">
+        <UnlinkDevices />
+      </Route>
       <Route path="/device/:did">
         {(params) => <Device deviceId={params.did} />}
       </Route>

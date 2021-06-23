@@ -127,14 +127,15 @@ export function SettingsContent(props) {
   return (
     <div
       css={css`
-        max-width: 210px;
+        max-width: 374px;
+        width: 100%;
         display: flex;
         flex-direction: column;
         align-self: center;
         row-gap: 10px;
         justify-content: center;
         margin-bottom: 60px;
-        flex: 1;
+        flex: 1 0 auto;
       `}
       {...props}
     />
@@ -267,15 +268,17 @@ function buttonStyles(variant: ButtonVariantType) {
 
 type IconButtonProps = {
   icon: React.FunctionComponent<React.SVGProps<SVGSVGElement>>;
-  label: string;
-} & React.ClassAttributes<HTMLButtonElement> &
-  React.ButtonHTMLAttributes<HTMLButtonElement>;
+} & ButtonType;
 
-export function IconButton({ icon: Icon, label, ...props }: IconButtonProps) {
+export function IconButton({
+  icon: Icon,
+  children,
+  ...props
+}: IconButtonProps) {
   return (
     <Button
       css={css`
-        margin: 24px;
+        margin: 0 24px;
         position: relative;
       `}
       {...props}
@@ -285,9 +288,11 @@ export function IconButton({ icon: Icon, label, ...props }: IconButtonProps) {
           margin: 0 8px;
           position: absolute;
           left: 0;
+          max-height: 20px;
+          max-width: 20px;
         `}
       />
-      {label}
+      {children}
     </Button>
   );
 }
@@ -299,6 +304,7 @@ export const Instructions = (props) => (
       font-size: ${fontSize[1]}px;
       margin: 18px 18px 0;
       flex: 0 0 auto;
+      text-align: center;
     `}
     {...props}
   />
@@ -340,8 +346,9 @@ export const Message = (props) => (
   <div
     css={css`
       height: 24px;
-      margin: 16px 0;
+      margin: 16px 24px;
       color: ${color.textBold};
+      text-align: center;
     `}
     {...props}
   />

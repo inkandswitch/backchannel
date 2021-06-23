@@ -1,6 +1,5 @@
 /** @jsxImportSource @emotion/react */
 import React, { useState } from 'react';
-import { css } from '@emotion/react/macro';
 import { Link } from 'wouter';
 
 import config from '../backend/config';
@@ -10,10 +9,15 @@ import {
   TopBar,
   UnderlineInput,
   SettingsContent,
+  IconButton,
 } from '.';
 import * as storage from './storage';
 import { Page, ContentWithTopNav } from './';
 import Backchannel from '../backend';
+import { ReactComponent as PlusSmall } from '../components/icons/PlusSmall.svg';
+import { ReactComponent as EnvelopeSmall } from '../components/icons/EnvelopeSmall.svg';
+import { ReactComponent as CloudCrossedSmall } from '../components/icons/CloudCrossedSmall.svg';
+import { ReactComponent as ExportSmall } from '../components/icons/ExportSmall.svg';
 
 let backchannel = Backchannel();
 
@@ -23,12 +27,7 @@ export default function Settings() {
       <TopBar title="Settings" />
       <ContentWithTopNav>
         <SettingsContent>
-          {backchannel.devices.length > 0 ? (
-            <Link href="/settings/unlink">
-              <Button>Unlink Devices</Button>
-            </Link>
-          ) : null}
-          <Link href="/generate/device">
+          <Link href="/settings/devices">
             <Button>Syncronize Devices</Button>
           </Link>
           <Link href="/settings/relay">
@@ -82,11 +81,7 @@ export function RelaySettings() {
         <Instructions>
           This is Backchannel relay URL, you can also specify your own:
         </Instructions>
-        <SettingsContent
-          css={css`
-            max-width: unset;
-          `}
-        >
+        <SettingsContent>
           <UnderlineInput
             name="relay"
             onChange={updateValues}
@@ -133,6 +128,36 @@ export function ClearAllSettings() {
           <Button disabled variant="transparent">
             Export message history
           </Button>
+        </SettingsContent>
+      </ContentWithTopNav>
+    </Page>
+  );
+}
+
+export function DevicesSettings() {
+  return (
+    <Page align="center">
+      <TopBar title="Synchronise devices" />
+      <ContentWithTopNav>
+        <SettingsContent>
+          <Link href="/devices/generate">
+            <IconButton icon={PlusSmall}>Create sync code</IconButton>
+          </Link>
+          <Link href="/devices/redeem">
+            <IconButton icon={EnvelopeSmall}>Use sync code</IconButton>
+          </Link>
+          <Link href="/settings/unlink">
+            <IconButton
+              variant="destructive"
+              disabled={backchannel.devices.length < 1}
+              icon={CloudCrossedSmall}
+            >
+              Unlink Devices ({backchannel.devices.length})
+            </IconButton>
+          </Link>
+          <IconButton disabled variant="transparent" icon={ExportSmall}>
+            Export message history
+          </IconButton>
         </SettingsContent>
       </ContentWithTopNav>
     </Page>
