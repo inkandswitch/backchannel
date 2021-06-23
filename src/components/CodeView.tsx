@@ -97,6 +97,7 @@ export function codeViewAnimation(animationMode: AnimationMode) {
       // Show connection loading page
       return (
         <CodeView
+          backHref={null}
           content={<IconWithMessage icon={Spinner} text="Connecting" />}
         />
       );
@@ -105,6 +106,7 @@ export function codeViewAnimation(animationMode: AnimationMode) {
       // Show successful connection message
       return (
         <CodeView
+          backHref={null}
           content={
             <IconWithMessage icon={Checkmark} text="Correspondent found" />
           }
@@ -114,6 +116,7 @@ export function codeViewAnimation(animationMode: AnimationMode) {
     case AnimationMode.CreatingChannel:
       return (
         <CodeView
+          backHref={null}
           content={
             <IconWithMessage icon={Spinner} text="Creating Secure Channel" />
           }
