@@ -5,6 +5,7 @@ import { useLocation } from 'wouter';
 
 import { Button, TopBar, UnderlineInput, SettingsContent } from '.';
 import { Page, ContentWithTopNav } from './';
+import { Nickname } from './util';
 import Backchannel from '../backend';
 import { IContact, ContactId } from '../backend/types';
 
@@ -57,7 +58,10 @@ export default function ContactSettings(props: Props) {
 
   return (
     <Page align="center">
-      <TopBar title={contact.moniker} backHref={`/mailbox/${contact.id}`} />
+      <TopBar
+        title={<Nickname contact={contact} />}
+        backHref={`/mailbox/${contact.id}`}
+      />
       <ContentWithTopNav>
         <SettingsContent
           css={css`

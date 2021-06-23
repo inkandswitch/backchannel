@@ -12,7 +12,7 @@ import {
 import { Button, Spinner, TopBar, UnderlineInput } from './';
 import Backchannel, { EVENTS } from '../backend';
 import { color, fontSize } from './tokens';
-import { timestampToDate } from './util';
+import { timestampToDate, Nickname } from './util';
 import { Instructions } from '../components';
 import { FileProgress } from '../backend/blobs';
 import { ReactComponent as Dots } from '../components/icons/Dots.svg';
@@ -39,8 +39,7 @@ export default function Mailbox(props: Props) {
   );
   let [progress, setProgress] = useState({});
   const [isDragging, setIsDragging] = useState(false);
-  //eslint-disable-next-line
-  const [_, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const bottomRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -212,17 +211,7 @@ export default function Mailbox(props: Props) {
                 connected ? StatusType.CONNECTED : StatusType.DISCONNECTED
               }
             />
-            {contact.avatar ? (
-              <img
-                alt={`nickname for contact ${contact.id}`}
-                css={css`
-                  max-width: 200px;
-                `}
-                src={contact.avatar}
-              />
-            ) : (
-              contact?.moniker
-            )}
+            <Nickname contact={contact} />
           </div>
         }
         icon={
