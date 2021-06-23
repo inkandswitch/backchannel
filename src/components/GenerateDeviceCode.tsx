@@ -18,7 +18,7 @@ const CODE_REGENERATE_TIMER_SEC = 60;
 const REDEEM_URL_PATH = '/devices/redeem';
 
 const instructions =
-  'Scan this QR code with the device you wish to synchronise the data with. The linked device can contacts and message history.';
+  'Scan this QR code with the device you wish to synchronise the data with. The linked device can see all contacts and message history.';
 
 export default function GenerateDeviceCode() {
   let [code, qrCode] = useCode(
