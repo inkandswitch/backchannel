@@ -49,7 +49,6 @@ export default function GenerateDeviceCode() {
   let redeemGeneratedCode = useCallback(
     async (code) => {
       const onError = (err: Error) => {
-        console.error('got error from backend', err);
         setAnimationMode(AnimationMode.None);
         setErrorMsg(err.message);
       };

@@ -18,6 +18,7 @@ import ContactSettings from './components/ContactSettings';
 import RedeemCode from './components/RedeemCode';
 import GenerateCode from './components/GenerateCode';
 import GenerateDeviceCode from './components/GenerateDeviceCode';
+import RedeemDeviceCode from './components/RedeemDeviceCode';
 
 export default function App() {
   return (
@@ -47,6 +48,9 @@ export default function App() {
       </Route>
       <Route path="/devices/generate">
         <GenerateDeviceCode />
+      </Route>
+      <Route path="/devices/redeem">
+        <RedeemDeviceCode />
       </Route>
       <Route path="/settings/reset">
         <ClearAllSettings />

@@ -46,6 +46,7 @@ export default function useCode(
       getCode(codeType).then((code) => {
         setCode(code);
         const url = getReedemURL(redeemUrlPath, code);
+        console.log('REDEEM URL', url);
         generateQRCode(url).then((qrCode) => setQRCode(qrCode));
         resetCountdown();
       });
