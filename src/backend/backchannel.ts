@@ -41,6 +41,8 @@ export enum EVENTS {
   RELAY_DISCONNECT = 'relay.disconnect',
 }
 
+const PREFIX = 'backchannel-';
+
 export enum ERROR {
   UNREACHABLE = 404,
   PEER = 500,
@@ -227,15 +229,14 @@ export class Backchannel extends events.EventEmitter {
     let sanitizedCode = code.toLowerCase().trim();
     let parts = sanitizedCode.split(' ');
     let nameplate = parts.shift();
-    let discoveryKey = `wormhole-${nameplate}`;
     let password = parts.join(' ');
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
-        this._wormhole.leave(discoveryKey);
+        this._wormhole.leave(nameplate);
         reject(new Error(`This code has expired. Try again with a new code.`));
       }, timeout);
       try {
-        let key: Key = await this._wormhole.accept(discoveryKey, password);
+        let key: Key = await this._wormhole.accept(nameplate, password);
         return resolve(key);
       } catch (err) {
         reject(
@@ -424,7 +425,7 @@ export class Backchannel extends events.EventEmitter {
    */
   connectToContact(contact: IContact) {
     if (!contact || !contact.discoveryKey || contact.isConnected) return;
-    this._client.join(contact.discoveryKey);
+    this._client.join(PREFIX + contact.discoveryKey);
   }
 
   /**
@@ -463,13 +464,13 @@ export class Backchannel extends events.EventEmitter {
    */
   async deleteContact(id: ContactId) {
     let contact = this.db.getContactById(id);
-    this._client.leave(contact.discoveryKey);
+    this._client.leave(PREFIX + contact.discoveryKey);
     await this.db.deleteContact(id);
   }
 
   async deleteDevice(id: ContactId) {
     let contact = this.db.getContactById(id);
-    this._client.leave(contact.discoveryKey);
+    this._client.leave(PREFIX + contact.discoveryKey);
     await this.db.deleteDevice(id);
   }
 
@@ -562,10 +563,12 @@ export class Backchannel extends events.EventEmitter {
     };
     socket.addEventListener('error', onerror);
 
-    if (documentId.startsWith('wormhole')) {
-      // this is handled by wormhole.ts
-      return this.log('got connection to ', documentId);
+    if (!documentId.startsWith(PREFIX)) {
+      // this isn't for us
+      return this.log('discarded connection to ', documentId);
     }
+
+    documentId = documentId.replace(PREFIX, '');
 
     let contact = this.db.getContactByDiscoveryKey(documentId);
     let peerId = contact.id + '#' + userName;
@@ -634,7 +637,7 @@ export class Backchannel extends events.EventEmitter {
   private _createClient(relay: string, documentIds?: DocumentId[]): Client {
     let client = new Client({
       url: relay,
-      documentIds,
+      documentIds: documentIds.map((d) => PREFIX + d),
     });
 
     client.on('error', (err) => {
