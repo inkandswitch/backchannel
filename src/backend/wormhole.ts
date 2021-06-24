@@ -88,6 +88,7 @@ export class Wormhole {
   }
 
   async accept(nameplate: string, password: string): Promise<string> {
+    if (nameplate.length === 0 || password.length === 0) return Promise.reject(new Error('Nameplate and password are required.'))
     return new Promise((resolve, reject) => {
       let listener = onPeerConnect.bind(this);
       this.log('joining', nameplate);
