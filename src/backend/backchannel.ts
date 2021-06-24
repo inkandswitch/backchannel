@@ -41,6 +41,8 @@ export enum EVENTS {
   RELAY_DISCONNECT = 'relay.disconnect',
 }
 
+const PREFIX = 'backchannel-';
+
 export enum ERROR {
   UNREACHABLE = 404,
   PEER = 500,
@@ -200,16 +202,18 @@ export class Backchannel extends events.EventEmitter {
    * Create a one-time code for a new backchannel contact.
    * @returns {Code} code The code to use in announce
    */
-  getCode(): Promise<Code> {
-    return this._wormhole.getCode();
+  async getCode(): Promise<Code> {
+    let { nameplate, password } = await this._wormhole.getCode();
+    return `${nameplate} ${password}`;
   }
 
   /**
    * Create a one-time code for a new backchannel contact.
    * @returns {Code} code The code to use in announce
    */
-  getNumericCode(): Promise<Code> {
-    return this._wormhole.getNumericCode();
+  async getNumericCode(): Promise<Code> {
+    let { nameplate, password } = await this._wormhole.getNumericCode();
+    return `${nameplate} ${password}`;
   }
 
   /**
@@ -223,22 +227,21 @@ export class Backchannel extends events.EventEmitter {
    */
   async accept(code: Code, timeout = 60000): Promise<ContactId> {
     let sanitizedCode = code.toLowerCase().trim();
-    let [nameplate, password] = this.codeToParts(sanitizedCode);
-    let TWENTY_SECONDS = timeout;
+    let parts = sanitizedCode.split(' ');
+    let nameplate = parts.shift();
+    let password = parts.join(' ');
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
         this._wormhole.leave(nameplate);
-        reject(
-          new Error(`This code has expired. Try again with a different one.`)
-        );
-      }, TWENTY_SECONDS);
+        reject(new Error(`This code has expired. Try again with a new code.`));
+      }, timeout);
       try {
         let key: Key = await this._wormhole.accept(nameplate, password);
         return resolve(key);
       } catch (err) {
         reject(
           new Error(
-            'Secure connection failed. Did you type the code correctly? Try again.'
+            'Secure connection failed. The code was incorrect. Try again with a new one.'
           )
         );
       }
@@ -378,19 +381,6 @@ export class Backchannel extends events.EventEmitter {
     return msg;
   }
 
-  /**
-   * Turn a code into it's parts
-   * @param code
-   * @returns An array of two strings, [nameplate, password]
-   */
-  codeToParts(code: string): [string, string] {
-    let parts = code.split('-');
-    let nameplate = parts.shift();
-    let discoveryKey = `wormhole-${nameplate}`;
-    let password = parts.join('-');
-    return [discoveryKey, password];
-  }
-
   async sendFile(contactId: ContactId, file: File): Promise<FileMessage> {
     let msg: FileMessage = {
       id: uuid(),
@@ -435,7 +425,7 @@ export class Backchannel extends events.EventEmitter {
    */
   connectToContact(contact: IContact) {
     if (!contact || !contact.discoveryKey || contact.isConnected) return;
-    this._client.join(contact.discoveryKey);
+    this._client.join(PREFIX + contact.discoveryKey);
   }
 
   /**
@@ -474,13 +464,13 @@ export class Backchannel extends events.EventEmitter {
    */
   async deleteContact(id: ContactId) {
     let contact = this.db.getContactById(id);
-    this._client.leave(contact.discoveryKey);
+    this._client.leave(PREFIX + contact.discoveryKey);
     await this.db.deleteContact(id);
   }
 
   async deleteDevice(id: ContactId) {
     let contact = this.db.getContactById(id);
-    this._client.leave(contact.discoveryKey);
+    this._client.leave(PREFIX + contact.discoveryKey);
     await this.db.deleteDevice(id);
   }
 
@@ -573,10 +563,12 @@ export class Backchannel extends events.EventEmitter {
     };
     socket.addEventListener('error', onerror);
 
-    if (documentId.startsWith('wormhole')) {
-      // this is handled by wormhole.ts
-      return this.log('got connection to ', documentId);
+    if (!documentId.startsWith(PREFIX)) {
+      // this isn't for us
+      return this.log('discarded connection to ', documentId);
     }
+
+    documentId = documentId.replace(PREFIX, '');
 
     let contact = this.db.getContactByDiscoveryKey(documentId);
     let peerId = contact.id + '#' + userName;
@@ -645,7 +637,7 @@ export class Backchannel extends events.EventEmitter {
   private _createClient(relay: string, documentIds?: DocumentId[]): Client {
     let client = new Client({
       url: relay,
-      documentIds,
+      documentIds: documentIds.map((d) => PREFIX + d),
     });
 
     client.on('error', (err) => {

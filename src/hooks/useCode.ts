@@ -46,6 +46,7 @@ export default function useCode(
       getCode(codeType).then((code) => {
         setCode(code);
         const url = getReedemURL(redeemUrlPath, code);
+        console.log('REDEEM URL', url);
         generateQRCode(url).then((qrCode) => setQRCode(qrCode));
         resetCountdown();
       });
@@ -83,5 +84,5 @@ const getCode = async (codeType): Promise<Code> => {
 
 // `urlPath` should have a leading slash, e.g. `/redeem`
 function getReedemURL(urlPath, code) {
-  return `${window.location.origin}${urlPath}#${code}`;
+  return `${window.location.origin}${urlPath}#${code.replaceAll(' ', '-')}`;
 }

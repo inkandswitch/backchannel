@@ -17,9 +17,7 @@ import * as storage from './storage';
 import { Page, ContentWithTopNav } from './';
 import Backchannel from '../backend';
 import { ReactComponent as PlusSmall } from '../components/icons/PlusSmall.svg';
-import { ReactComponent as EnvelopeSmall } from '../components/icons/EnvelopeSmall.svg';
 import { ReactComponent as CloudCrossedSmall } from '../components/icons/CloudCrossedSmall.svg';
-import { ReactComponent as ExportSmall } from '../components/icons/ExportSmall.svg';
 import { ReactComponent as CloudCycleSmall } from '../components/icons/CloudCycleSmall.svg';
 import { ReactComponent as RelaySmall } from '../components/icons/RelaySmall.svg';
 import { ReactComponent as TrashSmall } from '../components/icons/TrashSmall.svg';
@@ -35,7 +33,7 @@ export default function Settings() {
       <ContentWithTopNav>
         <SettingsContent>
           <Link href="/settings/devices">
-            <IconButton icon={CloudCycleSmall}>Syncronize Devices</IconButton>
+            <IconButton icon={CloudCycleSmall}>Devices</IconButton>
           </Link>
           <Link href="/settings/relay">
             <IconButton icon={RelaySmall}>Relay URL</IconButton>
@@ -45,9 +43,6 @@ export default function Settings() {
               Clear all Data
             </IconButton>
           </Link>
-          <IconButton icon={ExportSmall} disabled variant="transparent">
-            Export message history
-          </IconButton>
         </SettingsContent>
       </ContentWithTopNav>
     </Page>
@@ -65,7 +60,6 @@ export function RelaySettings() {
 
   function updateSettings(e) {
     e.preventDefault();
-    console.log(e);
     let old = backchannel.settings;
     backchannel
       .updateSettings({ ...old, ...settings })
@@ -149,9 +143,6 @@ export function ClearAllSettings() {
           <Button onClick={clearDb} variant="destructive">
             Yes, clear all data
           </Button>
-          <Button disabled variant="transparent">
-            Export message history
-          </Button>
         </SettingsContent>
       </ContentWithTopNav>
     </Page>
@@ -165,10 +156,7 @@ export function DevicesSettings() {
       <ContentWithTopNav>
         <SettingsContent>
           <Link href="/devices/generate">
-            <IconButton icon={PlusSmall}>Create sync code</IconButton>
-          </Link>
-          <Link href="/devices/redeem">
-            <IconButton icon={EnvelopeSmall}>Use sync code</IconButton>
+            <IconButton icon={PlusSmall}>Link a device</IconButton>
           </Link>
           <Link href="/settings/unlink">
             <IconButton
@@ -176,12 +164,9 @@ export function DevicesSettings() {
               disabled={backchannel.devices.length < 1}
               icon={CloudCrossedSmall}
             >
-              Unlink Devices ({backchannel.devices.length})
+              Unlink All Devices ({backchannel.devices.length})
             </IconButton>
           </Link>
-          <IconButton disabled variant="transparent" icon={ExportSmall}>
-            Export message history
-          </IconButton>
         </SettingsContent>
       </ContentWithTopNav>
     </Page>

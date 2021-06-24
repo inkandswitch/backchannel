@@ -5,7 +5,7 @@ import { useLocation } from 'wouter';
 
 import useCode, { CodeType } from '../hooks/useCode';
 import { copyToClipboard } from '../web';
-import { Button, Spinner, Toggle, ToggleWrapper, IconButton } from '.';
+import { Spinner, Toggle, ToggleWrapper, IconButton } from '.';
 import CodeView, {
   AnimationMode,
   codeViewAnimation,
@@ -101,22 +101,22 @@ export default function GenerateCode() {
     }
   }
 
-  async function onClickShareURL() {
+  async function onClickShare() {
     let url = window.location.origin + REDEEM_URL_PATH;
+    let text = `Want to chat securely on Backchannel? Go to ${url} and use the invitation code:
+
+    ${code}
+    `;
     if (sharable) {
       navigator
         .share({
-          title: 'Chat on backchannel',
-          text: `I want to chat with you securely with you on Backchannel. Go to ${url} and use the following invitation code: 
-          ${code}`,
+          title: 'Backchannel invitation code',
+          text: text,
         })
         .then(() => console.log('Successful share'))
         .catch((error) => console.log('Error sharing', error));
     } else {
-      const copySuccess = await copyToClipboard(url);
-      if (copySuccess) {
-        setMessage('Code copied!');
-      }
+      onClickCopy();
     }
   }
 
@@ -127,6 +127,19 @@ export default function GenerateCode() {
         setCodeType(codeType);
       }
     };
+  }
+
+  function formatCode(code: string, codeType: CodeType): string {
+    if (codeType !== CodeType.NUMBERS) return code;
+    let formatted = '';
+    let spaces = [0, 3, 5, 7];
+    for (var i = 0; i < code.length; i++) {
+      formatted += `${code[i]}`;
+      if (spaces.indexOf(i) > -1) {
+        formatted += ' ';
+      }
+    }
+    return formatted;
   }
 
   if (animationMode === AnimationMode.Redirect) {
@@ -167,7 +180,7 @@ export default function GenerateCode() {
         tab === Tab.QRCODE ? (
           <img src={qrCode} alt="Scan me with your camera" />
         ) : code ? (
-          code
+          formatCode(code, codeType)
         ) : (
           <Spinner />
         )
@@ -176,21 +189,16 @@ export default function GenerateCode() {
       footer={
         tab !== Tab.QRCODE && (
           <>
-            <IconButton onClick={onClickCopy} icon={Copy}>
-              Copy invite
+            <IconButton
+              icon={Copy}
+              onClick={onClickShare}
+              css={css`
+                margin: 16px;
+                margin-bottom: 24px;
+              `}
+            >
+              Copy invitation
             </IconButton>
-            {sharable && (
-              <Button
-                variant="transparent"
-                onClick={onClickShareURL}
-                css={css`
-                  margin: 16px;
-                  margin-bottom: 24px;
-                `}
-              >
-                Share
-              </Button>
-            )}
           </>
         )
       }
