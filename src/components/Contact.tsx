@@ -24,7 +24,9 @@ type Props = {
 };
 
 export default function Contact({ contactId, backHref }: Props) {
-  let [contact, setContact] = useState<IContact>(backchannel.db.getContactById(contactId));
+  let [contact, setContact] = useState<IContact>(
+    backchannel.db.getContactById(contactId)
+  );
   let [nickname, setNickname] = useState<string>(contact.moniker);
   let [tab, setTab] = useState<Tab>(Tab.Write);
   let [errorMsg, setErrorMsg] = useState('');
