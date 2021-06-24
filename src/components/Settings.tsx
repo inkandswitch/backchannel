@@ -33,7 +33,7 @@ export default function Settings() {
       <ContentWithTopNav>
         <SettingsContent>
           <Link href="/settings/devices">
-            <IconButton icon={CloudCycleSmall}>Syncronize Devices</IconButton>
+            <IconButton icon={CloudCycleSmall}>Devices</IconButton>
           </Link>
           <Link href="/settings/relay">
             <IconButton icon={RelaySmall}>Relay URL</IconButton>
