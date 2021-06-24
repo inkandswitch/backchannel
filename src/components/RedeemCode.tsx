@@ -13,12 +13,19 @@ import { Key, ContactId } from '../backend/types';
 import QRReader from './QRReader';
 import { ReactComponent as People } from './icons/People.svg';
 import Backchannel from '../backend';
+import { CodeType } from '../hooks/useCode';
 
 let backchannel = Backchannel();
 
 enum Tab {
   INPUT,
   SCAN,
+}
+
+function detectCodeType(code: string): CodeType {
+  let maybe = parseInt(code[0]);
+  if (isNaN(maybe)) return CodeType.WORDS;
+  else return CodeType.NUMBERS;
 }
 
 export default function RedeemCode() {
@@ -42,6 +49,12 @@ export default function RedeemCode() {
       if (animationMode === AnimationMode.Connecting) return;
       try {
         setAnimationMode(AnimationMode.Connecting);
+        let codeType = detectCodeType(code);
+
+        if (codeType === CodeType.NUMBERS) {
+          code = code.replaceAll(' ', '');
+          code = `${code.slice(0, 3)} ${code.slice(3)}`;
+        }
         let key: Key = await backchannel.accept(code);
 
         let cid: ContactId = await backchannel.addContact(key);
@@ -49,7 +62,6 @@ export default function RedeemCode() {
         setAnimationMode(AnimationMode.Connected);
         setRedirectUrl(`/contact/${cid}/add`);
       } catch (err) {
-        console.log('got error', err);
         onError(err);
         setCode('');
       }
@@ -63,7 +75,7 @@ export default function RedeemCode() {
     if (maybeCode.length > 1 && code !== maybeCode) {
       // remove maybeCode from hash so it doesn't get retried
       window.history.pushState('', document.title, window.location.pathname);
-      redeemCode(maybeCode.slice(1));
+      redeemCode(maybeCode.slice(1).replaceAll('-', ' '));
     }
   }, [code, redeemCode]);
 

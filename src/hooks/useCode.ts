@@ -83,5 +83,5 @@ const getCode = async (codeType): Promise<Code> => {
 
 // `urlPath` should have a leading slash, e.g. `/redeem`
 function getReedemURL(urlPath, code) {
-  return `${window.location.origin}${urlPath}#${code}`;
+  return `${window.location.origin}${urlPath}#${code.replaceAll(' ', '-')}`;
 }

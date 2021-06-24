@@ -200,16 +200,18 @@ export class Backchannel extends events.EventEmitter {
    * Create a one-time code for a new backchannel contact.
    * @returns {Code} code The code to use in announce
    */
-  getCode(): Promise<Code> {
-    return this._wormhole.getCode();
+  async getCode(): Promise<Code> {
+    let { nameplate, password } = await this._wormhole.getCode();
+    return `${nameplate} ${password}`;
   }
 
   /**
    * Create a one-time code for a new backchannel contact.
    * @returns {Code} code The code to use in announce
    */
-  getNumericCode(): Promise<Code> {
-    return this._wormhole.getNumericCode();
+  async getNumericCode(): Promise<Code> {
+    let { nameplate, password } = await this._wormhole.getNumericCode();
+    return `${nameplate} ${password}`;
   }
 
   /**
@@ -223,22 +225,22 @@ export class Backchannel extends events.EventEmitter {
    */
   async accept(code: Code, timeout = 60000): Promise<ContactId> {
     let sanitizedCode = code.toLowerCase().trim();
-    let [nameplate, password] = this.codeToParts(sanitizedCode);
-    let TWENTY_SECONDS = timeout;
+    let parts = sanitizedCode.split(' ');
+    let nameplate = parts.shift();
+    let discoveryKey = `wormhole-${nameplate}`;
+    let password = parts.join(' ');
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
-        this._wormhole.leave(nameplate);
-        reject(
-          new Error(`This code has expired. Try again with a different one.`)
-        );
-      }, TWENTY_SECONDS);
+        this._wormhole.leave(discoveryKey);
+        reject(new Error(`This code has expired. Try again with a new code.`));
+      }, timeout);
       try {
-        let key: Key = await this._wormhole.accept(nameplate, password);
+        let key: Key = await this._wormhole.accept(discoveryKey, password);
         return resolve(key);
       } catch (err) {
         reject(
           new Error(
-            'Secure connection failed. Did you type the code correctly? Try again.'
+            'Secure connection failed. The code was incorrect. Try again with a new one.'
           )
         );
       }
@@ -376,19 +378,6 @@ export class Backchannel extends events.EventEmitter {
     let contact = this.db.getContactById(contactId);
     await this._addMessage(msg, contact);
     return msg;
-  }
-
-  /**
-   * Turn a code into it's parts
-   * @param code
-   * @returns An array of two strings, [nameplate, password]
-   */
-  codeToParts(code: string): [string, string] {
-    let parts = code.split('-');
-    let nameplate = parts.shift();
-    let discoveryKey = `wormhole-${nameplate}`;
-    let password = parts.join('-');
-    return [discoveryKey, password];
   }
 
   async sendFile(contactId: ContactId, file: File): Promise<FileMessage> {

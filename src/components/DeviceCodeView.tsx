@@ -14,6 +14,7 @@ import {
 } from '.';
 
 export default function DeviceCodeView({
+  backHref = '/',
   header = null,
   instructions = null,
   content = null,
@@ -22,7 +23,7 @@ export default function DeviceCodeView({
 }) {
   return (
     <Page>
-      <TopBar>
+      <TopBar backHref={backHref}>
         {header}
         <div
           css={css`

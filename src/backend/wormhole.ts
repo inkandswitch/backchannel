@@ -7,6 +7,11 @@ import { serialize, deserialize } from 'bson';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
 import english from './wordlist_en.json';
 
+export type Code = {
+  nameplate: string;
+  password: string;
+};
+
 let VERSION = 1;
 let appid = 'backchannel/app/mailbox/v1';
 function lpad(str, padString, length) {
@@ -38,7 +43,7 @@ export class Wormhole {
     this.log = debug('bc:wormhole');
   }
 
-  async getNumericCode() {
+  async getNumericCode(): Promise<Code> {
     // this is an experimental feature
     // this is copied code from the bip library
     // we generate the same indexes that are used in the
@@ -55,19 +60,27 @@ export class Wormhole {
       if (index < 100) return `0${index}`;
       return index;
     });
-    return code.slice(0, 3).join('-');
+    let parts = code.slice(0, 3);
+    return {
+      nameplate: parts[0],
+      password: parts[1] + '' + parts[2],
+    };
   }
 
-  async getCode(lang?: string) {
+  async getCode(lang?: string): Promise<Code> {
     if (lang) {
       bip.setDefaultWordlist(lang);
     }
     let passwordPieces = bip
       .entropyToMnemonic(randomBytes(32), english)
       .split(' ');
-    let password = passwordPieces.filter((p) => p !== '').slice(0, 3);
-    if (password.length < 3) return this.getCode(lang);
-    else return password.join('-');
+    let parts = passwordPieces.filter((p) => p !== '').slice(0, 3);
+    if (parts.length < 3) return this.getCode(lang);
+    else
+      return {
+        nameplate: parts[0],
+        password: parts[1] + ' ' + parts[2],
+      };
   }
 
   leave(nameplate: string) {
