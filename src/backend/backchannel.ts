@@ -637,7 +637,7 @@ export class Backchannel extends events.EventEmitter {
   private _createClient(relay: string, documentIds?: DocumentId[]): Client {
     let client = new Client({
       url: relay,
-      documentIds: documentIds.map((d) => PREFIX + d),
+      documentIds: documentIds && documentIds.map((d) => PREFIX + d),
     });
 
     client.on('error', (err) => {
