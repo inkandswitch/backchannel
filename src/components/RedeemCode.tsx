@@ -9,23 +9,16 @@ import CodeView, {
   codeViewAnimation,
   useAnimation,
 } from './CodeView';
-import { Key, ContactId } from '../backend/types';
+import { CodeType, Key, ContactId } from '../backend/types';
 import QRReader from './QRReader';
 import { ReactComponent as People } from './icons/People.svg';
 import Backchannel from '../backend';
-import { CodeType } from '../hooks/useCode';
 
 let backchannel = Backchannel();
 
 enum Tab {
   INPUT,
   SCAN,
-}
-
-function detectCodeType(code: string): CodeType {
-  let maybe = parseInt(code[0]);
-  if (isNaN(maybe)) return CodeType.WORDS;
-  else return CodeType.NUMBERS;
 }
 
 export default function RedeemCode() {
@@ -49,7 +42,7 @@ export default function RedeemCode() {
       if (animationMode === AnimationMode.Connecting) return;
       try {
         setAnimationMode(AnimationMode.Connecting);
-        let codeType = detectCodeType(code);
+        let codeType = backchannel.detectCodeType(code);
 
         if (codeType === CodeType.NUMBERS) {
           code = code.replaceAll(' ', '');
@@ -154,7 +147,7 @@ export default function RedeemCode() {
             icon={People}
             form="code-input"
             type="submit"
-            disabled={code.length === 0}
+            disabled={!backchannel.validCode(code)}
           >
             Add Contact
           </IconButton>

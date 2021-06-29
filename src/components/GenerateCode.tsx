@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { css } from '@emotion/react/macro';
 import { useLocation } from 'wouter';
 
-import useCode, { CodeType } from '../hooks/useCode';
+import useCode from '../hooks/useCode';
 import { copyToClipboard } from '../web';
 import { Spinner, Toggle, ToggleWrapper, IconButton } from '.';
 import CodeView, {
@@ -11,7 +11,7 @@ import CodeView, {
   codeViewAnimation,
   useAnimation,
 } from './CodeView';
-import { Key, ContactId } from '../backend/types';
+import { CodeType, Key, ContactId } from '../backend/types';
 import { ReactComponent as Copy } from './icons/Copy.svg';
 import Backchannel from '../backend';
 

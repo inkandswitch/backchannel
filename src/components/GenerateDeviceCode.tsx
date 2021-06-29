@@ -2,11 +2,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
 
-import useCode, { CodeType } from '../hooks/useCode';
+import useCode from '../hooks/useCode';
 import { Spinner } from '.';
 import { AnimationMode } from './CodeView';
 import DeviceCodeView, { DeviceCodeLoading } from './DeviceCodeView';
-import { Key, ContactId } from '../backend/types';
+import { CodeType, Key, ContactId } from '../backend/types';
 import Backchannel from '../backend';
 
 let backchannel = Backchannel();

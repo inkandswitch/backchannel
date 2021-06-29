@@ -54,3 +54,8 @@ export interface FileMessage extends IMessage {
   lastModified: number;
   state: FileState;
 }
+
+export enum CodeType {
+  WORDS = 'words',
+  NUMBERS = 'numbers',
+}

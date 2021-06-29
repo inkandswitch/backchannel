@@ -20,6 +20,7 @@ import {
   IMessage,
   FileState,
   MessageType,
+  CodeType,
 } from './types';
 import { Wormhole } from './wormhole';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
@@ -205,6 +206,26 @@ export class Backchannel extends events.EventEmitter {
   async getCode(): Promise<Code> {
     let { nameplate, password } = await this._wormhole.getCode();
     return `${nameplate} ${password}`;
+  }
+
+  detectCodeType(code: string): CodeType {
+    let maybe = parseInt(code[0]);
+    if (isNaN(maybe)) return CodeType.WORDS;
+    else return CodeType.NUMBERS;
+  }
+
+  validCode(code: Code): boolean {
+    let codeType = this.detectCodeType(code);
+
+    switch (codeType) {
+      case CodeType.NUMBERS:
+        let sanitized = code.toLowerCase().trim().replaceAll(' ', '');
+        return sanitized.match(/[0-9]{9}/) !== null;
+      case CodeType.WORDS:
+        const RE = /[A-z]{3,5}( )[A-z]{3,5}( )[A-z]{3,5}/g;
+        let matched = code.toLowerCase().trim().match(RE);
+        return matched !== null;
+    }
   }
 
   /**
