@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { Code } from '../backend/types';
+import { Code, CodeType } from '../backend/types';
 
 import Backchannel from '../backend';
 import { generateQRCode } from '../web';
@@ -8,11 +8,6 @@ import useCountdown from '../hooks/useCountdown';
 import usePrevious from '../hooks/usePrevious';
 
 type QRCodeImage = string;
-
-export enum CodeType {
-  WORDS = 'words',
-  NUMBERS = 'numbers',
-}
 
 let backchannel = Backchannel();
 
