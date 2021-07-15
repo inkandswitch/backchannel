@@ -9,8 +9,7 @@ OR CRYPTOGRAPHY REVIEW. THIS SOFTWARE MIGHT BE UNSAFE.
 Backchannel is a cross platform progressive web application combining novel
 out-of-band identity verification techniques with a modernised pet name address book system. 
 
-This prototype will allow two people to share documents safely over time in
-a cohesive, easily understood interface. It will satisfy certain
+This prototype will allow two people to chat with high recognition of their recipient. It will satisfy certain
 cases of heightened risk without dramatic configuration or expertise required
 on behalf of network participants.
 
