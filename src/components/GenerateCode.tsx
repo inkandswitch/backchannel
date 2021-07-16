@@ -32,7 +32,6 @@ enum Tab {
 export default function GenerateCode() {
   let [codeType, setCodeType] = useState<CodeType>(CodeType.WORDS);
   let [code, qrCode] = useCode(
-    codeType,
     CODE_REGENERATE_TIMER_SEC,
     REDEEM_URL_PATH
   );
@@ -131,6 +130,7 @@ export default function GenerateCode() {
 
   function formatCode(code: string, codeType: CodeType): string {
     if (codeType !== CodeType.NUMBERS) return code;
+    code = backchannel.getNumericCode(code)
     let formatted = '';
     let spaces = [0, 3, 5, 7];
     for (var i = 0; i < code.length; i++) {

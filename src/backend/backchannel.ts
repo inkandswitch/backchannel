@@ -199,15 +199,6 @@ export class Backchannel extends events.EventEmitter {
     return this._open;
   }
 
-  /**
-   * Create a one-time code for a new backchannel contact.
-   * @returns {Code} code The code to use in announce
-   */
-  async getCode(): Promise<Code> {
-    let { nameplate, password } = await this._wormhole.getCode();
-    return `${nameplate} ${password}`;
-  }
-
   detectCodeType(code: string): CodeType {
     let maybe = parseInt(code[0]);
     if (isNaN(maybe)) return CodeType.WORDS;
@@ -232,8 +223,20 @@ export class Backchannel extends events.EventEmitter {
    * Create a one-time code for a new backchannel contact.
    * @returns {Code} code The code to use in announce
    */
-  async getNumericCode(): Promise<Code> {
-    let { nameplate, password } = await this._wormhole.getNumericCode();
+  getNumericCode(code: Code): Code {
+    let parts = code.split(' ') 
+    let nameplate = parts[0]
+    let password = `${parts[1]} ${parts[2]}`
+    let transformed = this._wormhole.getNumericCode({nameplate, password});
+    return `${transformed.nameplate} ${transformed.password}`;
+  }
+
+  /**
+   * Create a one-time code for a new backchannel contact.
+   * @returns {Code} code The code to use in announce
+   */
+  async getCode(): Promise<Code> {
+    let { nameplate, password } = await this._wormhole.getCode();
     return `${nameplate} ${password}`;
   }
 
