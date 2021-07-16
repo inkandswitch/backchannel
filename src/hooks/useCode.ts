@@ -23,7 +23,7 @@ export default function useCode(
   redeemUrlPath: string
 ): [code: Code, qrCode: QRCodeImage] {
   const [code, setCode] = useState('');
-  const [generatingCode, setGeneratingCode] = useState(false)
+  const [generatingCode, setGeneratingCode] = useState(false);
   const [qrCode, setQRCode] = useState('');
   const [timeRemaining, resetCountdown] = useCountdown(timeout);
 
@@ -35,24 +35,18 @@ export default function useCode(
       // stale codes don't linger
       setCode('');
       setQRCode('');
-      setGeneratingCode(true)
+      setGeneratingCode(true);
 
       getCode().then((code) => {
         setCode(code);
-        setGeneratingCode(false)
+        setGeneratingCode(false);
         const url = getReedemURL(redeemUrlPath, code);
         console.log('REDEEM URL', url);
         generateQRCode(url).then((qrCode) => setQRCode(qrCode));
         resetCountdown();
       });
     }
-  }, [
-    code,
-    generatingCode,
-    timeRemaining,
-    resetCountdown,
-    redeemUrlPath,
-  ]);
+  }, [code, generatingCode, timeRemaining, resetCountdown, redeemUrlPath]);
 
   return [code, qrCode];
 }

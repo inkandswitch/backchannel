@@ -4,7 +4,6 @@ import * as bip from 'bip39';
 import debug from 'debug';
 import { serialize, deserialize } from 'bson';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
-import english from './wordlist_en.json';
 
 export type Code = {
   nameplate: string;
@@ -18,25 +17,17 @@ let PREFIX = 'wormhole-';
 export class Wormhole {
   client: Client;
   log: debug;
+  wordlist: string[];
 
-  constructor(client) {
+  constructor(client: Client, wordlist: string[]) {
     this.client = client;
+    this.wordlist = wordlist;
     this.log = debug('bc:wormhole');
-  }
-
-  getNumericCode(code: Code): Code {
-    let nameplate = english.indexOf(code.nameplate).toString()
-    let parts = code.password.split(' ')
-    let password = english.indexOf(parts[0]) + '' + english.indexOf(parts[1])
-    return {
-      nameplate,
-      password
-    };
   }
 
   async getCode(): Promise<Code> {
     let passwordPieces = bip
-      .entropyToMnemonic(randomBytes(32), english)
+      .entropyToMnemonic(randomBytes(32), this.wordlist)
       .split(' ');
     let parts = passwordPieces.filter((p) => p !== '').slice(0, 3);
     if (parts.length < 3) return this.getCode();

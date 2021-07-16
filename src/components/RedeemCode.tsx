@@ -45,8 +45,7 @@ export default function RedeemCode() {
         let codeType = backchannel.detectCodeType(code);
 
         if (codeType === CodeType.NUMBERS) {
-          code = code.replaceAll(' ', '');
-          code = `${code.slice(0, 3)} ${code.slice(3)}`;
+          code = backchannel.numericCodeToWords(code);
         }
         let key: Key = await backchannel.accept(code);
 
