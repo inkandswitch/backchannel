@@ -20,7 +20,7 @@ let backchannel = Backchannel();
 // Amount of milliseconds to show immediate user feedback
 const USER_FEEDBACK_TIMER = 5000;
 // Amount of seconds the user has to share code before it regenerates
-const CODE_REGENERATE_TIMER_SEC = 60;
+const CODE_REGENERATE_TIMER_SEC = 3;
 const REDEEM_URL_PATH = '/redeem';
 
 enum Tab {
@@ -158,19 +158,19 @@ export default function GenerateCode() {
             onClick={handleToggleClick(Tab.WORDS, CodeType.WORDS)}
             isActive={tab === Tab.WORDS}
           >
-            Via text
+            Words
           </Toggle>
           <Toggle
             onClick={handleToggleClick(Tab.NUMBERS, CodeType.NUMBERS)}
             isActive={tab === Tab.NUMBERS}
           >
-            On a Call
+            Numbers
           </Toggle>
           <Toggle
             onClick={handleToggleClick(Tab.QRCODE)}
             isActive={tab === Tab.QRCODE}
           >
-            In person
+            QR
           </Toggle>
         </ToggleWrapper>
       }
