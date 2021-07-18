@@ -1,6 +1,5 @@
 import { Client } from '@localfirst/relay-client';
 import { randomBytes } from 'crypto';
-import * as bip from 'bip39';
 import debug from 'debug';
 import { serialize, deserialize } from 'bson';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
@@ -25,19 +24,24 @@ export class Wormhole {
     this.log = debug('bc:wormhole');
   }
 
-  async getCode(passwordPieces = []): Promise<Code> {
-    let nextPieces = bip
-      .entropyToMnemonic(randomBytes(32), this.wordlist)
-      .split(' ');
-    passwordPieces = passwordPieces.concat(
-      nextPieces.find((piece) => piece != '')
-    );
-    if (passwordPieces.length < 3) return this.getCode(passwordPieces);
-    else
-      return {
-        nameplate: passwordPieces[0],
-        password: passwordPieces[1] + ' ' + passwordPieces[2],
-      };
+  async getCode(): Promise<Code> {
+    // get 2 (probably) words
+    let getWord = (wordlist) => {
+      let bytes = randomBytes(1);
+      let index = parseInt(bytes.toString('hex'), 16);
+      let word = wordlist[index];
+      return word;
+    };
+    let password = '';
+    // first byte 1/256 options, first half of word list
+    password += getWord(this.wordlist.slice(0, 256));
+    password += ' ';
+    // second byte 1/256, the second half of the word list
+    password += getWord(this.wordlist.slice(256));
+    return {
+      nameplate: getWord(this.wordlist), // nameplate can really be anything
+      password,
+    };
   }
 
   join(nameplate: string) {
