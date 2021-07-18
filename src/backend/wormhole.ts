@@ -25,16 +25,18 @@ export class Wormhole {
     this.log = debug('bc:wormhole');
   }
 
-  async getCode(): Promise<Code> {
-    let passwordPieces = bip
+  async getCode(passwordPieces = []): Promise<Code> {
+    let nextPieces = bip
       .entropyToMnemonic(randomBytes(32), this.wordlist)
       .split(' ');
-    let parts = passwordPieces.filter((p) => p !== '').slice(0, 3);
-    if (parts.length < 3) return this.getCode();
+    passwordPieces = passwordPieces.concat(
+      nextPieces.find((piece) => piece != '')
+    );
+    if (passwordPieces.length < 3) return this.getCode(passwordPieces);
     else
       return {
-        nameplate: parts[0],
-        password: parts[1] + ' ' + parts[2],
+        nameplate: passwordPieces[0],
+        password: passwordPieces[1] + ' ' + passwordPieces[2],
       };
   }
 
