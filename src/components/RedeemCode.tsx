@@ -48,7 +48,7 @@ export default function RedeemCode() {
           code = code.replaceAll(' ', '');
           code = `${code.slice(0, 3)} ${code.slice(3)}`;
         }
-        let key: Key = await backchannel.accept(code);
+        let key: Key = await backchannel.accept(code, 5000);
 
         let cid: ContactId = await backchannel.addContact(key);
         setErrorMsg('');
