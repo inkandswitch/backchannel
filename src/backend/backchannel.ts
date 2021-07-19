@@ -277,6 +277,14 @@ export class Backchannel extends events.EventEmitter {
    */
   async editMoniker(contactId: ContactId, moniker: string): Promise<IContact> {
     this.log('editmoniker', contactId, moniker);
+    let contacts = this.db.getContacts();
+    let exists = contacts.find((c) => {
+      return c.moniker === moniker;
+    });
+    if (exists)
+      return Promise.reject(
+        new Error('That name already exists. Pick a unique name.')
+      );
     await this.db.editMoniker(contactId, moniker);
     return this.db.getContactById(contactId);
   }
@@ -303,7 +311,7 @@ export class Backchannel extends events.EventEmitter {
    * @param {Key} key - The key add to the database
    * @returns {ContactId} id - The local id number for this contact
    */
-  async addContact(key: Key, device?: boolean): Promise<ContactId> {
+  async addContact(key: Key): Promise<ContactId> {
     return this._addContact(key, false);
   }
 
