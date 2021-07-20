@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 
-import { Code, CodeType } from '../backend/types';
+import { Code } from '../backend/types';
 
 import Backchannel from '../backend';
 import { generateQRCode } from '../web';
 import useCountdown from '../hooks/useCountdown';
-import usePrevious from '../hooks/usePrevious';
 
 type QRCodeImage = string;
 
@@ -20,54 +19,42 @@ let backchannel = Backchannel();
  * @returns {QRCodeImage} Stringified image of a QR Code that accepts the invite code.
  */
 export default function useCode(
-  codeType: CodeType,
   timeout: number = 60,
   redeemUrlPath: string
 ): [code: Code, qrCode: QRCodeImage] {
   const [code, setCode] = useState('');
+  const [generatingCode, setGeneratingCode] = useState(false);
   const [qrCode, setQRCode] = useState('');
   const [timeRemaining, resetCountdown] = useCountdown(timeout);
-  const previousCodeType = usePrevious(codeType);
 
   // Generate new code and reset countdown when timer runs out
   // or if the codeType changes
   useEffect(() => {
-    if (timeRemaining === 0 || previousCodeType !== codeType) {
+    if (!generatingCode && (timeRemaining === 0 || !code.length)) {
       // Clear the code before getting a new one so
       // stale codes don't linger
       setCode('');
       setQRCode('');
+      setGeneratingCode(true);
 
-      getCode(codeType).then((code) => {
+      getCode().then((code) => {
         setCode(code);
+        setGeneratingCode(false);
         const url = getReedemURL(redeemUrlPath, code);
         console.log('REDEEM URL', url);
         generateQRCode(url).then((qrCode) => setQRCode(qrCode));
         resetCountdown();
       });
     }
-  }, [
-    timeRemaining,
-    codeType,
-    previousCodeType,
-    resetCountdown,
-    redeemUrlPath,
-  ]);
+  }, [code, generatingCode, timeRemaining, resetCountdown, redeemUrlPath]);
 
   return [code, qrCode];
 }
 
-const getCode = async (codeType): Promise<Code> => {
+const getCode = async (): Promise<Code> => {
   try {
-    let code: Code;
-    switch (codeType) {
-      case CodeType.WORDS:
-        code = await backchannel.getCode();
-        return code;
-      case CodeType.NUMBERS:
-        code = await backchannel.getNumericCode();
-        return code;
-    }
+    let code = await backchannel.getCode();
+    return code;
   } catch (err) {
     if (err.message.startsWith('This code has expired')) {
       // TODO differentiate between an actual backend err (which should be displayed) vs the code timing out (which should happen quietly).

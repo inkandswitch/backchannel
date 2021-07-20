@@ -23,6 +23,7 @@ import {
   CodeType,
 } from './types';
 import { Wormhole } from './wormhole';
+import english from './wordlist_en.json';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
 import { ReceiveSyncMsg } from './AutomergeDiscovery';
 
@@ -156,7 +157,7 @@ export class Backchannel extends events.EventEmitter {
       this.log('Connecting to relay', this.relay);
       let documentIds = this.db.documents;
       this._client = this._createClient(this.relay, documentIds);
-      this._wormhole = new Wormhole(this._client);
+      this._wormhole = new Wormhole(this._client, english);
       this.emit(EVENTS.OPEN);
     });
     this.log = debug('bc:backchannel');
@@ -183,7 +184,7 @@ export class Backchannel extends events.EventEmitter {
     const documentIds = this.db.documents;
     if (newSettings.relay !== this.db.settings.relay) {
       this._client = this._createClient(newSettings.relay, documentIds);
-      this._wormhole = new Wormhole(this._client);
+      this._wormhole = new Wormhole(this._client, english);
     }
     let ready = { ...this.db.root.settings, ...newSettings };
     return this.db.changeRoot((doc: ContactList) => {
@@ -197,15 +198,6 @@ export class Backchannel extends events.EventEmitter {
 
   opened() {
     return this._open;
-  }
-
-  /**
-   * Create a one-time code for a new backchannel contact.
-   * @returns {Code} code The code to use in announce
-   */
-  async getCode(): Promise<Code> {
-    let { nameplate, password } = await this._wormhole.getCode();
-    return `${nameplate} ${password}`;
   }
 
   detectCodeType(code: string): CodeType {
@@ -232,8 +224,37 @@ export class Backchannel extends events.EventEmitter {
    * Create a one-time code for a new backchannel contact.
    * @returns {Code} code The code to use in announce
    */
-  async getNumericCode(): Promise<Code> {
-    let { nameplate, password } = await this._wormhole.getNumericCode();
+  getNumericCode(code: Code): Code {
+    let parts = code.split(' ');
+    let getIndex = (word) => {
+      let index = english.indexOf(word);
+      if (index < 10) return `00${index}`;
+      if (index < 100) return `0${index}`;
+      return index;
+    };
+    let nameplate = getIndex(parts[0]).toString();
+    let password = getIndex(parts[1]) + '' + getIndex(parts[2]);
+    return `${nameplate} ${password}`;
+  }
+
+  numericCodeToWords(code: Code): Code {
+    let clean = code.replaceAll(' ', '');
+    let getWord = (index) => {
+      let word = english[parseInt(index)];
+      return word;
+    };
+    let part0 = getWord(clean.slice(0, 3));
+    let part1 = getWord(clean.slice(3, 6));
+    let part2 = getWord(clean.slice(6, 9));
+    return `${part0} ${part1} ${part2}`;
+  }
+
+  /**
+   * Create a one-time code for a new backchannel contact.
+   * @returns {Code} code The code to use in announce
+   */
+  async getCode(): Promise<Code> {
+    let { nameplate, password } = await this._wormhole.getCode();
     return `${nameplate} ${password}`;
   }
 

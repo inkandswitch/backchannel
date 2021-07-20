@@ -1,11 +1,8 @@
 import { Client } from '@localfirst/relay-client';
 import { randomBytes } from 'crypto';
-import createHash from 'create-hash';
-import * as bip from 'bip39';
 import debug from 'debug';
 import { serialize, deserialize } from 'bson';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
-import english from './wordlist_en.json';
 
 export type Code = {
   nameplate: string;
@@ -15,73 +12,36 @@ export type Code = {
 let VERSION = 1;
 let appid = 'backchannel/app/mailbox/v1';
 let PREFIX = 'wormhole-';
-function lpad(str, padString, length) {
-  while (str.length < length) {
-    str = padString + str;
-  }
-  return str;
-}
-function bytesToBinary(bytes) {
-  return bytes.map((x) => lpad(x.toString(2), '0', 8)).join('');
-}
-function deriveChecksumBits(entropyBuffer) {
-  const ENT = entropyBuffer.length * 8;
-  const CS = ENT / 32;
-  const hash = createHash('sha256').update(entropyBuffer).digest();
-  return bytesToBinary(Array.from(hash)).slice(0, CS);
-}
-
-function binaryToByte(bin) {
-  return parseInt(bin, 2);
-}
 
 export class Wormhole {
   client: Client;
   log: debug;
+  wordlist: string[];
 
-  constructor(client) {
+  constructor(client: Client, wordlist: string[]) {
     this.client = client;
+    this.wordlist = wordlist;
     this.log = debug('bc:wormhole');
   }
 
-  async getNumericCode(): Promise<Code> {
-    // this is an experimental feature
-    // this is copied code from the bip library
-    // we generate the same indexes that are used in the
-    // word-based code, but don't convert them to words. instead just
-    // return the indexes.
-    let entropy = randomBytes(32);
-    const entropyBits = bytesToBinary(Array.from(entropy));
-    const checksumBits = deriveChecksumBits(entropy);
-    const bits = entropyBits + checksumBits;
-    const chunks = bits.match(/(.{1,11})/g);
-    const code = chunks.map((binary) => {
-      const index = binaryToByte(binary) % 999;
-      if (index < 10) return `00${index}`;
-      if (index < 100) return `0${index}`;
-      return index;
-    });
-    let parts = code.slice(0, 3);
-    return {
-      nameplate: parts[0],
-      password: parts[1] + '' + parts[2],
+  async getCode(): Promise<Code> {
+    // get 2 (probably) words
+    let getWord = (wordlist) => {
+      let bytes = randomBytes(1);
+      let index = parseInt(bytes.toString('hex'), 16);
+      let word = wordlist[index];
+      return word;
     };
-  }
-
-  async getCode(lang?: string): Promise<Code> {
-    if (lang) {
-      bip.setDefaultWordlist(lang);
-    }
-    let passwordPieces = bip
-      .entropyToMnemonic(randomBytes(32), english)
-      .split(' ');
-    let parts = passwordPieces.filter((p) => p !== '').slice(0, 3);
-    if (parts.length < 3) return this.getCode(lang);
-    else
-      return {
-        nameplate: parts[0],
-        password: parts[1] + ' ' + parts[2],
-      };
+    let password = '';
+    // first byte 1/256 options, first half of word list
+    password += getWord(this.wordlist.slice(0, 256));
+    password += ' ';
+    // second byte 1/256, the second half of the word list
+    password += getWord(this.wordlist.slice(256));
+    return {
+      nameplate: getWord(this.wordlist), // nameplate can really be anything
+      password,
+    };
   }
 
   join(nameplate: string) {

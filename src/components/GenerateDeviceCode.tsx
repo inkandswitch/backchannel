@@ -6,7 +6,7 @@ import useCode from '../hooks/useCode';
 import { Spinner } from '.';
 import { AnimationMode } from './CodeView';
 import DeviceCodeView, { DeviceCodeLoading } from './DeviceCodeView';
-import { CodeType, Key, ContactId } from '../backend/types';
+import { Key, ContactId } from '../backend/types';
 import Backchannel from '../backend';
 
 let backchannel = Backchannel();
@@ -21,11 +21,7 @@ const instructions =
   'Scan this QR code with your phone. Linked devices can see all contacts and message history.';
 
 export default function GenerateDeviceCode() {
-  let [code, qrCode] = useCode(
-    CodeType.NUMBERS,
-    CODE_REGENERATE_TIMER_SEC,
-    REDEEM_URL_PATH
-  );
+  let [code, qrCode] = useCode(CODE_REGENERATE_TIMER_SEC, REDEEM_URL_PATH);
 
   let [message, setMessage] = useState('');
   let [errorMsg, setErrorMsg] = useState('');
