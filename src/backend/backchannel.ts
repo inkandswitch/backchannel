@@ -275,16 +275,16 @@ export class Backchannel extends events.EventEmitter {
     return new Promise(async (resolve, reject) => {
       setTimeout(() => {
         this._wormhole.leave(nameplate);
-        reject(new Error(`This code has expired. Try again with a new code.`));
+        reject(
+          new Error(`Secure connection failed. The invitation was incorrect.`)
+        );
       }, timeout);
       try {
         let key: Key = await this._wormhole.accept(nameplate, password);
         return resolve(key);
       } catch (err) {
         reject(
-          new Error(
-            'Secure connection failed. The code was incorrect. Try again with a new one.'
-          )
+          new Error('Secure connection failed. The invitation was incorrect.')
         );
       }
     });

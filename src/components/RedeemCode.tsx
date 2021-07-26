@@ -47,7 +47,7 @@ export default function RedeemCode() {
         if (codeType === CodeType.NUMBERS) {
           code = backchannel.numericCodeToWords(code);
         }
-        let key: Key = await backchannel.accept(code);
+        let key: Key = await backchannel.accept(code, 5000);
 
         let cid: ContactId = await backchannel.addContact(key);
         setErrorMsg('');
