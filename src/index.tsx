@@ -35,4 +35,4 @@ backchannel.once(EVENTS.OPEN, async () => {
   );
 });
 
-render(<InstallButton />, document.getElementById('install'));
+//render(<InstallButton />, document.getElementById('install'));
