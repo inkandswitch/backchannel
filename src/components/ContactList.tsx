@@ -8,12 +8,7 @@ import { IMessage } from '../backend/types';
 import Automerge from 'automerge';
 import { Mailbox } from '../backend/backchannel';
 import { timestampToDate, Nickname } from './util';
-import {
-  BottomNav,
-  Spinner,
-  Page,
-  ContentWithBottomNav,
-} from '../components';
+import { BottomNav, Spinner, Page, ContentWithBottomNav } from '../components';
 import { ReactComponent as Plus } from './icons/Plus.svg';
 import { ReactComponent as Sliders } from './icons/Sliders.svg';
 import { ReactComponent as Envelope } from './icons/Envelope.svg';
