@@ -10,18 +10,12 @@ import { Mailbox } from '../backend/backchannel';
 import { timestampToDate, Nickname } from './util';
 import {
   BottomNav,
-  Button,
-  Instructions,
   Spinner,
-  IconWithMessage,
   Page,
-  Content,
   ContentWithBottomNav,
-  Text,
 } from '../components';
 import { ReactComponent as Plus } from './icons/Plus.svg';
 import { ReactComponent as Sliders } from './icons/Sliders.svg';
-import { ReactComponent as Checkmark } from './icons/Checkmark.svg';
 import { ReactComponent as Envelope } from './icons/Envelope.svg';
 import { ReactComponent as NavCurve } from './icons/NavCurve.svg';
 import * as storage from './storage';
@@ -36,7 +30,6 @@ export default function ContactList(props) {
   let [isLoaded, setIsLoaded] = useState(false);
   let [canShowLoading, setCanShowLoading] = useState(false);
   let [showInitiationAnimation, setShowInitiationAnimation] = useState(false);
-  let [acknowledged, setAcknowledged] = useState(true);
   let [latestMessages, setLatestMessages] = useState([]);
   const confirmButtonRef = useRef(null);
 
@@ -77,7 +70,6 @@ export default function ContactList(props) {
           // Start the initial animation if user hasn't seen the welcome screen before
           setShowInitiationAnimation(true);
         }
-        setAcknowledged(dismissedWelcome);
       }
       contacts.forEach(async (contact) => {
         let messages = backchannel.getMessagesByContactId(contact.id);
@@ -115,58 +107,7 @@ export default function ContactList(props) {
     confirmButtonRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleAcknowledge = () => {
-    storage.set(storage.keys.dismissed_welcome_message, true);
-    setAcknowledged(true);
-  };
-
-  if (isLoaded && !acknowledged) {
-    return (
-      <Page>
-        <Content
-          css={css`
-            color: ${color.textBold};
-            text-align: center;
-          `}
-        >
-          <h4>How does it work?</h4>
-          <Text>
-            First a new secret key is generated on your device. No user account
-            is created: no username, email or password is required since your
-            device and your correspondant's handle the authentification.
-          </Text>
-          <h4>Security</h4>
-          <Text>
-            All content is end-to-end encrypted. The data is as secure as your
-            knowledge and trust of your correspondant.
-          </Text>
-          <IconWithMessage
-            icon={showInitiationAnimation ? Spinner : Checkmark}
-            text="Creating the key"
-          />
-          <Instructions
-            css={css`
-              opacity: ${showInitiationAnimation ? 0 : 1};
-            `}
-          >
-            Your device is set up and ready to go.
-          </Instructions>
-          <Button
-            css={css`
-              margin: 12px;
-            `}
-            onClick={handleAcknowledge}
-            disabled={showInitiationAnimation}
-          >
-            Get Started
-          </Button>
-          <div ref={confirmButtonRef} />
-        </Content>
-      </Page>
-    );
-  }
-
-  if (isLoaded && acknowledged) {
+  if (isLoaded) {
     return (
       <Page>
         <ContentWithBottomNav>
