@@ -21,7 +21,7 @@ export default function NetworkError() {
           let rest = 'Retrying...';
           if (secs > 1)
             rest = `Retrying in ${secs} seconds. (${retries} attempts)`;
-          const message = `Failed to connect to anyone. ${rest}`;
+          const message = `Failed to connect to the Relay. ${rest}`;
           setRelayError(message);
           setRetries(retries + 1);
           break;
