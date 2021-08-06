@@ -36,6 +36,3 @@ jobs:
 
     - name: Lint
       run: npm run lint
-
-    - name: Generate docs
-      run: npm docs
