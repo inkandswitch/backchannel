@@ -2,11 +2,9 @@
   "name": "backchannel",
   "version": "1.0.0",
   "description": "",
-  "main": "src/index.tsx",
+  "main": "src/index.ts",
   "scripts": {
-    "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
     "deploy": "npm run build && npm run build:docs",
     "relay": "cross-env DEBUG=* PORT=3001 node test/server.js",
     "lint": "prettier -c src",
@@ -16,69 +14,37 @@
   "author": "Karissa McKelvey",
   "license": "MIT",
   "dependencies": {
-    "@emotion/babel-plugin": "^11.3.0",
-    "@emotion/react": "^11.1.5",
     "@localfirst/relay-client": "^3.2.0",
     "automerge": "^1.0.1-preview.3",
     "bson": "^4.4.0",
-    "buffer": "^6.0.3",
-    "crypto-browserify": "^3.12.0",
     "debug": "^4.3.1",
     "dexie": "^3.0.3",
     "enc-utils": "^3.0.0",
-    "jsqr": "^1.4.0",
     "qrcode": "^1.4.4",
-    "react": "^17.0.2",
-    "react-chat-elements": "^10.14.0",
-    "react-dom": "^17.0.2",
-    "react-scripts": "4.0.3",
-    "react-sketch-canvas": "^5.3.3",
     "stream-browserify": "^3.0.0",
     "util": "^0.12.3",
-    "uuid": "^8.3.2",
-    "web-vitals": "^1.0.1",
-    "wouter": "^2.7.4"
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.0",
     "@babel/plugin-transform-modules-commonjs": "^7.14.0",
     "@localfirst/relay": "^3.2.0",
     "@peculiar/webcrypto": "^1.1.7",
     "@testing-library/jest-dom": "^5.11.4",
-    "@testing-library/react": "^11.1.0",
     "@testing-library/user-event": "^12.1.10",
     "@types/jest": "^26.0.15",
     "@types/node": "^12.0.0",
-    "@types/react": "^17.0.3",
-    "@types/react-dom": "^17.0.3",
     "cross-env": "^7.0.3",
     "fake-indexeddb": "^3.1.2",
     "jest-websocket-mock": "^2.2.0",
     "jsdoc": "^3.6.6",
     "mock-socket": "^9.0.3",
     "prettier": "2.2.1",
-    "tape": "^5.2.2",
     "typedoc": "^0.20.35",
     "typescript": "^4",
     "web-encoding": "^1.1.5",
     "webcrypto-shim": "^0.1.7"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
   },
   "jest": {
     "transformIgnorePatterns": [
