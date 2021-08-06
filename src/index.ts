@@ -1,6 +1,8 @@
 import { Backchannel, BackchannelSettings } from './backchannel';
 import defaultConfig from './config';
 export { ERROR, EVENTS } from './backchannel';
+export * from './types';
+export * from './blobs';
 
 let instance = null;
 
