@@ -1,5 +1,5 @@
 import { Client } from '@localfirst/relay-client';
-import * as EventEmitter from 'events'
+import * as EventEmitter from 'events';
 import debug from 'debug';
 import * as Automerge from 'automerge';
 import { v4 as uuid } from 'uuid';
@@ -86,7 +86,11 @@ export class Backchannel extends EventEmitter {
    * @param {string} dbName The name of the db for indexeddb
    * @param defaultRelay The default URL of the relay
    */
-  constructor(dbName: string, _settings: BackchannelSettings, wordlist: Array<string>) {
+  constructor(
+    dbName: string,
+    _settings: BackchannelSettings,
+    wordlist: Array<string>
+  ) {
     super();
 
     this.db = new Database<Mailbox>(dbName);
