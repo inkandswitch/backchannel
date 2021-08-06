@@ -1,5 +1,3 @@
-import { Backchannel as bc } from './backchannel';
-
 export enum MessageType {
   FILE = 'file',
   TEXT = 'text',
@@ -12,7 +10,6 @@ export type Code = string;
 export type Key = string;
 export type DiscoveryKey = string;
 export type DocumentId = string;
-export type Backchannel = bc;
 
 export interface IContact {
   id?: ContactId;

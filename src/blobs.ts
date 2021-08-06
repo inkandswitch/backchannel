@@ -1,7 +1,7 @@
 // Adapted from saljam/webwormhole
 // https://github.com/saljam/webwormhole/blob/master/web/main.js#L125
 
-import { EventEmitter } from 'events';
+import * as EventEmitter from 'events'
 import debug from 'debug';
 
 type FileMetadata = {

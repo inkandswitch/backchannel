@@ -1,6 +1,6 @@
 import { Database } from './db';
 import crypto from 'crypto';
-import Automerge from 'automerge';
+import * as Automerge from 'automerge';
 import { Mailbox } from './backchannel';
 import { TextMessage } from './types';
 

@@ -1,7 +1,7 @@
 import { Client } from '@localfirst/relay-client';
-import events from 'events';
+import * as EventEmitter from 'events'
 import debug from 'debug';
-import Automerge from 'automerge';
+import * as Automerge from 'automerge';
 import { v4 as uuid } from 'uuid';
 import { serialize, deserialize } from 'bson';
 
@@ -23,7 +23,6 @@ import {
   CodeType,
 } from './types';
 import { Wormhole } from './wormhole';
-import english from './wordlist_en.json';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
 import { ReceiveSyncMsg } from './AutomergeDiscovery';
 
@@ -69,7 +68,7 @@ export interface Mailbox {
  *
  * Call backchannel.db.save() periodically to ensure changes are saved.
  */
-export class Backchannel extends events.EventEmitter {
+export class Backchannel extends EventEmitter {
   public db: Database<Mailbox>;
   private _wormhole: Wormhole;
   private _client: Client;
@@ -77,6 +76,7 @@ export class Backchannel extends events.EventEmitter {
   private _blobs: Blobs;
   private log: debug;
   private relay: string;
+  private wordlist: Array<string>;
 
   /**
    * Create a new backchannel client. Each instance represents a user opening
@@ -86,10 +86,11 @@ export class Backchannel extends events.EventEmitter {
    * @param {string} dbName The name of the db for indexeddb
    * @param defaultRelay The default URL of the relay
    */
-  constructor(dbName: string, _settings: BackchannelSettings) {
+  constructor(dbName: string, _settings: BackchannelSettings, wordlist: Array<string>) {
     super();
 
     this.db = new Database<Mailbox>(dbName);
+    this.wordlist = wordlist;
 
     this._blobs = new Blobs();
 
@@ -157,7 +158,7 @@ export class Backchannel extends events.EventEmitter {
       this.log('Connecting to relay', this.relay);
       let documentIds = this.db.documents;
       this._client = this._createClient(this.relay, documentIds);
-      this._wormhole = new Wormhole(this._client, english);
+      this._wormhole = new Wormhole(this._client, this.wordlist);
       this.emit(EVENTS.OPEN);
     });
     this.log = debug('bc:backchannel');
@@ -184,7 +185,7 @@ export class Backchannel extends events.EventEmitter {
     const documentIds = this.db.documents;
     if (newSettings.relay !== this.db.settings.relay) {
       this._client = this._createClient(newSettings.relay, documentIds);
-      this._wormhole = new Wormhole(this._client, english);
+      this._wormhole = new Wormhole(this._client, this.wordlist);
     }
     let ready = { ...this.db.root.settings, ...newSettings };
     return this.db.changeRoot((doc: ContactList) => {
@@ -227,7 +228,7 @@ export class Backchannel extends events.EventEmitter {
   getNumericCode(code: Code): Code {
     let parts = code.split(' ');
     let getIndex = (word) => {
-      let index = english.indexOf(word);
+      let index = this.wordlist.indexOf(word);
       if (index < 10) return `00${index}`;
       if (index < 100) return `0${index}`;
       return index;
@@ -240,7 +241,7 @@ export class Backchannel extends events.EventEmitter {
   numericCodeToWords(code: Code): Code {
     let clean = code.replaceAll(' ', '');
     let getWord = (index) => {
-      let word = english[parseInt(index)];
+      let word = this.wordlist[parseInt(index)];
       return word;
     };
     let part0 = getWord(clean.slice(0, 3));

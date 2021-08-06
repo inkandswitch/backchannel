@@ -1,5 +1,5 @@
 import Dexie from 'dexie';
-import Automerge from 'automerge';
+import * as Automerge from 'automerge';
 import { DocumentId, ContactId } from './types';
 import debug from 'debug';
 

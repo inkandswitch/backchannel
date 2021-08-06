@@ -1,5 +1,5 @@
-import Automerge from 'automerge';
-import { EventEmitter } from 'events';
+import * as Automerge from 'automerge';
+import * as EventEmitter from 'events'
 import debug from 'debug';
 import { v4 as uuid } from 'uuid';
 import { Backend } from 'automerge';

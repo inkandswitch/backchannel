@@ -2,14 +2,14 @@
   "name": "backchannel",
   "version": "1.0.0",
   "description": "",
-  "main": "src/bundle.js",
+  "main": "build/index.js",
   "scripts": {
-    "build": "tsc src/*.ts --outDir dist",
-    "deploy": "npm run build && npm run build:docs",
+    "build": "tsc src/*.ts --outDir build",
+    "watch": "tsc src/*.ts --outDir build --watch",
     "relay": "cross-env DEBUG=* PORT=3001 node test/server.js",
     "lint": "prettier -c src",
     "format": "prettier -w src",
-    "build:docs": "typedoc src/ --excludeExternals --excludePrivate --excludeInternal --out build/docs/api --readme docs/readme.md"
+    "docs": "typedoc src/ --excludeExternals --excludePrivate --excludeInternal --out build/docs/api --readme docs/readme.md"
   },
   "author": "Karissa McKelvey",
   "license": "MIT",
