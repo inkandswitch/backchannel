@@ -363,14 +363,21 @@ export class Backchannel extends EventEmitter {
    * @param contactId The ID of the contact
    * @returns
    */
-  getMessagesByContactId(contactId: ContactId): IMessage[] {
+  async getMessagesByContactId(contactId: ContactId): Promise<IMessage[]> {
     let contact = this.db.getContactById(contactId);
     try {
       //@ts-ignore
       let doc: Automerge.Doc<Mailbox> = this.db.getDocument(
         contact.discoveryKey
       );
-      return doc.messages;
+      let messages = doc.messages;
+      if (!messages) {
+        let doc = (await this._addContactDocument(
+          contact
+        )) as Automerge.Doc<Mailbox>;
+        messages = doc.messages;
+      }
+      return messages;
     } catch (err) {
       console.trace(err);
       throw new Error('Error getting messages, this should never happen.');
