@@ -1,5 +1,5 @@
 import { Client } from '@localfirst/relay-client';
-import * as EventEmitter from 'events';
+import { EventEmitter } from 'events';
 import debug from 'debug';
 import * as Automerge from 'automerge';
 import { v4 as uuid } from 'uuid';
@@ -411,7 +411,7 @@ export class Backchannel extends EventEmitter {
    * @returns Once the message has been added to automerge
    */
   async sendTombstone(id: ContactId): Promise<void> {
-    let messages = this.getMessagesByContactId(id);
+    let messages = await this.getMessagesByContactId(id);
     let maybe_tombstone = messages.pop();
     if (maybe_tombstone?.type === MessageType.TOMBSTONE) return;
     let contact = this.db.getContactById(id);

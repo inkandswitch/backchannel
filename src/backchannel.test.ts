@@ -94,7 +94,7 @@ function multidevice(done) {
 
 function createDevice(name?: string): Backchannel {
   let dbname = name || randomBytes(16).toString('hex');
-  return new Backchannel(dbname, { relay });
+  return new Backchannel(dbname, { relay }, null);
 }
 
 beforeEach((done) => {
@@ -284,7 +284,7 @@ test('lost my device', (done) => {
   multidevice(({ android, alice, bob }) => {
     // oops, lost my android.
 
-    let android_loaded = new Backchannel(android.db.dbname, { relay });
+    let android_loaded = new Backchannel(android.db.dbname, { relay }, null);
     android_loaded.on(EVENTS.OPEN, () => {
       expect(android_loaded.devices.length).toBe(1);
       expect(android_loaded.contacts.length).toBe(1);
@@ -305,7 +305,11 @@ test('lost my device', (done) => {
 
         let check = () => {
           expect(alice.devices.length).toBe(0);
-          let android_loaded = new Backchannel(android.db.dbname, { relay });
+          let android_loaded = new Backchannel(
+            android.db.dbname,
+            { relay },
+            null
+          );
           android_loaded.on(EVENTS.OPEN, () => {
             expect(android_loaded.devices.length).toBe(0);
             expect(android_loaded.contacts.length).toBe(0);

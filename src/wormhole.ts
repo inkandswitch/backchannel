@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 import debug from 'debug';
 import { serialize, deserialize } from 'bson';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
+import * as spake2 from 'spake2-wasm';
 
 export type Code = {
   nameplate: string;
@@ -63,8 +64,8 @@ export class Wormhole {
       function onPeerConnect({ socket, documentId }) {
         this.log('onPeerConnect', documentId);
         if (documentId.replace(PREFIX, '') === nameplate) {
-          let spake2State = window.spake2.start(appid, password);
-          let outbound = window.spake2.msg(spake2State);
+          let spake2State = spake2.start(appid, password);
+          let outbound = spake2.msg(spake2State);
           let outboundString = Buffer.from(outbound).toString('hex');
 
           socket.binaryType = 'arraybuffer';
@@ -75,10 +76,7 @@ export class Wormhole {
             let msg = e.data;
             if (!key) {
               let inbound = Buffer.from(msg, 'hex');
-              let array: Uint8Array = window.spake2.finish(
-                spake2State,
-                inbound
-              );
+              let array: Uint8Array = spake2.finish(spake2State, inbound);
               key = Buffer.from(array).toString('hex');
               let encryptedMessage: EncryptedProtocolMessage = await symmetric.encrypt(
                 key,
