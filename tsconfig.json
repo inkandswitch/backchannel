@@ -13,7 +13,11 @@
 		"noFallthroughCasesInSwitch": true,
 		"allowJs": true,
 		"esModuleInterop": true,
-		"target": "esnext",
+		"skipLibCheck": true,
+		"isolatedModules": true,
+		"moduleResolution": "node",
+		"noEmit": true,
+		"target": "es5",
 		"lib": [
 			"dom",
 			"dom.iterable",
