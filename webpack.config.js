@@ -11,6 +11,7 @@ module.exports = {
   },
   resolve: {
     "fallback": {
+		"fs": false,
       "crypto": require.resolve("crypto-browserify"),
       "path": require.resolve("path-browserify"),
       "stream": require.resolve("stream-browserify")
@@ -23,7 +24,10 @@ module.exports = {
   mode: 'development',
   output: {
     filename: 'bundle.js',
-    libraryTarget: 'umd',
+	library: {
+		name: 'Backchannel',
+		type: 'commonjs'
+	}
   },
   devtool: 'source-map',
   target: "browserslist:web"
