@@ -1,9 +1,11 @@
 /** @type {import('@ts-jest/dist/types').InitialOptionsTsJest} */
 module.exports = {
 	preset: 'ts-jest',
-	testEnvironment: 'node',
 	setupFiles: [
 		'./setupTests.js'
 	],
-	testEnvironment: "jsdom"
+	testEnvironment: "jsdom",
+    transformIgnorePatterns: [
+      "node_modules/(!@localfirst/relay-client)"
+    ]
 };
