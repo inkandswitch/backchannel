@@ -18,10 +18,12 @@
 		"moduleResolution": "node",
 		"noEmit": true,
 		"target": "es5",
+		"module": "commonjs",
 		"lib": [
 			"dom",
 			"dom.iterable",
 			"esnext"
 		],
 	}
+	
 }

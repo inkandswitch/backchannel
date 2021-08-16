@@ -151,7 +151,6 @@ test('getMessagesByContactId', async () => {
   msgs.map((msg) => bob.sendMessage(contact.id, msg));
   let messages = await bob.getMessagesByContactId(petalice_id);
   expect(messages.length).toBe(msgs.length);
-  console.log("lol'")
 });
 
 test('integration send a message', async () => {
