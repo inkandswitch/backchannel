@@ -1,14 +1,8 @@
 import { Client } from '@localfirst/relay-client';
-import { randomBytes } from 'crypto';
 import debug from 'debug';
 import { serialize, deserialize } from 'bson';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
 import * as spake2 from 'spake2-wasm';
-
-export type Code = {
-  nameplate: string;
-  password: string;
-};
 
 let VERSION = 1;
 let appid = 'backchannel/app/mailbox/v1';
@@ -17,32 +11,10 @@ let PREFIX = 'wormhole-';
 export class Wormhole {
   client: Client;
   log: debug;
-  wordlist: string[];
 
-  constructor(client: Client, wordlist: string[]) {
+  constructor(client: Client) {
     this.client = client;
-    this.wordlist = wordlist;
     this.log = debug('bc:wormhole');
-  }
-
-  async getCode(): Promise<Code> {
-    // get 2 (probably) words
-    let getWord = (wordlist) => {
-      let bytes = randomBytes(1);
-      let index = parseInt(bytes.toString('hex'), 16);
-      let word = wordlist[index];
-      return word;
-    };
-    let password = '';
-    // first byte 1/256 options, first half of word list
-    password += getWord(this.wordlist.slice(0, 256));
-    password += ' ';
-    // second byte 1/256, the second half of the word list
-    password += getWord(this.wordlist.slice(256));
-    return {
-      nameplate: getWord(this.wordlist), // nameplate can really be anything
-      password,
-    };
   }
 
   join(nameplate: string) {
