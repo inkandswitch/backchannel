@@ -2,7 +2,6 @@ const path = require('path')
 
 module.exports = {
   entry: './src/index.ts',
-  optimization: { concatenateModules: false, providedExports: false, usedExports: false },
   module: {
     rules: [
       // all files with a '.ts' or '.tsx' extension will be handled by 'ts-loader'
