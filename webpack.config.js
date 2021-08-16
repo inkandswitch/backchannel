@@ -17,6 +17,9 @@ module.exports = {
     },
     extensions: ['.ts', '.js', '.json']
   },
+  experiments: {
+	  asyncWebAssembly: true
+  },
   mode: 'development',
   output: {
     filename: 'bundle.js',
