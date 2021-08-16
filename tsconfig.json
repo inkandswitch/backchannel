@@ -1,23 +1,23 @@
 {
-  "include": ["./src/*.ts"],
-  "compilerOptions": {
-    "moduleResolution": "node",
-    "outDir": "./dist/",
-    "noImplicitAny": false,
-    "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-    "composite": true,
-    "declaration": true,
-    "downlevelIteration": true,
-    "esModuleInterop": true,
-    "target": "es5",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
-    "module": "esnext"
+	"include": [
+		"src/**/*"
+	],
+	"exclude": [
+		"node_modules"
+	],
+	"compilerOptions": {
+		"noImplicitAny": false,
+		"allowSyntheticDefaultImports": true,
+		"resolveJsonModule": true,
+		"forceConsistentCasingInFileNames": true,
+		"noFallthroughCasesInSwitch": true,
+		"allowJs": true,
+		"esModuleInterop": true,
+		"target": "esnext",
+		"lib": [
+			"dom",
+			"dom.iterable",
+			"esnext"
+		],
 	}
 }

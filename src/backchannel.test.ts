@@ -1,7 +1,6 @@
 import { Backchannel, EVENTS } from './backchannel';
 import { generateKey } from './crypto';
 import { randomBytes } from 'crypto';
-import { DiscoveryKey } from './types';
 
 let doc,
   petbob_id,
@@ -152,6 +151,7 @@ test('getMessagesByContactId', async () => {
   msgs.map((msg) => bob.sendMessage(contact.id, msg));
   let messages = await bob.getMessagesByContactId(petalice_id);
   expect(messages.length).toBe(msgs.length);
+  console.log("lol'")
 });
 
 test('integration send a message', async () => {
