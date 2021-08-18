@@ -17,7 +17,8 @@ module.exports = {
   },
   mode: 'development',
   output: {
-    filename: 'bundle.js',
+	libraryExport: "default",
+    filename: 'bundle.js'
   },
   devtool: 'source-map',
   target: "web"
