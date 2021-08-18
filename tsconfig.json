@@ -2,9 +2,6 @@
 	"include": [
 		"src/**/*"
 	],
-	"exclude": [
-		"node_modules"
-	],
 	"compilerOptions": {
 		"noImplicitAny": false,
 		"allowSyntheticDefaultImports": true,
@@ -13,11 +10,7 @@
 		"noFallthroughCasesInSwitch": true,
 		"allowJs": true,
 		"esModuleInterop": true,
-		"skipLibCheck": true,
-		"isolatedModules": true,
-		"moduleResolution": "node",
 		"target": "es5",
-		"module": "commonjs",
 		"lib": [
 			"dom",
 			"dom.iterable",

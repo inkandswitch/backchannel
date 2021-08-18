@@ -15,22 +15,21 @@
   "license": "MIT",
   "dependencies": {
     "@localfirst/relay-client": "^3.5.0",
-    "@types/events": "^3.0.0",
     "automerge": "^1.0.1-preview.3",
-    "babel-plugin-macros": "^3.1.0",
     "bson": "^4.4.1",
-    "crypto-browserify": "^3.12.0",
     "debug": "^4.3.1",
     "dexie": "^3.0.3",
     "enc-utils": "^3.0.0",
-    "path-browserify": "^1.0.1",
     "spake2-wasm": "^0.2.0",
-    "stream-browserify": "^3.0.0",
-    "ts-node": "^10.2.0",
-    "util": "^0.12.3",
-    "uuid": "^8.3.2"
+    "util": "^0.12.4",
+    "uuid": "^8.3.2",
+    "webpack": "^4.46.0"
   },
   "devDependencies": {
+    "@types/events": "^3.0.0",
+    "babel-plugin-macros": "^3.1.0",
+    "ts-loader": "^8.3.0",
+    "ts-node": "^10.2.0",
     "@babel/preset-env": "^7.15.0",
     "@localfirst/relay": "^3.2.0",
     "@peculiar/webcrypto": "^1.1.7",
@@ -48,13 +47,11 @@
     "mock-socket": "^9.0.3",
     "prettier": "2.2.1",
     "ts-jest": "^27.0.4",
-    "ts-loader": "^9.2.5",
     "typedoc": "^0.20.35",
     "typescript": "^4",
     "web-encoding": "^1.1.5",
     "webcrypto-shim": "^0.1.7",
-    "webpack": "^5.24.0",
-    "webpack-cli": "^4.5.0"
+    "webpack-cli": "^4.8.0"
   },
   "browserslist": {
     "production": [

@@ -40,7 +40,7 @@ export class Blobs extends EventEmitter {
     string,
     FileProgress
   >();
-  private log: debug = debug('bc:blobs');
+  private log = debug('bc:blobs');
 
   async drainQueue(contactId: string) {
     let toSend = this._sendQueue.get(contactId);

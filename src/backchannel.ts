@@ -4,6 +4,7 @@ import debug from 'debug';
 import * as Automerge from 'automerge';
 import { v4 as uuid } from 'uuid';
 import { serialize, deserialize } from 'bson';
+import { ReceiveSyncMsg } from 'automerge-sync';
 
 import { ContactList, Database } from './db';
 import { FileProgress, Blobs } from './blobs';
@@ -24,7 +25,6 @@ import {
 } from './types';
 import { Wormhole } from './wormhole';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
-import { ReceiveSyncMsg } from './AutomergeDiscovery';
 
 export enum EVENTS {
   MESSAGE = 'MESSAGE',
@@ -74,7 +74,7 @@ export class Backchannel extends EventEmitter {
   private _client: Client;
   private _open: boolean;
   private _blobs: Blobs;
-  private log: debug;
+  private log;
   private relay: string;
 
   /**

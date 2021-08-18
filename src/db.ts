@@ -3,12 +3,11 @@ import { EventEmitter } from 'events';
 import debug from 'debug';
 import { v4 as uuid } from 'uuid';
 import { Backend } from 'automerge';
+import AutomergeSync, { ReceiveSyncMsg } from 'automerge-sync';
 
 import * as crypto from './crypto';
 import { Key, ContactId, IContact, IDevice } from './types';
-import AutomergeDiscovery from './AutomergeDiscovery';
 import { DB } from './automerge-db';
-import { ReceiveSyncMsg } from './AutomergeDiscovery';
 import { randomBytes } from 'crypto';
 
 type DocumentId = string;
@@ -33,15 +32,15 @@ const DEVICE_LIST = 'BACKCHANNEL_DEVICE_LIST';
 export class Database<T> extends EventEmitter {
   public onContactListChange: Function;
   private _idb: DB;
-  private _syncers: Map<DocumentId, AutomergeDiscovery> = new Map<
+  private _syncers: Map<DocumentId, AutomergeSync> = new Map<
     DocumentId,
-    AutomergeDiscovery
+    AutomergeSync
   >();
   private _frontends: Map<DocumentId, Automerge.Doc<unknown>> = new Map<
     DocumentId,
     Automerge.Doc<unknown>
   >();
-  private log: debug;
+  private log;
   private dbname: string;
   private _opened: boolean;
   private _opening: boolean = false;
@@ -412,7 +411,7 @@ export class Database<T> extends EventEmitter {
       patch
     );
     this._frontends.set(docId, frontend);
-    let syncer = new AutomergeDiscovery(docId, backend);
+    let syncer = new AutomergeSync(docId, backend);
     this._syncers.set(docId, syncer);
 
     syncer.on('patch', ({ docId, patch, changes }) => {
