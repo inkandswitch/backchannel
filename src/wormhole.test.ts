@@ -1,5 +1,4 @@
-import { Backchannel, EVENTS } from './backchannel';
-import { generateKey } from './crypto';
+import Backchannel, { EVENTS } from '.';
 import { randomBytes } from 'crypto';
 
 let doc,

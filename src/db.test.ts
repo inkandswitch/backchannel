@@ -1,7 +1,7 @@
 import { Database } from './db';
 import crypto from 'crypto';
 import * as Automerge from 'automerge';
-import { Mailbox } from './backchannel';
+import { Mailbox } from '.';
 import { TextMessage } from './types';
 
 let db: Database<Mailbox>;

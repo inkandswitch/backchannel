@@ -1,4 +1,4 @@
-import { Backchannel, EVENTS } from './backchannel';
+import Backchannel, { EVENTS } from '.';
 import { generateKey } from './crypto';
 import { randomBytes } from 'crypto';
 
