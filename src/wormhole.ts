@@ -8,6 +8,14 @@ let VERSION = 1;
 let appid = 'backchannel/app/mailbox/v1';
 let PREFIX = 'wormhole-';
 
+/*
+type SPAKE = {
+  start: (appid: string, password: string) => any,
+  msg: (state: any) => Uint8Array,
+  finish: (state: any, inbound: Buffer) => Uint8Array
+}
+*/
+
 export class Wormhole {
   client: Client;
   log;

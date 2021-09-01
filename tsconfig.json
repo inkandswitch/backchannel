@@ -6,11 +6,12 @@
 		"noImplicitAny": false,
 		"allowSyntheticDefaultImports": true,
 		"resolveJsonModule": true,
-		"forceConsistentCasingInFileNames": true,
 		"noFallthroughCasesInSwitch": true,
 		"allowJs": true,
+		"moduleResolution": "node",
 		"esModuleInterop": true,
 		"target": "es5",
+		"forceConsistentCasingInFileNames": true,
 		"lib": [
 			"dom",
 			"dom.iterable",
