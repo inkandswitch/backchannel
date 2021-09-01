@@ -3,31 +3,7 @@
 
 import { EventEmitter } from 'events';
 import debug from 'debug';
-
-type FileMetadata = {
-  id: string;
-  name: string;
-  size: number;
-  mime_type: string;
-  lastModified?: number;
-};
-
-type PendingFile = {
-  contactId: string;
-  meta: FileMetadata;
-  file: File;
-};
-
-export type FileProgress = {
-  contactId: string;
-  id: string;
-  progress: number;
-  offset: number;
-  data?: Uint8Array;
-  size: number;
-};
-
-export type SendFn = (msg: Uint8Array) => void;
+import { PendingFile, SendFn, FileProgress } from './types'
 
 export class Blobs extends EventEmitter {
   private _sending: Map<string, boolean> = new Map<string, boolean>();

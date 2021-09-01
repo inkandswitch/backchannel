@@ -6,11 +6,13 @@ import { v4 as uuid } from 'uuid';
 import { serialize, deserialize } from 'bson';
 import { ReceiveSyncMsg } from 'automerge-sync';
 
+export * from './types';
 import { ContactList, Database } from './db';
-import { FileProgress, Blobs } from './blobs';
+import { Blobs } from './blobs';
 import {
   DocumentId,
   Key,
+  FileProgress,
   MessageId,
   Code,
   ContactId,

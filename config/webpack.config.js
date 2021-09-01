@@ -6,7 +6,6 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, '../dist/umd'),
     filename: 'index.js',
-    library: 'Backchannel',
     libraryTarget: 'umd',
     globalObject: 'this',
   },
@@ -25,7 +24,13 @@ module.exports = {
           },
         },
       },
+	  {
+		test: /\.wasm$/,
+		loader: "base64-loader",
+		type: "javascript/auto",
+		}
     ],
+	noParse: /\.wasm$/,
   },
   resolve: {
 	  fallback: {
@@ -38,3 +43,4 @@ module.exports = {
 	  extensions: ['.wasm', '.ts', '.js'],
   },
 }
+

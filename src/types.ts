@@ -11,6 +11,31 @@ export type Key = string;
 export type DiscoveryKey = string;
 export type DocumentId = string;
 
+export type FileMetadata = {
+  id: string;
+  name: string;
+  size: number;
+  mime_type: string;
+  lastModified?: number;
+};
+
+export type PendingFile = {
+  contactId: string;
+  meta: FileMetadata;
+  file: File;
+};
+
+export type FileProgress = {
+  contactId: string;
+  id: string;
+  progress: number;
+  offset: number;
+  data?: Uint8Array;
+  size: number;
+};
+
+export type SendFn = (msg: Uint8Array) => void;
+
 export interface IContact {
   id?: ContactId;
   moniker?: string;
