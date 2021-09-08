@@ -19,22 +19,17 @@ module.exports = {
         exclude: /node_modules/,
         use: {
           loader: 'ts-loader',
-          options: {
+		options: {
             configFile: 'config/tsconfig.umd.json',
           },
         },
-      },
-	  {
-		test: /\.wasm$/,
-		loader: "base64-loader",
-		type: "javascript/auto",
-		}
-    ],
-	noParse: /\.wasm$/,
+      }
+	]
   },
   resolve: {
 	  fallback: {
 		  "fs": false,
+		  "util": require.resolve("util/"),
 		  "path": require.resolve('path-browserify'),
 		  "crypto": require.resolve('crypto-browserify'),
 		  "stream": require.resolve('stream-browserify'),
