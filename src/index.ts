@@ -25,7 +25,6 @@ import {
   MessageType,
   CodeType,
 } from './types';
-import { Wormhole } from './wormhole';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
 
 export enum EVENTS {
@@ -72,7 +71,6 @@ export interface Mailbox {
  */
 export default class Backchannel extends EventEmitter {
   public db: Database<Mailbox>;
-  private _wormhole: Wormhole;
   private _client: Client;
   private _open: boolean;
   private _blobs: Blobs;
@@ -161,7 +159,6 @@ export default class Backchannel extends EventEmitter {
       this.log('Connecting to relay', this.relay);
       let documentIds = this.db.documents;
       this._client = this._createClient(this.relay, documentIds);
-      this._wormhole = new Wormhole(this._client);
       this.emit(EVENTS.OPEN);
     });
     this.log = debug('bc:backchannel');
@@ -188,7 +185,6 @@ export default class Backchannel extends EventEmitter {
     const documentIds = this.db.documents;
     if (newSettings.relay !== this.db.settings.relay) {
       this._client = this._createClient(newSettings.relay, documentIds);
-      this._wormhole = new Wormhole(this._client);
     }
     let ready = { ...this.db.root.settings, ...newSettings };
     return this.db.changeRoot((doc: ContactList) => {
@@ -237,21 +233,26 @@ export default class Backchannel extends EventEmitter {
     let parts = sanitizedCode.split(' ');
     let nameplate = parts.shift();
     let password = parts.join(' ');
+
     return new Promise(async (resolve, reject) => {
-      setTimeout(() => {
-        this._wormhole.leave(nameplate);
-        reject(
-          new Error(`Secure connection failed. The invitation was incorrect.`)
-        );
-      }, timeout);
-      try {
-        let key: Key = await this._wormhole.accept(nameplate, password);
-        return resolve(key);
-      } catch (err) {
-        reject(
-          new Error('Secure connection failed. The invitation was incorrect.')
-        );
-      }
+      import('./wormhole').then(async (module) => {
+        //@ts-ignore
+        let wormhole = new module.Wormhole(this._client);
+        setTimeout(() => {
+          wormhole.leave(nameplate);
+          reject(
+            new Error(`Secure connection failed. The invitation was incorrect.`)
+          );
+        }, timeout);
+        try {
+          let key: Key = await wormhole.accept(nameplate, password);
+          return resolve(key);
+        } catch (err) {
+          reject(
+            new Error('Secure connection failed. The invitation was incorrect.')
+          );
+        }
+      })
     });
   }
 
