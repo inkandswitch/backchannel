@@ -3,7 +3,7 @@ import debug from 'debug';
 import { serialize, deserialize } from 'bson';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
 import * as spake2 from 'spake2-wasm';
-import { Buffer } from 'buffer'
+import { Buffer } from 'buffer';
 
 let VERSION = 1;
 let appid = 'backchannel/app/mailbox/v1';
@@ -59,7 +59,7 @@ export class Wormhole {
             let msg = e.data;
             if (!key) {
               let inbound = Buffer.from(msg, 'hex');
-          //@ts-ignore
+              //@ts-ignore
               let array: Uint8Array = spake2.finish(spake2State, inbound);
               key = Buffer.from(array).toString('hex');
               let encryptedMessage: EncryptedProtocolMessage = await symmetric.encrypt(

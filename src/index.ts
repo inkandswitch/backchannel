@@ -5,7 +5,7 @@ import * as Automerge from 'automerge';
 import { v4 as uuid } from 'uuid';
 import { serialize, deserialize } from 'bson';
 import { ReceiveSyncMsg } from 'automerge-sync';
-import { Buffer } from 'buffer'
+import { Buffer } from 'buffer';
 
 export * from './types';
 import { ContactList, Database } from './db';
@@ -86,10 +86,7 @@ export default class Backchannel extends EventEmitter {
    * @param {string} dbName The name of the db for indexeddb
    * @param defaultRelay The default URL of the relay
    */
-  constructor(
-    dbName: string,
-    _settings: BackchannelSettings
-  ) {
+  constructor(dbName: string, _settings: BackchannelSettings) {
     super();
 
     this.db = new Database<Mailbox>(dbName);
@@ -129,15 +126,17 @@ export default class Backchannel extends EventEmitter {
             // an error is OK, just means that this device sent multiple tombstones
             // and we have already deleted this device on a previous ack
             this.emit(EVENTS.ACK, { contactId: null, docId });
-          }
+          };
 
           try {
             let contact = this.db.getContactByDiscoveryKey(docId);
-            this.deleteDevice(contact.id).then((_) => {
-              this.emit(EVENTS.ACK, { contactId: contact.id, docId });
-            }).catch(onerror)
+            this.deleteDevice(contact.id)
+              .then((_) => {
+                this.emit(EVENTS.ACK, { contactId: contact.id, docId });
+              })
+              .catch(onerror);
           } catch (err) {
-            onerror(err)
+            onerror(err);
           }
         }
 
@@ -230,33 +229,34 @@ export default class Backchannel extends EventEmitter {
    * code. Once the contact has been established, a contact will
    * then be created with an anonymous handle and the id returned.
    *
-   * @param {string} number The mailbox 
+   * @param {string} number The mailbox
    * @param {string} password The password
-   * @param {number} timeout The timeout before giving up, defaults to 1 minute 
+   * @param {number} timeout The timeout before giving up, defaults to 1 minute
    * @returns {ContactId} The ID of the contact in the database
    */
-  async accept(mailbox: string, password: string, timeout = 60000): Promise<ContactId> {
-
+  async accept(
+    mailbox: string,
+    password: string,
+    timeout = 60000
+  ): Promise<ContactId> {
     return new Promise(async (resolve, reject) => {
       import('./wormhole').then(async (module) => {
         //@ts-ignore
         let wormhole = new module.Wormhole(this._client);
         setTimeout(() => {
           wormhole.leave(mailbox);
-          reject(
-            new Error(`Your invitation code was regenerated.`)
-          );
+          reject(new Error(`Your invitation code was regenerated.`));
         }, timeout);
         try {
           let key: Key = await wormhole.accept(mailbox, password);
           return resolve(key);
         } catch (err) {
-          console.error(err)
+          console.error(err);
           reject(
             new Error('Secure connection failed. The invitation was incorrect.')
           );
         }
-      })
+      });
     });
   }
 
@@ -619,21 +619,23 @@ export default class Backchannel extends EventEmitter {
 
       // Setup onmessage event
       let onmessage = (e) => {
-        this._decrypt(e.data, contact).then((syncMsg) => {
-          this.log('onmessage', syncMsg);
-          switch (syncMsg.msgType) {
-            case 'files':
-              this._blobs.receiveFile(contact.id, syncMsg.msg);
-              break;
-            default:
-              // automerge document
-              let fn = listeners[syncMsg.msgType];
-              if (fn) fn(syncMsg.msg);
-              break;
-          }
-        }).catch(err => {
-          console.error('Failed to decrypt message')
-        });
+        this._decrypt(e.data, contact)
+          .then((syncMsg) => {
+            this.log('onmessage', syncMsg);
+            switch (syncMsg.msgType) {
+              case 'files':
+                this._blobs.receiveFile(contact.id, syncMsg.msg);
+                break;
+              default:
+                // automerge document
+                let fn = listeners[syncMsg.msgType];
+                if (fn) fn(syncMsg.msg);
+                break;
+            }
+          })
+          .catch((err) => {
+            console.error('Failed to decrypt message');
+          });
       };
       socket.addEventListener('message', onmessage);
 

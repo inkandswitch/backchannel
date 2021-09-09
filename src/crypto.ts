@@ -1,5 +1,5 @@
 import { Key, DiscoveryKey } from './types';
-import { Buffer } from 'buffer'
+import { Buffer } from 'buffer';
 
 export type EncryptedProtocolMessage = {
   cipher: string;

@@ -304,10 +304,7 @@ test('lost my device', (done) => {
 
         let check = () => {
           expect(alice.devices.length).toBe(0);
-          let android_loaded = new Backchannel(
-            android.db.dbname,
-            { relay }
-          );
+          let android_loaded = new Backchannel(android.db.dbname, { relay });
           android_loaded.on(EVENTS.OPEN, () => {
             expect(android_loaded.devices.length).toBe(0);
             expect(android_loaded.contacts.length).toBe(0);

@@ -27,15 +27,9 @@ test('getContactById', async () => {
 });
 
 test('getContacts', async () => {
-  let bob_id = await db.addContact(
-    randomBytes(32).toString('hex'),
-    'bob'
-  );
+  let bob_id = await db.addContact(randomBytes(32).toString('hex'), 'bob');
 
-  let alice_id = await db.addContact(
-    randomBytes(32).toString('hex'),
-    'alice'
-  );
+  let alice_id = await db.addContact(randomBytes(32).toString('hex'), 'alice');
 
   expect(typeof bob_id).toBe('string');
   expect(typeof alice_id).toBe('string');
@@ -51,10 +45,7 @@ test('getContacts', async () => {
 });
 
 test('getContactByDiscoveryKey', async () => {
-  let bob_id = await db.addContact(
-    randomBytes(32).toString('hex'),
-    'bob'
-  );
+  let bob_id = await db.addContact(randomBytes(32).toString('hex'), 'bob');
 
   let bob = db.getContactById(bob_id);
   let maybe_bob = db.getContactByDiscoveryKey(bob.discoveryKey);
@@ -62,10 +53,7 @@ test('getContactByDiscoveryKey', async () => {
 });
 
 test('getContactByDiscoveryKey', async () => {
-  let bob_id = await db.addContact(
-    randomBytes(32).toString('hex'),
-    'bob'
-  );
+  let bob_id = await db.addContact(randomBytes(32).toString('hex'), 'bob');
 
   let bob = db.getContactById(bob_id);
 
@@ -74,10 +62,7 @@ test('getContactByDiscoveryKey', async () => {
 });
 
 test('editName', async () => {
-  let bob_id = await db.addContact(
-    randomBytes(32).toString('hex'),
-    'bob'
-  );
+  let bob_id = await db.addContact(randomBytes(32).toString('hex'), 'bob');
 
   let bob = db.getContactById(bob_id);
   expect(bob.name).toBe('bob');
@@ -89,10 +74,7 @@ test('editName', async () => {
 });
 
 test('deleteContact', async () => {
-  let bob_id = await db.addContact(
-    randomBytes(32).toString('hex'),
-    'bob'
-  );
+  let bob_id = await db.addContact(randomBytes(32).toString('hex'), 'bob');
 
   let bob = db.getContactById(bob_id);
   expect(bob.name).toBe('bob');
@@ -103,10 +85,7 @@ test('deleteContact', async () => {
 });
 
 test('save/load', async () => {
-  let bob_id = await db.addContact(
-    randomBytes(32).toString('hex'),
-    'bob'
-  );
+  let bob_id = await db.addContact(randomBytes(32).toString('hex'), 'bob');
 
   let bob = db.getContactById(bob_id);
   expect(bob.name).toBe('bob');

@@ -3,7 +3,7 @@
 
 import { EventEmitter } from 'events';
 import debug from 'debug';
-import { PendingFile, SendFn, FileProgress } from './types'
+import { PendingFile, SendFn, FileProgress } from './types';
 
 export class Blobs extends EventEmitter {
   private _sending: Map<string, boolean> = new Map<string, boolean>();

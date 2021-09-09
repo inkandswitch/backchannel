@@ -22,15 +22,15 @@ test.skip('generate a key', (end) => {
 
   alice.once(EVENTS.OPEN, () => {
     bob.once(EVENTS.OPEN, () => {
-      let code = 'pineapple sausage'
-      let pending = 2
+      let code = 'pineapple sausage';
+      let pending = 2;
       let done = (key) => {
-        console.log(key)
-        pending--
-        if (pending === 0) end()
-      }
-      alice.accept('mailbox', code).then(done)
-      bob.accept('mailbox', code).then(done)
-    })
-  })
-})
+        console.log(key);
+        pending--;
+        if (pending === 0) end();
+      };
+      alice.accept('mailbox', code).then(done);
+      bob.accept('mailbox', code).then(done);
+    });
+  });
+});
