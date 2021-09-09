@@ -53,12 +53,12 @@ export class Blobs extends EventEmitter {
    */
   sendFile(pendingFile: PendingFile) {
     let { contactId, meta, file } = pendingFile;
-    return new Promise<boolean>(async (resolve, reject) => {
+    return new Promise<void>(async (resolve, reject) => {
       let send = this._connections.get(contactId);
       if (!send) return reject();
       if (this._sending.get(contactId)) {
         this.addQueue(pendingFile);
-        return resolve(false);
+        return resolve();
       }
 
       this._sending.set(contactId, true);
@@ -73,12 +73,7 @@ export class Blobs extends EventEmitter {
           })
         )
       );
-      let reader;
-      if (!file.stream) {
-        reader = file.stream().getReader();
-      } else {
-        reader = this._read(file);
-      }
+      let reader = this._read(file);
       let sending: FileProgress = {
         contactId,
         id: meta.id,
@@ -92,7 +87,7 @@ export class Blobs extends EventEmitter {
           this._sending.set(contactId, false);
           this.emit('sent', sending);
           this.drainQueue(contactId);
-          return resolve(true);
+          return resolve();
         }
 
         try {
@@ -119,7 +114,7 @@ export class Blobs extends EventEmitter {
    */
   private _read(file: File, chunkSize: number = 64 << 10) {
     let _read = (file, offset) =>
-      new Promise((resolve, reject) => {
+      new Promise<Uint8Array>((resolve, reject) => {
         const fr = new FileReader();
         fr.onload = (e: ProgressEvent<FileReader>) => {
           //@ts-ignore
@@ -135,7 +130,7 @@ export class Blobs extends EventEmitter {
       current: 0,
       last: file.size,
       async read() {
-        let value = await _read(file, this.current);
+        let value: Uint8Array = await _read(file, this.current);
         if (this.current <= this.last) {
           this.current += chunkSize;
           return { done: false, value };

@@ -1,4 +1,4 @@
-import Backchannel, { EVENTS } from '.';
+import { Backchannel, EVENTS } from '.';
 import { generateKey } from './crypto';
 import randomBytes from 'randombytes';
 
@@ -160,8 +160,8 @@ test('integration send a message', async () => {
     text: 'hello',
   };
 
-  expect(alice.opened()).toBe(true);
-  expect(bob.opened()).toBe(true);
+  expect(alice.open).toBe(true);
+  expect(bob.open).toBe(true);
 
   let docId = bob.db.getContactById(petalice_id).discoveryKey;
   let p = onmessage(bob, docId);
@@ -246,8 +246,8 @@ test('integration send multiple messages', async () => {
     text: 'hey bob',
   };
 
-  expect(alice.opened()).toBe(true);
-  expect(bob.opened()).toBe(true);
+  expect(alice.open).toBe(true);
+  expect(bob.open).toBe(true);
 
   let docId = bob.db.getContactById(petalice_id).discoveryKey;
   let p = onmessage(bob, docId);

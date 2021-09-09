@@ -225,14 +225,6 @@ export class Database<T> extends EventEmitter {
     });
   }
 
-  async deleteContact(id: ContactId): Promise<void> {
-    this.log('deleteContact', id);
-    await this.change<ContactList>(CONTACT_LIST, (doc: ContactList) => {
-      let idx = doc.contacts.findIndex((c) => c.id === id);
-      delete doc.contacts[idx];
-    });
-  }
-
   async addDevice(key: Key) {
     let id = uuid();
     let discoveryKey = await crypto.computeDiscoveryKey(key);
@@ -319,35 +311,10 @@ export class Database<T> extends EventEmitter {
     }
   }
 
-  /**
-   * Update an existing contact in the database. The contact object should have
-   * an `id`. The only valid properties you can change are the name and avatar.
-   * @param {ContactId} id - The id of the contact to update
-   * @param {string} name - The contact's new name
-   */
-  editName(id: ContactId, name: string): Promise<void> {
-    return this.change<ContactList>(CONTACT_LIST, (doc: ContactList) => {
-      let contacts = doc.contacts.filter((c) => c.id === id);
-      if (!contacts.length)
-        this.error(new Error('Could not find contact with id=' + id));
-      contacts[0].name = name;
-    });
+  changeContactList(changeFn: Automerge.ChangeFn<ContactList>) {
+    return this.change(CONTACT_LIST, changeFn)
   }
 
-  /**
-   * Update an existing contact in the database. The contact object should have
-   * an `id`. The only valid properties you can change are the name and avatar.
-   * @param {ContactId} id - The id of the contact to update
-   * @param {string} avatar - Stringified image of the contact's new avatar.
-   */
-  editAvatar(id: ContactId, avatar: string): Promise<void> {
-    return this.change(CONTACT_LIST, (doc: ContactList) => {
-      let contacts = doc.contacts.filter((c) => c.id === id);
-      if (!contacts.length)
-        this.error(new Error('Could not find contact with id=' + id));
-      contacts[0].avatar = avatar;
-    });
-  }
 
   getContactById(id: ContactId): IContact {
     let contacts = this.all.filter((c) => c.id === id);

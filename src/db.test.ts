@@ -1,7 +1,7 @@
 import { Database } from './db';
 import randomBytes from 'randombytes';
 import * as Automerge from 'automerge';
-import { Mailbox } from '.';
+import { Mailbox } from './backchannel';
 import { TextMessage } from './types';
 
 let db: Database<Mailbox>;
@@ -61,25 +61,16 @@ test('getContactByDiscoveryKey', async () => {
   expect(maybe_bob).toStrictEqual(bob);
 });
 
-test('editName', async () => {
-  let bob_id = await db.addContact(randomBytes(32).toString('hex'), 'bob');
-
-  let bob = db.getContactById(bob_id);
-  expect(bob.name).toBe('bob');
-
-  db.editName(bob.id, 'karen');
-  let karen = db.getContactById(bob_id);
-  expect(bob.name).toBe('bob');
-  expect(karen.name).toBe('karen');
-});
-
 test('deleteContact', async () => {
   let bob_id = await db.addContact(randomBytes(32).toString('hex'), 'bob');
 
   let bob = db.getContactById(bob_id);
   expect(bob.name).toBe('bob');
 
-  await db.deleteContact(bob.id);
+  await db.changeContactList((doc) => {
+    let idx = doc.contacts.findIndex((c) => c.id === bob_id);
+    delete doc.contacts[idx];
+  });
 
   expect(() => db.getContactById(bob_id)).toThrowError();
 });
@@ -90,12 +81,7 @@ test('save/load', async () => {
   let bob = db.getContactById(bob_id);
   expect(bob.name).toBe('bob');
 
-  await db.editName(bob.id, 'bob2');
-  let bob2 = db.getContactById(bob_id);
-  expect(bob.name).toBe('bob');
-  expect(bob2.name).toBe('bob2');
-
-  let docId = await db.addDocument(bob2.discoveryKey, (doc: Mailbox) => {
+  let docId = await db.addDocument(bob.discoveryKey, (doc: Mailbox) => {
     doc.messages = [
       {
         id: '523',
@@ -126,8 +112,6 @@ test('save/load', async () => {
 
   db = new Database(dbname);
   await db.open();
-  let maybe_bob2 = db.getContactById(bob_id);
-  expect(maybe_bob2).toStrictEqual(bob2);
   //@ts-ignore
   doc = db.getDocument(docId);
   expect(db.documents).toStrictEqual([docId]);
