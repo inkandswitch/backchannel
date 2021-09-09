@@ -2,6 +2,11 @@ import Backchannel, { EVENTS } from 'backchannel';
 import { Buffer } from 'buffer';
 import randomBytes from 'randombytes';
 
+let feedback = document.querySelector('#feedback')
+let contactsDiv = document.querySelector('#contacts')
+let codeInput = document.querySelector('#my-code')
+
+
 const DBNAME = 'bc-example'
 
 // user-defined settings, we provide a default.
@@ -14,14 +19,18 @@ backchannel.once(EVENTS.OPEN, () => {
 		getCode()
 	}, 60 * 1000)
 	getCode()
+	let contacts = backchannel.listContacts()
+	contacts.forEach(addToContactDOM)
 })
 
-
-let feedback = document.querySelector('#feedback')
-let codeInput = document.querySelector('#my-code')
+function addToContactDOM (contact) {
+	let el = document.createElement('div')
+	el.innerHTML = `${contact.id} : ${contact.moniker || 'NO NAME	'}`
+	contactsDiv.appendChild(el)
+}
 
 async function getCode() {
-	let random = randomBytes(2)
+	let random = randomBytes(3)
 	let code = parseInt(Buffer.from(random).toString('hex'), 16)
 	codeInput.innerHTML = code
 
@@ -29,9 +38,9 @@ async function getCode() {
 		let [ mailbox, password ]  = splitCode(code)
 		console.log('joining', mailbox, password)
 		let key = await backchannel.accept(mailbox, password)
-		let el = document.createElement('div')
-		el.innerHTML = 'got a connection '  + key
-		feedback.appendChild(el)
+		let id = await backchannel.addContact(key)
+		let contact = await backchannel.contacts.find(c => c.id === id)
+		addToContactDOM(contact)
 	} catch (err) {
 		feedback.innerHTML = 'ERROR: ' + err.message
 	}
@@ -56,9 +65,9 @@ document.querySelector('#redeem-code').onsubmit = async (e) => {
 	try { 
 		let [ mailbox, password ]  = splitCode(code)
 		let key = await backchannel.accept(mailbox, password)
-		let el = document.createElement('div')
-		el.innerHTML = name.value + ' ' + key
-		feedback.appendChild(el)
+		let id = await backchannel.addContact(key)
+		let contact = await backchannel.editMoniker(id, name.value)
+		addToContactDOM(contact)
 	} catch (err) {
 		feedback.innerHTML = 'ERROR: ' + err.message
 	}
