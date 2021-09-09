@@ -244,7 +244,7 @@ export default class Backchannel extends EventEmitter {
         setTimeout(() => {
           wormhole.leave(mailbox);
           reject(
-            new Error(`Secure connection failed. The invitation was incorrect.`)
+            new Error(`Your invitation code was regenerated.`)
           );
         }, timeout);
         try {
