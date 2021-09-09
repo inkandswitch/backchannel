@@ -7,6 +7,7 @@ let contactsDiv = document.querySelector('#contacts')
 let codeInput = document.querySelector('#my-code')
 
 
+// system-defined settings for database location
 const DBNAME = 'bc-example'
 
 // user-defined settings, we provide a default.
@@ -15,28 +16,29 @@ const SETTINGS = {
 }
 let backchannel = new Backchannel(DBNAME, SETTINGS)
 backchannel.once(EVENTS.OPEN, () => {
+	generateCode()
+
 	setTimeout(()=> {
-		getCode()
+		generateCode()
 	}, 60 * 1000)
-	getCode()
+
 	let contacts = backchannel.listContacts()
 	contacts.forEach(addToContactDOM)
 })
 
 function addToContactDOM (contact) {
 	let el = document.createElement('div')
-	el.innerHTML = `${contact.id} : ${contact.moniker || 'NO NAME	'}`
+	el.innerHTML = `${contact.id} : ${contact.name || 'NO NAME	'}`
 	contactsDiv.appendChild(el)
 }
 
-async function getCode() {
+async function generateCode() {
 	let random = randomBytes(3)
 	let code = parseInt(Buffer.from(random).toString('hex'), 16)
 	codeInput.innerHTML = code
 
 	try { 
 		let [ mailbox, password ]  = splitCode(code)
-		console.log('joining', mailbox, password)
 		let key = await backchannel.accept(mailbox, password)
 		let id = await backchannel.addContact(key)
 		let contact = await backchannel.contacts.find(c => c.id === id)
@@ -44,7 +46,7 @@ async function getCode() {
 	} catch (err) {
 		feedback.innerHTML = 'ERROR: ' + err.message
 	}
-	getCode()
+	generateCode()
 	return 
 }
 

@@ -330,7 +330,7 @@ export class Database<T> extends EventEmitter {
       let contacts = doc.contacts.filter((c) => c.id === id);
       if (!contacts.length)
         this.error(new Error('Could not find contact with id=' + id));
-      contacts[0].moniker = moniker;
+      contacts[0].name = moniker;
     });
   }
 

@@ -205,10 +205,10 @@ test('editMoniker syncs between two devices', (done) => {
       done();
     });
     let b = android.db.getContactById(petbob_id);
-    expect(b.moniker).toStrictEqual('bob');
+    expect(b.name).toStrictEqual('bob');
 
     let ba = alice.db.getContactById(petbob_id);
-    expect(ba.moniker).toStrictEqual('bob');
+    expect(ba.name).toStrictEqual('bob');
 
     await android.editMoniker(petbob_id, newBobName);
   });

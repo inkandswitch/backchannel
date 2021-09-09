@@ -270,7 +270,7 @@ export default class Backchannel extends EventEmitter {
     this.log('editmoniker', contactId, moniker);
     let contacts = this.db.getContacts();
     let exists = contacts.find((c) => {
-      return c.moniker === moniker;
+      return c.name === moniker;
     });
     if (exists)
       return Promise.reject(

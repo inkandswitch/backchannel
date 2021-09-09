@@ -23,7 +23,7 @@ test('getContactById', async () => {
   let id = await db.addContact(randomBytes(32).toString('hex'), 'bob');
 
   let contact = db.getContactById(id);
-  expect(contact.moniker).toBe('bob');
+  expect(contact.name).toBe('bob');
 });
 
 test('getContacts', async () => {
@@ -45,7 +45,7 @@ test('getContacts', async () => {
 
   let contacts = db.getContacts();
   expect(contacts.length).toBe(2);
-  let sorted = contacts.sort((a, b) => (a.moniker > b.moniker ? 1 : 0));
+  let sorted = contacts.sort((a, b) => (a.name > b.name ? 1 : 0));
   expect(sorted[0]).toStrictEqual(bob);
   expect(sorted[1]).toStrictEqual(alice);
 });
@@ -80,12 +80,12 @@ test('editMoniker', async () => {
   );
 
   let bob = db.getContactById(bob_id);
-  expect(bob.moniker).toBe('bob');
+  expect(bob.name).toBe('bob');
 
   db.editMoniker(bob.id, 'karen');
   let karen = db.getContactById(bob_id);
-  expect(bob.moniker).toBe('bob');
-  expect(karen.moniker).toBe('karen');
+  expect(bob.name).toBe('bob');
+  expect(karen.name).toBe('karen');
 });
 
 test('deleteContact', async () => {
@@ -95,7 +95,7 @@ test('deleteContact', async () => {
   );
 
   let bob = db.getContactById(bob_id);
-  expect(bob.moniker).toBe('bob');
+  expect(bob.name).toBe('bob');
 
   await db.deleteContact(bob.id);
 
@@ -109,12 +109,12 @@ test('save/load', async () => {
   );
 
   let bob = db.getContactById(bob_id);
-  expect(bob.moniker).toBe('bob');
+  expect(bob.name).toBe('bob');
 
   await db.editMoniker(bob.id, 'bob2');
   let bob2 = db.getContactById(bob_id);
-  expect(bob.moniker).toBe('bob');
-  expect(bob2.moniker).toBe('bob2');
+  expect(bob.name).toBe('bob');
+  expect(bob2.name).toBe('bob2');
 
   let docId = await db.addDocument(bob2.discoveryKey, (doc: Mailbox) => {
     doc.messages = [
