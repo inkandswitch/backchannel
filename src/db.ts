@@ -252,17 +252,17 @@ export class Database<T> extends EventEmitter {
   /**
    * Add a contact.
    */
-  async addContact(key: Key, moniker: string): Promise<ContactId> {
+  async addContact(key: Key, name: string): Promise<ContactId> {
     let id = uuid();
     let discoveryKey = await crypto.computeDiscoveryKey(key);
     let contact: IContact = {
       id,
       key,
       device: 0,
-      moniker,
+      name,
       discoveryKey,
     };
-    this.log('addContact', key, moniker);
+    this.log('addContact', key, name);
     //@ts-ignore
     await this.change(CONTACT_LIST, (doc: ContactList) => {
       doc.contacts.push(contact);
@@ -321,22 +321,22 @@ export class Database<T> extends EventEmitter {
 
   /**
    * Update an existing contact in the database. The contact object should have
-   * an `id`. The only valid properties you can change are the moniker and avatar.
+   * an `id`. The only valid properties you can change are the name and avatar.
    * @param {ContactId} id - The id of the contact to update
-   * @param {string} moniker - The contact's new moniker
+   * @param {string} name - The contact's new name
    */
-  editMoniker(id: ContactId, moniker: string): Promise<void> {
+  editName(id: ContactId, name: string): Promise<void> {
     return this.change<ContactList>(CONTACT_LIST, (doc: ContactList) => {
       let contacts = doc.contacts.filter((c) => c.id === id);
       if (!contacts.length)
         this.error(new Error('Could not find contact with id=' + id));
-      contacts[0].name = moniker;
+      contacts[0].name = name;
     });
   }
 
   /**
    * Update an existing contact in the database. The contact object should have
-   * an `id`. The only valid properties you can change are the moniker and avatar.
+   * an `id`. The only valid properties you can change are the name and avatar.
    * @param {ContactId} id - The id of the contact to update
    * @param {string} avatar - Stringified image of the contact's new avatar.
    */

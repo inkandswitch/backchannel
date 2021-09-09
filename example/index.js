@@ -68,7 +68,7 @@ document.querySelector('#redeem-code').onsubmit = async (e) => {
 		let [ mailbox, password ]  = splitCode(code)
 		let key = await backchannel.accept(mailbox, password)
 		let id = await backchannel.addContact(key)
-		let contact = await backchannel.editMoniker(id, name.value)
+		let contact = await backchannel.editName(id, name.value)
 		addToContactDOM(contact)
 	} catch (err) {
 		feedback.innerHTML = 'ERROR: ' + err.message

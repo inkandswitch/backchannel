@@ -73,7 +73,7 @@ test('getContactByDiscoveryKey', async () => {
   expect(maybe_bob).toStrictEqual(bob);
 });
 
-test('editMoniker', async () => {
+test('editName', async () => {
   let bob_id = await db.addContact(
     randomBytes(32).toString('hex'),
     'bob'
@@ -82,7 +82,7 @@ test('editMoniker', async () => {
   let bob = db.getContactById(bob_id);
   expect(bob.name).toBe('bob');
 
-  db.editMoniker(bob.id, 'karen');
+  db.editName(bob.id, 'karen');
   let karen = db.getContactById(bob_id);
   expect(bob.name).toBe('bob');
   expect(karen.name).toBe('karen');
@@ -111,7 +111,7 @@ test('save/load', async () => {
   let bob = db.getContactById(bob_id);
   expect(bob.name).toBe('bob');
 
-  await db.editMoniker(bob.id, 'bob2');
+  await db.editName(bob.id, 'bob2');
   let bob2 = db.getContactById(bob_id);
   expect(bob.name).toBe('bob');
   expect(bob2.name).toBe('bob2');

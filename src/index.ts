@@ -261,22 +261,22 @@ export default class Backchannel extends EventEmitter {
   }
 
   /**
-   * This updates the moniker for a given contact and saves the contact in the database.
+   * This updates the name for a given contact and saves the contact in the database.
    * @param {ContactId} contactId The contact id to edit
-   * @param {string} moniker The new moniker for this contact
+   * @param {string} name The new name for this contact
    * @return {IContact} The new contact information
    */
-  async editMoniker(contactId: ContactId, moniker: string): Promise<IContact> {
-    this.log('editmoniker', contactId, moniker);
+  async editName(contactId: ContactId, name: string): Promise<IContact> {
+    this.log('editName', contactId, name);
     let contacts = this.db.getContacts();
     let exists = contacts.find((c) => {
-      return c.name === moniker;
+      return c.name === name;
     });
     if (exists)
       return Promise.reject(
         new Error('That name already exists. Pick a unique name.')
       );
-    await this.db.editMoniker(contactId, moniker);
+    await this.db.editName(contactId, name);
     return this.db.getContactById(contactId);
   }
 
@@ -287,7 +287,7 @@ export default class Backchannel extends EventEmitter {
   /**
    * This updates the avatar for a given contact.
    * @param {ContactId} contactId The contact id to edit
-   * @param {string} avatar The new moniker for this contact
+   * @param {string} avatar The new name for this contact
    * @return {IContact} The new contact information
    */
   async editAvatar(contactId: ContactId, avatar: string): Promise<IContact> {
@@ -307,12 +307,12 @@ export default class Backchannel extends EventEmitter {
   }
 
   async _addContact(key: Key, device?: boolean): Promise<ContactId> {
-    let moniker = '';
+    let name = '';
     let id;
     if (device) {
       id = await this.db.addDevice(key);
     } else {
-      id = await this.db.addContact(key, moniker);
+      id = await this.db.addContact(key, name);
     }
     let contact = this.db.getContactById(id);
     this.log('adding contact', contact.discoveryKey, contact);

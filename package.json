@@ -14,7 +14,7 @@
     "build:types": "node tools/cleanup types && tsc -p config/tsconfig.types.json",
     "relay": "cross-env DEBUG=* PORT=3001 node bin/server.js",
     "lint": "prettier -c src",
-    "test": "jest",
+    "test": "jest src",
     "format": "prettier -w src",
     "docs": "typedoc src/ --excludeExternals --excludePrivate --excludeInternal --out build/docs/api --readme docs/readme.md"
   },
