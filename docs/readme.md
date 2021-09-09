@@ -10,9 +10,9 @@ function, class, or module in the corresponding JSdoc.
 There are many ways to navigate this documentation, but here are the key
 classes to know about:
 
-* [Backchannel](classes/backend_backchannel.backchannel.html)
-* [Database](classes/backend_db.database.html)
-* [Types](modules/backend_types.html)
+* [Backchannel](classes/index.default.html)
+* [Database](classes/db.database.html)
+* [Types](modules/types.html)
 
 ## Credits
 
