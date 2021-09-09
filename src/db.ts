@@ -8,7 +8,7 @@ import AutomergeSync, { ReceiveSyncMsg } from 'automerge-sync';
 import * as crypto from './crypto';
 import { Key, ContactId, IContact, IDevice } from './types';
 import { DB } from './automerge-db';
-import { randomBytes } from 'crypto';
+import randomBytes from 'randombytes';
 
 type DocumentId = string;
 

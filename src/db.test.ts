@@ -1,5 +1,5 @@
 import { Database } from './db';
-import crypto from 'crypto';
+import randomBytes from 'randombytes';
 import * as Automerge from 'automerge';
 import { Mailbox } from '.';
 import { TextMessage } from './types';
@@ -8,7 +8,7 @@ let db: Database<Mailbox>;
 let dbname;
 
 beforeEach((done) => {
-  dbname = crypto.randomBytes(16);
+  dbname = randomBytes(16);
   db = new Database(dbname);
   db.on('open', () => {
     done();
@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 test('getContactById', async () => {
-  let id = await db.addContact(crypto.randomBytes(32).toString('hex'), 'bob');
+  let id = await db.addContact(randomBytes(32).toString('hex'), 'bob');
 
   let contact = db.getContactById(id);
   expect(contact.moniker).toBe('bob');
@@ -28,12 +28,12 @@ test('getContactById', async () => {
 
 test('getContacts', async () => {
   let bob_id = await db.addContact(
-    crypto.randomBytes(32).toString('hex'),
+    randomBytes(32).toString('hex'),
     'bob'
   );
 
   let alice_id = await db.addContact(
-    crypto.randomBytes(32).toString('hex'),
+    randomBytes(32).toString('hex'),
     'alice'
   );
 
@@ -52,7 +52,7 @@ test('getContacts', async () => {
 
 test('getContactByDiscoveryKey', async () => {
   let bob_id = await db.addContact(
-    crypto.randomBytes(32).toString('hex'),
+    randomBytes(32).toString('hex'),
     'bob'
   );
 
@@ -63,7 +63,7 @@ test('getContactByDiscoveryKey', async () => {
 
 test('getContactByDiscoveryKey', async () => {
   let bob_id = await db.addContact(
-    crypto.randomBytes(32).toString('hex'),
+    randomBytes(32).toString('hex'),
     'bob'
   );
 
@@ -75,7 +75,7 @@ test('getContactByDiscoveryKey', async () => {
 
 test('editMoniker', async () => {
   let bob_id = await db.addContact(
-    crypto.randomBytes(32).toString('hex'),
+    randomBytes(32).toString('hex'),
     'bob'
   );
 
@@ -90,7 +90,7 @@ test('editMoniker', async () => {
 
 test('deleteContact', async () => {
   let bob_id = await db.addContact(
-    crypto.randomBytes(32).toString('hex'),
+    randomBytes(32).toString('hex'),
     'bob'
   );
 
@@ -104,7 +104,7 @@ test('deleteContact', async () => {
 
 test('save/load', async () => {
   let bob_id = await db.addContact(
-    crypto.randomBytes(32).toString('hex'),
+    randomBytes(32).toString('hex'),
     'bob'
   );
 

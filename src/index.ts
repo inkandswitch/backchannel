@@ -5,6 +5,7 @@ import * as Automerge from 'automerge';
 import { v4 as uuid } from 'uuid';
 import { serialize, deserialize } from 'bson';
 import { ReceiveSyncMsg } from 'automerge-sync';
+import { Buffer } from 'buffer'
 
 export * from './types';
 import { ContactList, Database } from './db';
@@ -124,15 +125,19 @@ export default class Backchannel extends EventEmitter {
         }
 
         if (change.message === MessageType.ACK) {
+          let onerror = (err) => {
+            // an error is OK, just means that this device sent multiple tombstones
+            // and we have already deleted this device on a previous ack
+            this.emit(EVENTS.ACK, { contactId: null, docId });
+          }
+
           try {
             let contact = this.db.getContactByDiscoveryKey(docId);
             this.deleteDevice(contact.id).then((_) => {
               this.emit(EVENTS.ACK, { contactId: contact.id, docId });
-            });
+            }).catch(onerror)
           } catch (err) {
-            // this is OK, just means that this device sent multiple tombstones
-            // and we have already deleted this device on a previous ack
-            this.emit(EVENTS.ACK, { contactId: null, docId });
+            onerror(err)
           }
         }
 
@@ -219,35 +224,34 @@ export default class Backchannel extends EventEmitter {
         return matched !== null;
     }
   }
+
   /**
    * Open a websocket connection to the magic wormhole service and accept the
    * code. Once the contact has been established, a contact will
    * then be created with an anonymous handle and the id returned.
    *
-   * @param {Code} code The code to accept
-   * @param {number} timeout The timeout before giving up, default 20 seconds
+   * @param {string} number The mailbox 
+   * @param {string} password The password
+   * @param {number} timeout The timeout before giving up, defaults to 1 minute 
    * @returns {ContactId} The ID of the contact in the database
    */
-  async accept(code: Code, timeout = 60000): Promise<ContactId> {
-    let sanitizedCode = code.toLowerCase().trim();
-    let parts = sanitizedCode.split(' ');
-    let nameplate = parts.shift();
-    let password = parts.join(' ');
+  async accept(mailbox: string, password: string, timeout = 60000): Promise<ContactId> {
 
     return new Promise(async (resolve, reject) => {
       import('./wormhole').then(async (module) => {
         //@ts-ignore
         let wormhole = new module.Wormhole(this._client);
         setTimeout(() => {
-          wormhole.leave(nameplate);
+          wormhole.leave(mailbox);
           reject(
             new Error(`Secure connection failed. The invitation was incorrect.`)
           );
         }, timeout);
         try {
-          let key: Key = await wormhole.accept(nameplate, password);
+          let key: Key = await wormhole.accept(mailbox, password);
           return resolve(key);
         } catch (err) {
+          console.error(err)
           reject(
             new Error('Secure connection failed. The invitation was incorrect.')
           );
@@ -627,6 +631,8 @@ export default class Backchannel extends EventEmitter {
               if (fn) fn(syncMsg.msg);
               break;
           }
+        }).catch(err => {
+          console.error('Failed to decrypt message')
         });
       };
       socket.addEventListener('message', onmessage);

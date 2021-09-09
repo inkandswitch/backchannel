@@ -29,11 +29,7 @@ module.exports = {
   resolve: {
 	  fallback: {
 		  "fs": false,
-		  "util": require.resolve("util/"),
-		  "path": require.resolve('path-browserify'),
-		  "crypto": require.resolve('crypto-browserify'),
-		  "stream": require.resolve('stream-browserify'),
-		  "buffer": require.resolve('buffer/')
+		  "path": require.resolve('path-browserify')
 	  },
 	  extensions: ['.wasm', '.ts', '.js'],
   },

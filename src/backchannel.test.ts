@@ -1,6 +1,6 @@
 import Backchannel, { EVENTS } from '.';
 import { generateKey } from './crypto';
-import { randomBytes } from 'crypto';
+import randomBytes from 'randombytes';
 
 let doc,
   petbob_id,

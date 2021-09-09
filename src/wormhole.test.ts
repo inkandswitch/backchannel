@@ -1,5 +1,5 @@
 import Backchannel, { EVENTS } from '.';
-import { randomBytes } from 'crypto';
+import randomBytes from 'randombytes';
 
 let doc,
   petbob_id,
@@ -29,8 +29,8 @@ test.skip('generate a key', (end) => {
         pending--
         if (pending === 0) end()
       }
-      alice.accept(code).then(done)
-      bob.accept(code).then(done)
+      alice.accept('mailbox', code).then(done)
+      bob.accept('mailbox', code).then(done)
     })
   })
 })
