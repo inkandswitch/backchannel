@@ -104,10 +104,6 @@ export class Blobs extends EventEmitter {
   }
 
   /**
-   * An internal method that is used if file.stream API is not available. As of
-   * writing in May 2021, this is applicable for Firefox for Android, Opera, and
-   * Internet Explorer
-   *
    * @param file The browser-generated file object
    * @param chunkSize Chunksize, defaults to 64<<10
    * @returns An async interator that mimics the stream interface

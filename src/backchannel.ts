@@ -38,9 +38,8 @@ export interface Mailbox {
   messages: Automerge.List<IMessage>;
 }
 /**
- * The backchannel class manages the database and wormholes.
- *
- * Call backchannel.db.save() periodically to ensure changes are saved.
+ * The backchannel class is a client that manages it's own database and relay
+ * connections between other backchannel clients.  
  */
 export class Backchannel extends EventEmitter {
   public db: Database<Mailbox>;
@@ -56,9 +55,9 @@ export class Backchannel extends EventEmitter {
    * is identified by the contact's discoveryKey.
    * @constructor
    * @param {string} dbName The name of the db for indexeddb
-   * @param defaultRelay The default URL of the relay
+   * @param {BackchannelSettings} settings User-defined settings
    */
-  constructor(dbName: string, _settings: BackchannelSettings) {
+  constructor(dbName: string, settings: BackchannelSettings) {
     super();
 
     this.db = new Database<Mailbox>(dbName);
@@ -147,7 +146,7 @@ export class Backchannel extends EventEmitter {
 
     this.db.once('open', () => {
       this.relay =
-        (this.db.settings && this.db.settings.relay) || _settings.relay;
+        (this.db.settings && this.db.settings.relay) || settings.relay;
       this.log('Connecting to relay', this.relay);
       let documentIds = this.db.documents;
       this._client = this._createClient(this.relay, documentIds);
@@ -157,8 +156,8 @@ export class Backchannel extends EventEmitter {
   }
 
   /**
-   * Update the settings
-   * @param newSettings New object for settings
+   * Update the settings.
+   * @param {BackchannelSettings} newSettings New settings
    * @returns 
    */
   async updateSettings(newSettings: BackchannelSettings) {
@@ -177,14 +176,13 @@ export class Backchannel extends EventEmitter {
   }
 
   /**
-   * Open a websocket connection to the magic wormhole service and accept the
-   * code. Once the contact has been established, a contact will
-   * then be created with an anonymous handle and the id returned.
+   * Open a websocket connection to the local-first relay service. This performs
+   * the SPAKE2 protocol using [spake2-wasm](https://github.com/okdistribute/spake2-wasm)
    *
    * @param {string} number The mailbox
    * @param {string} password The password
    * @param {number} timeout The timeout before giving up, defaults to 1 minute
-   * @returns {ContactId} The ID of the contact in the database
+   * @returns {Key} A hex represnetation of the resulting key, which is a 32 byte strong shared secret.
    */
   async accept(
     mailbox: string,
