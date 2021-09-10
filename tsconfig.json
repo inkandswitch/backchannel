@@ -1,23 +1,22 @@
 {
-  "compilerOptions": {
-	"noImplicitAny": false,
-	"moduleResolution": "node",
-	"allowSyntheticDefaultImports": true,
-	"resolveJsonModule": true,
-	"forceConsistentCasingInFileNames": true,
-	"noFallthroughCasesInSwitch": true,
-	"skipLibCheck": true,
-    "composite": true,
-    "declaration": true,
-    "downlevelIteration": true,
-    "esModuleInterop": true,
-	"target": "es5",
-	"lib": [
-		"dom",
-		"dom.iterable",
-		"esnext"
+	"include": [
+		"src/**/*"
 	],
-	"module": "esnext",
-	"noEmit": true,
+	"compilerOptions": {
+		"noImplicitAny": false,
+		"allowSyntheticDefaultImports": true,
+		"resolveJsonModule": true,
+		"noFallthroughCasesInSwitch": true,
+		"allowJs": true,
+		"moduleResolution": "node",
+		"esModuleInterop": true,
+		"target": "es5",
+		"forceConsistentCasingInFileNames": true,
+		"lib": [
+			"dom",
+			"dom.iterable",
+			"esnext"
+		],
 	}
+	
 }

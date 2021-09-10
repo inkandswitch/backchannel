@@ -1,7 +1,6 @@
-import { Backchannel, EVENTS } from './backchannel';
+import { Backchannel, EVENTS } from '.';
 import { generateKey } from './crypto';
-import { randomBytes } from 'crypto';
-import { DiscoveryKey } from './types';
+import randomBytes from 'randombytes';
 
 let doc,
   petbob_id,
@@ -108,10 +107,10 @@ beforeEach((done) => {
 
     async function create() {
       petbob_id = await alice.addContact(doc);
-      await alice.editMoniker(petbob_id, 'bob');
+      await alice.editName(petbob_id, 'bob');
 
       petalice_id = await bob.addContact(doc);
-      await bob.editMoniker(petalice_id, 'alice');
+      await bob.editName(petalice_id, 'alice');
       alice.connectToAllContacts();
       bob.connectToAllContacts();
     }
@@ -161,8 +160,8 @@ test('integration send a message', async () => {
     text: 'hello',
   };
 
-  expect(alice.opened()).toBe(true);
-  expect(bob.opened()).toBe(true);
+  expect(alice.open).toBe(true);
+  expect(bob.open).toBe(true);
 
   let docId = bob.db.getContactById(petalice_id).discoveryKey;
   let p = onmessage(bob, docId);
@@ -195,7 +194,7 @@ test('adds and syncs contacts with another device', (done) => {
   });
 });
 
-test('editMoniker syncs between two devices', (done) => {
+test('editName syncs between two devices', (done) => {
   multidevice(async ({ android, alice, bob }) => {
     let newBobName = 'this is really bob i promise';
 
@@ -206,12 +205,12 @@ test('editMoniker syncs between two devices', (done) => {
       done();
     });
     let b = android.db.getContactById(petbob_id);
-    expect(b.moniker).toStrictEqual('bob');
+    expect(b.name).toStrictEqual('bob');
 
     let ba = alice.db.getContactById(petbob_id);
-    expect(ba.moniker).toStrictEqual('bob');
+    expect(ba.name).toStrictEqual('bob');
 
-    await android.editMoniker(petbob_id, newBobName);
+    await android.editName(petbob_id, newBobName);
   });
 });
 
@@ -247,8 +246,8 @@ test('integration send multiple messages', async () => {
     text: 'hey bob',
   };
 
-  expect(alice.opened()).toBe(true);
-  expect(bob.opened()).toBe(true);
+  expect(alice.open).toBe(true);
+  expect(bob.open).toBe(true);
 
   let docId = bob.db.getContactById(petalice_id).discoveryKey;
   let p = onmessage(bob, docId);

@@ -37,7 +37,7 @@ export class DB extends Dexie {
   changes: Dexie.Table<SavedChange, DocumentId>;
   states: Dexie.Table<SavedState>;
   blobs: Dexie.Table<SavedBlob, string>;
-  private log: debug;
+  private log;
 
   constructor(dbname) {
     super(dbname);

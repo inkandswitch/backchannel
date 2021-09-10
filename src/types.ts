@@ -11,9 +11,34 @@ export type Key = string;
 export type DiscoveryKey = string;
 export type DocumentId = string;
 
+export type FileMetadata = {
+  id: string;
+  name: string;
+  size: number;
+  mime_type: string;
+  lastModified?: number;
+};
+
+export type PendingFile = {
+  contactId: string;
+  meta: FileMetadata;
+  file: File;
+};
+
+export type FileProgress = {
+  contactId: string;
+  id: string;
+  progress: number;
+  offset: number;
+  data?: Uint8Array;
+  size: number;
+};
+
+export type SendFn = (msg: Uint8Array) => void;
+
 export interface IContact {
   id?: ContactId;
-  moniker?: string;
+  name?: string;
   avatar?: string; // -> stringified image representing this contact
   discoveryKey?: DiscoveryKey; // -> hash of code
   key: Key; // -> shared secret key I've accepted with them
@@ -52,7 +77,22 @@ export interface FileMessage extends IMessage {
   state: FileState;
 }
 
-export enum CodeType {
-  WORDS = 'words',
-  NUMBERS = 'numbers',
+export type BackchannelSettings = {
+  relay: string;
+};
+
+export enum EVENTS {
+  MESSAGE = 'MESSAGE',
+  ACK = 'ACK',
+  CONTACT_CONNECTED = 'contact.connected',
+  CONTACT_DISCONNECTED = 'contact.disconnected',
+  OPEN = 'open',
+  CONTACT_LIST_SYNC = 'CONTACT_LIST_SYNC',
+  ERROR = 'error',
+  FILE_PROGRESS = 'progress',
+  FILE_SENT = 'sent',
+  FILE_DOWNLOAD = 'download',
+  CLOSE = 'close',
+  RELAY_CONNECT = 'relay.connect',
+  RELAY_DISCONNECT = 'relay.disconnect',
 }

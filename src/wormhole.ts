@@ -1,47 +1,29 @@
 import { Client } from '@localfirst/relay-client';
-import { randomBytes } from 'crypto';
 import debug from 'debug';
 import { serialize, deserialize } from 'bson';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
-
-export type Code = {
-  nameplate: string;
-  password: string;
-};
+import * as spake2 from 'spake2-wasm';
+import { Buffer } from 'buffer';
 
 let VERSION = 1;
 let appid = 'backchannel/app/mailbox/v1';
 let PREFIX = 'wormhole-';
 
+/*
+type SPAKE = {
+  start: (appid: string, password: string) => any,
+  msg: (state: any) => Uint8Array,
+  finish: (state: any, inbound: Buffer) => Uint8Array
+}
+*/
+
 export class Wormhole {
   client: Client;
-  log: debug;
-  wordlist: string[];
+  log;
 
-  constructor(client: Client, wordlist: string[]) {
+  constructor(client: Client) {
     this.client = client;
-    this.wordlist = wordlist;
     this.log = debug('bc:wormhole');
-  }
-
-  async getCode(): Promise<Code> {
-    // get 2 (probably) words
-    let getWord = (wordlist) => {
-      let bytes = randomBytes(1);
-      let index = parseInt(bytes.toString('hex'), 16);
-      let word = wordlist[index];
-      return word;
-    };
-    let password = '';
-    // first byte 1/256 options, first half of word list
-    password += getWord(this.wordlist.slice(0, 256));
-    password += ' ';
-    // second byte 1/256, the second half of the word list
-    password += getWord(this.wordlist.slice(256));
-    return {
-      nameplate: getWord(this.wordlist), // nameplate can really be anything
-      password,
-    };
   }
 
   join(nameplate: string) {
@@ -63,8 +45,10 @@ export class Wormhole {
       function onPeerConnect({ socket, documentId }) {
         this.log('onPeerConnect', documentId);
         if (documentId.replace(PREFIX, '') === nameplate) {
-          let spake2State = window.spake2.start(appid, password);
-          let outbound = window.spake2.msg(spake2State);
+          //@ts-ignore
+          let spake2State = spake2.start(appid, password);
+          //@ts-ignore
+          let outbound = spake2.msg(spake2State);
           let outboundString = Buffer.from(outbound).toString('hex');
 
           socket.binaryType = 'arraybuffer';
@@ -75,10 +59,8 @@ export class Wormhole {
             let msg = e.data;
             if (!key) {
               let inbound = Buffer.from(msg, 'hex');
-              let array: Uint8Array = window.spake2.finish(
-                spake2State,
-                inbound
-              );
+              //@ts-ignore
+              let array: Uint8Array = spake2.finish(spake2State, inbound);
               key = Buffer.from(array).toString('hex');
               let encryptedMessage: EncryptedProtocolMessage = await symmetric.encrypt(
                 key,

@@ -1,15 +1,14 @@
 import * as Automerge from 'automerge';
-import * as EventEmitter from 'events';
+import { EventEmitter } from 'events';
 import debug from 'debug';
 import { v4 as uuid } from 'uuid';
 import { Backend } from 'automerge';
+import AutomergeSync, { ReceiveSyncMsg } from 'automerge-sync';
 
 import * as crypto from './crypto';
 import { Key, ContactId, IContact, IDevice } from './types';
-import AutomergeDiscovery from './AutomergeDiscovery';
 import { DB } from './automerge-db';
-import { ReceiveSyncMsg } from './AutomergeDiscovery';
-import { randomBytes } from 'crypto';
+import randomBytes from 'randombytes';
 
 type DocumentId = string;
 
@@ -33,15 +32,15 @@ const DEVICE_LIST = 'BACKCHANNEL_DEVICE_LIST';
 export class Database<T> extends EventEmitter {
   public onContactListChange: Function;
   private _idb: DB;
-  private _syncers: Map<DocumentId, AutomergeDiscovery> = new Map<
+  private _syncers: Map<DocumentId, AutomergeSync> = new Map<
     DocumentId,
-    AutomergeDiscovery
+    AutomergeSync
   >();
   private _frontends: Map<DocumentId, Automerge.Doc<unknown>> = new Map<
     DocumentId,
     Automerge.Doc<unknown>
   >();
-  private log: debug;
+  private log;
   private dbname: string;
   private _opened: boolean;
   private _opening: boolean = false;
@@ -226,14 +225,6 @@ export class Database<T> extends EventEmitter {
     });
   }
 
-  async deleteContact(id: ContactId): Promise<void> {
-    this.log('deleteContact', id);
-    await this.change<ContactList>(CONTACT_LIST, (doc: ContactList) => {
-      let idx = doc.contacts.findIndex((c) => c.id === id);
-      delete doc.contacts[idx];
-    });
-  }
-
   async addDevice(key: Key) {
     let id = uuid();
     let discoveryKey = await crypto.computeDiscoveryKey(key);
@@ -253,17 +244,17 @@ export class Database<T> extends EventEmitter {
   /**
    * Add a contact.
    */
-  async addContact(key: Key, moniker: string): Promise<ContactId> {
+  async addContact(key: Key, name: string): Promise<ContactId> {
     let id = uuid();
     let discoveryKey = await crypto.computeDiscoveryKey(key);
     let contact: IContact = {
       id,
       key,
       device: 0,
-      moniker,
+      name,
       discoveryKey,
     };
-    this.log('addContact', key, moniker);
+    this.log('addContact', key, name);
     //@ts-ignore
     await this.change(CONTACT_LIST, (doc: ContactList) => {
       doc.contacts.push(contact);
@@ -320,35 +311,10 @@ export class Database<T> extends EventEmitter {
     }
   }
 
-  /**
-   * Update an existing contact in the database. The contact object should have
-   * an `id`. The only valid properties you can change are the moniker and avatar.
-   * @param {ContactId} id - The id of the contact to update
-   * @param {string} moniker - The contact's new moniker
-   */
-  editMoniker(id: ContactId, moniker: string): Promise<void> {
-    return this.change<ContactList>(CONTACT_LIST, (doc: ContactList) => {
-      let contacts = doc.contacts.filter((c) => c.id === id);
-      if (!contacts.length)
-        this.error(new Error('Could not find contact with id=' + id));
-      contacts[0].moniker = moniker;
-    });
+  changeContactList(changeFn: Automerge.ChangeFn<ContactList>) {
+    return this.change(CONTACT_LIST, changeFn)
   }
 
-  /**
-   * Update an existing contact in the database. The contact object should have
-   * an `id`. The only valid properties you can change are the moniker and avatar.
-   * @param {ContactId} id - The id of the contact to update
-   * @param {string} avatar - Stringified image of the contact's new avatar.
-   */
-  editAvatar(id: ContactId, avatar: string): Promise<void> {
-    return this.change(CONTACT_LIST, (doc: ContactList) => {
-      let contacts = doc.contacts.filter((c) => c.id === id);
-      if (!contacts.length)
-        this.error(new Error('Could not find contact with id=' + id));
-      contacts[0].avatar = avatar;
-    });
-  }
 
   getContactById(id: ContactId): IContact {
     let contacts = this.all.filter((c) => c.id === id);
@@ -412,7 +378,7 @@ export class Database<T> extends EventEmitter {
       patch
     );
     this._frontends.set(docId, frontend);
-    let syncer = new AutomergeDiscovery(docId, backend);
+    let syncer = new AutomergeSync(docId, backend);
     this._syncers.set(docId, syncer);
 
     syncer.on('patch', ({ docId, patch, changes }) => {

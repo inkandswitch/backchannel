@@ -1,17 +1,19 @@
 import { Client } from '@localfirst/relay-client';
-import * as EventEmitter from 'events';
+import { EventEmitter } from 'events';
 import debug from 'debug';
 import * as Automerge from 'automerge';
 import { v4 as uuid } from 'uuid';
 import { serialize, deserialize } from 'bson';
+import { ReceiveSyncMsg } from 'automerge-sync';
+import { Buffer } from 'buffer';
 
 import { ContactList, Database } from './db';
-import { FileProgress, Blobs } from './blobs';
+import { Blobs } from './blobs';
 import {
   DocumentId,
   Key,
+  FileProgress,
   MessageId,
-  Code,
   ContactId,
   IDevice,
   IContact,
@@ -20,27 +22,10 @@ import {
   IMessage,
   FileState,
   MessageType,
-  CodeType,
+  BackchannelSettings,
+  EVENTS
 } from './types';
-import { Wormhole } from './wormhole';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
-import { ReceiveSyncMsg } from './AutomergeDiscovery';
-
-export enum EVENTS {
-  MESSAGE = 'MESSAGE',
-  ACK = 'ACK',
-  CONTACT_CONNECTED = 'contact.connected',
-  CONTACT_DISCONNECTED = 'contact.disconnected',
-  OPEN = 'open',
-  CONTACT_LIST_SYNC = 'CONTACT_LIST_SYNC',
-  ERROR = 'error',
-  FILE_PROGRESS = 'progress',
-  FILE_SENT = 'sent',
-  FILE_DOWNLOAD = 'download',
-  CLOSE = 'close',
-  RELAY_CONNECT = 'relay.connect',
-  RELAY_DISCONNECT = 'relay.disconnect',
-}
 
 const PREFIX = 'backchannel-';
 
@@ -49,34 +34,20 @@ export enum ERROR {
   PEER = 500,
 }
 
-export enum FileStates {
-  QUEUED = 0,
-  ERROR = 1,
-  SUCCESS = 2,
-  PROGRESS = 3,
-}
-
-export type BackchannelSettings = {
-  relay: string;
-};
-
 export interface Mailbox {
   messages: Automerge.List<IMessage>;
 }
 /**
- * The backchannel class manages the database and wormholes.
- *
- * Call backchannel.db.save() periodically to ensure changes are saved.
+ * The backchannel class is a client that manages it's own database and relay
+ * connections between other backchannel clients.  
  */
 export class Backchannel extends EventEmitter {
   public db: Database<Mailbox>;
-  private _wormhole: Wormhole;
+  public open: boolean;
   private _client: Client;
-  private _open: boolean;
   private _blobs: Blobs;
-  private log: debug;
+  private log;
   private relay: string;
-  private wordlist: Array<string>;
 
   /**
    * Create a new backchannel client. Each instance represents a user opening
@@ -84,17 +55,12 @@ export class Backchannel extends EventEmitter {
    * is identified by the contact's discoveryKey.
    * @constructor
    * @param {string} dbName The name of the db for indexeddb
-   * @param defaultRelay The default URL of the relay
+   * @param {BackchannelSettings} settings User-defined settings
    */
-  constructor(
-    dbName: string,
-    _settings: BackchannelSettings,
-    wordlist: Array<string>
-  ) {
+  constructor(dbName: string, settings: BackchannelSettings) {
     super();
 
     this.db = new Database<Mailbox>(dbName);
-    this.wordlist = wordlist;
 
     this._blobs = new Blobs();
 
@@ -113,29 +79,36 @@ export class Backchannel extends EventEmitter {
 
     this._blobs.on('download', (p: FileProgress) => {
       this._updateFileState(p.id, p.contactId, FileState.SUCCESS);
-      this.db.saveBlob(p.id, p.data);
-      this.emit(EVENTS.FILE_DOWNLOAD, p);
+      this.db.saveBlob(p.id, p.data).then(() => {
+        this.emit(EVENTS.FILE_DOWNLOAD, p);
+      });
     });
 
     this.db.on('patch', ({ docId, patch, changes }) => {
       changes.forEach((c) => {
         let change = Automerge.decodeChange(c);
 
-        if (change.message === MessageType.TEXT) {
+        if (change.message === MessageType.TEXT || change.message == MessageType.FILE) {
           let contact = this.db.getContactByDiscoveryKey(docId);
           this.emit(EVENTS.MESSAGE, { contactId: contact.id, docId });
         }
 
         if (change.message === MessageType.ACK) {
-          try {
-            let contact = this.db.getContactByDiscoveryKey(docId);
-            this.deleteDevice(contact.id).then((_) => {
-              this.emit(EVENTS.ACK, { contactId: contact.id, docId });
-            });
-          } catch (err) {
-            // this is OK, just means that this device sent multiple tombstones
+          let onerror = (err) => {
+            // an error is OK, just means that this device sent multiple tombstones
             // and we have already deleted this device on a previous ack
             this.emit(EVENTS.ACK, { contactId: null, docId });
+          };
+
+          try {
+            let contact = this.db.getContactByDiscoveryKey(docId);
+            this.deleteDevice(contact.id)
+              .then((_) => {
+                this.emit(EVENTS.ACK, { contactId: contact.id, docId });
+              })
+              .catch(onerror);
+          } catch (err) {
+            onerror(err);
           }
         }
 
@@ -154,42 +127,43 @@ export class Backchannel extends EventEmitter {
       });
     });
 
-    this.db.on('CONTACT_LIST_CHANGE', this.onChangeContactList.bind(this));
+    this.db.on('CONTACT_LIST_CHANGE', () => {
+      let tasks = [];
+      this.contacts.forEach((c) => {
+        try {
+          let doc = this.db.getDocument(c.discoveryKey) as Automerge.Doc<Mailbox>;
+          if (!doc.messages) throw new Error();
+        } catch (err) {
+          this.log('creating a document for contact');
+          tasks.push(this._addContactDocument(c));
+        }
+      });
+  
+      Promise.all(tasks).then(() => {
+        this.emit(EVENTS.CONTACT_LIST_SYNC);
+      });
+    });
 
     this.db.once('open', () => {
       this.relay =
-        (this.db.settings && this.db.settings.relay) || _settings.relay;
+        (this.db.settings && this.db.settings.relay) || settings.relay;
       this.log('Connecting to relay', this.relay);
       let documentIds = this.db.documents;
       this._client = this._createClient(this.relay, documentIds);
-      this._wormhole = new Wormhole(this._client, this.wordlist);
       this.emit(EVENTS.OPEN);
     });
     this.log = debug('bc:backchannel');
   }
 
-  onChangeContactList() {
-    let tasks = [];
-    this.contacts.forEach((c) => {
-      try {
-        let doc = this.db.getDocument(c.discoveryKey) as Automerge.Doc<Mailbox>;
-        if (!doc.messages) throw new Error();
-      } catch (err) {
-        this.log('creating a document for contact');
-        tasks.push(this._addContactDocument(c));
-      }
-    });
-
-    Promise.all(tasks).then(() => {
-      this.emit(EVENTS.CONTACT_LIST_SYNC);
-    });
-  }
-
+  /**
+   * Update the settings.
+   * @param {BackchannelSettings} newSettings New settings
+   * @returns 
+   */
   async updateSettings(newSettings: BackchannelSettings) {
     const documentIds = this.db.documents;
     if (newSettings.relay !== this.db.settings.relay) {
       this._client = this._createClient(newSettings.relay, documentIds);
-      this._wormhole = new Wormhole(this._client, this.wordlist);
     }
     let ready = { ...this.db.root.settings, ...newSettings };
     return this.db.changeRoot((doc: ContactList) => {
@@ -201,117 +175,63 @@ export class Backchannel extends EventEmitter {
     return { ...this.db.settings, relay: this.relay };
   }
 
-  opened() {
-    return this._open;
-  }
-
-  detectCodeType(code: string): CodeType {
-    let maybe = parseInt(code[0]);
-    if (isNaN(maybe)) return CodeType.WORDS;
-    else return CodeType.NUMBERS;
-  }
-
-  validCode(code: Code): boolean {
-    let codeType = this.detectCodeType(code);
-
-    switch (codeType) {
-      case CodeType.NUMBERS:
-        let sanitized = code.toLowerCase().trim().replaceAll(' ', '');
-        return sanitized.match(/[0-9]{9}/) !== null;
-      case CodeType.WORDS:
-        const RE = /[A-z]{3,5}( )[A-z]{3,5}( )[A-z]{3,5}/g;
-        let matched = code.toLowerCase().trim().match(RE);
-        return matched !== null;
-    }
-  }
-
   /**
-   * Create a one-time code for a new backchannel contact.
-   * @returns {Code} code The code to use in announce
-   */
-  getNumericCode(code: Code): Code {
-    let parts = code.split(' ');
-    let getIndex = (word) => {
-      let index = this.wordlist.indexOf(word);
-      if (index < 10) return `00${index}`;
-      if (index < 100) return `0${index}`;
-      return index;
-    };
-    let nameplate = getIndex(parts[0]).toString();
-    let password = getIndex(parts[1]) + '' + getIndex(parts[2]);
-    return `${nameplate} ${password}`;
-  }
-
-  numericCodeToWords(code: Code): Code {
-    let clean = code.replaceAll(' ', '');
-    let getWord = (index) => {
-      let word = this.wordlist[parseInt(index)];
-      return word;
-    };
-    let part0 = getWord(clean.slice(0, 3));
-    let part1 = getWord(clean.slice(3, 6));
-    let part2 = getWord(clean.slice(6, 9));
-    return `${part0} ${part1} ${part2}`;
-  }
-
-  /**
-   * Create a one-time code for a new backchannel contact.
-   * @returns {Code} code The code to use in announce
-   */
-  async getCode(): Promise<Code> {
-    let { nameplate, password } = await this._wormhole.getCode();
-    return `${nameplate} ${password}`;
-  }
-
-  /**
-   * Open a websocket connection to the magic wormhole service and accept the
-   * code. Once the contact has been established, a contact will
-   * then be created with an anonymous handle and the id returned.
+   * Open a websocket connection to the local-first relay service. This performs
+   * the SPAKE2 protocol using [spake2-wasm](https://github.com/okdistribute/spake2-wasm)
    *
-   * @param {Code} code The code to accept
-   * @param {number} timeout The timeout before giving up, default 20 seconds
-   * @returns {ContactId} The ID of the contact in the database
+   * @param {string} number The mailbox
+   * @param {string} password The password
+   * @param {number} timeout The timeout before giving up, defaults to 1 minute
+   * @returns {Key} A hex represnetation of the resulting key, which is a 32 byte strong shared secret.
    */
-  async accept(code: Code, timeout = 60000): Promise<ContactId> {
-    let sanitizedCode = code.toLowerCase().trim();
-    let parts = sanitizedCode.split(' ');
-    let nameplate = parts.shift();
-    let password = parts.join(' ');
+  async accept(
+    mailbox: string,
+    password: string,
+    timeout = 60000
+  ): Promise<ContactId> {
     return new Promise(async (resolve, reject) => {
-      setTimeout(() => {
-        this._wormhole.leave(nameplate);
-        reject(
-          new Error(`Secure connection failed. The invitation was incorrect.`)
-        );
-      }, timeout);
-      try {
-        let key: Key = await this._wormhole.accept(nameplate, password);
-        return resolve(key);
-      } catch (err) {
-        reject(
-          new Error('Secure connection failed. The invitation was incorrect.')
-        );
-      }
+      import('./wormhole').then(async (module) => {
+        //@ts-ignore
+        let wormhole = new module.Wormhole(this._client);
+        setTimeout(() => {
+          wormhole.leave(mailbox);
+          reject(new Error(`Your invitation code was regenerated.`));
+        }, timeout);
+        try {
+          let key: Key = await wormhole.accept(mailbox, password);
+          return resolve(key);
+        } catch (err) {
+          console.error(err);
+          reject(
+            new Error('Secure connection failed. The invitation was incorrect.')
+          );
+        }
+      });
     });
   }
 
   /**
-   * This updates the moniker for a given contact and saves the contact in the database.
+   * This updates the name for a given contact and saves the contact in the database.
    * @param {ContactId} contactId The contact id to edit
-   * @param {string} moniker The new moniker for this contact
+   * @param {string} name The new name for this contact
    * @return {IContact} The new contact information
    */
-  async editMoniker(contactId: ContactId, moniker: string): Promise<IContact> {
-    this.log('editmoniker', contactId, moniker);
+  async editName(contactId: ContactId, name: string): Promise<IContact> {
+    this.log('editName', contactId, name);
     let contacts = this.db.getContacts();
     let exists = contacts.find((c) => {
-      return c.moniker === moniker;
+      return c.name === name;
     });
     if (exists)
       return Promise.reject(
         new Error('That name already exists. Pick a unique name.')
       );
-    await this.db.editMoniker(contactId, moniker);
+    await this.db.changeContactList((doc: ContactList) => {
+      let contacts = doc.contacts.filter((c) => c.id === contactId);
+      if (!contacts.length) return (new Error('Could not find contact with id=' + contactId));
+      contacts[0].name = name;
+    });
+
     return this.db.getContactById(contactId);
   }
 
@@ -322,12 +242,16 @@ export class Backchannel extends EventEmitter {
   /**
    * This updates the avatar for a given contact.
    * @param {ContactId} contactId The contact id to edit
-   * @param {string} avatar The new moniker for this contact
+   * @param {string} avatar The new name for this contact
    * @return {IContact} The new contact information
    */
   async editAvatar(contactId: ContactId, avatar: string): Promise<IContact> {
     this.log('editAvatar,', contactId, avatar);
-    await this.db.editAvatar(contactId, avatar);
+    await this.db.changeContactList((doc: ContactList) => {
+      let contacts = doc.contacts.filter((c) => c.id === contactId);
+      if (!contacts.length) return(new Error('Could not find contact with id=' + contactId));
+      contacts[0].avatar = avatar;
+    });
     return this.db.getContactById(contactId);
   }
 
@@ -341,32 +265,11 @@ export class Backchannel extends EventEmitter {
     return this._addContact(key, false);
   }
 
-  async _addContact(key: Key, device?: boolean): Promise<ContactId> {
-    let moniker = '';
-    let id;
-    if (device) {
-      id = await this.db.addDevice(key);
-    } else {
-      id = await this.db.addContact(key, moniker);
-    }
-    let contact = this.db.getContactById(id);
-    this.log('adding contact', contact.discoveryKey, contact);
-    await this._addContactDocument(contact);
-    return contact.id;
-  }
-
-  async _addContactDocument(contact: IContact) {
-    let docId = contact.discoveryKey;
-    await this.db.addDocument(docId, (doc: Mailbox) => {
-      doc.messages = [];
-    });
-    return this.db.getDocument(docId);
-  }
   /**
-   * Get messages with another contact.
-   * @param contactId The ID of the contact
-   * @returns
-   */
+  * Get messages with another contact.
+  * @param contactId The ID of the contact
+  * @returns
+  */
   async getMessagesByContactId(contactId: ContactId): Promise<IMessage[]> {
     let contact = this.db.getContactById(contactId);
     try {
@@ -405,13 +308,13 @@ export class Backchannel extends EventEmitter {
   }
 
   /**
-   * Sends a tombstone message, which tells the other device
+   * Sends a tombstone message, which instructs other devices
    * to unlink itself and self-destruct.
    * @param {string} id The device id
-   * @returns Once the message has been added to automerge
+   * @returns 
    */
   async sendTombstone(id: ContactId): Promise<void> {
-    let messages = this.getMessagesByContactId(id);
+    let messages = await this.getMessagesByContactId(id);
     let maybe_tombstone = messages.pop();
     if (maybe_tombstone?.type === MessageType.TOMBSTONE) return;
     let contact = this.db.getContactById(id);
@@ -443,6 +346,12 @@ export class Backchannel extends EventEmitter {
     return msg;
   }
 
+  /**
+   * Send a file to a contact
+   * @param {ContactId} contactId 
+   * @param {File} file 
+   * @returns 
+   */
   async sendFile(contactId: ContactId, file: File): Promise<FileMessage> {
     let msg: FileMessage = {
       id: uuid(),
@@ -457,25 +366,22 @@ export class Backchannel extends EventEmitter {
     };
     let contact = this.db.getContactById(contactId);
     await this._addMessage(msg, contact);
-    let meta = {
-      id: msg.id,
-      lastModified: msg.lastModified,
-      mime_type: msg.mime_type,
-      size: msg.size,
-      name: msg.name,
-    };
     try {
-      let sent = await this._blobs.sendFile({
+
+      let meta = {
+        id: msg.id,
+        lastModified: msg.lastModified,
+        mime_type: msg.mime_type,
+        size: msg.size,
+        name: msg.name,
+      };
+      await this._blobs.sendFile({
         contactId: contact.id,
         meta,
         file,
       });
-      await this._updateFileState(
-        msg.id,
-        contact.id,
-        sent ? FileState.SUCCESS : FileState.QUEUED
-      );
     } catch (err) {
+      this.log('got error', err)
       this._updateFileState(msg.id, contactId, FileState.ERROR);
     }
     return msg;
@@ -527,7 +433,10 @@ export class Backchannel extends EventEmitter {
   async deleteContact(id: ContactId) {
     let contact = this.db.getContactById(id);
     this._client.leave(PREFIX + contact.discoveryKey);
-    await this.db.deleteContact(id);
+    await this.db.changeContactList((doc: ContactList) => {
+      let idx = doc.contacts.findIndex((c) => c.id === id);
+      delete doc.contacts[idx];
+    });
   }
 
   async deleteDevice(id: ContactId) {
@@ -564,7 +473,7 @@ export class Backchannel extends EventEmitter {
    * clients.  Danger! Unrecoverable!
    */
   async destroy() {
-    this._open = false;
+    this.open = false;
     await this._client.disconnectServer();
     await this.db.destroy();
     this.emit(EVENTS.CLOSE);
@@ -639,7 +548,7 @@ export class Backchannel extends EventEmitter {
     this.log('onpeer connect', documentId);
     try {
       let fileSend = async (msg: Uint8Array) => {
-        let encoded = await this._encrypt('file', msg, contact);
+        let encoded = await this._encrypt(MessageType.FILE, msg, contact);
         if (isOpen(socket)) socket.send(encoded);
         else throw new Error('SOCKET CLOSED');
       };
@@ -654,19 +563,23 @@ export class Backchannel extends EventEmitter {
 
       // Setup onmessage event
       let onmessage = (e) => {
-        this._decrypt(e.data, contact).then((syncMsg) => {
-          this.log('onmessage', syncMsg);
-          switch (syncMsg.msgType) {
-            case 'files':
-              this._blobs.receiveFile(contact.id, syncMsg.msg);
-              break;
-            default:
-              // automerge document
-              let fn = listeners[syncMsg.msgType];
-              if (fn) fn(syncMsg.msg);
-              break;
-          }
-        });
+        this._decrypt(e.data, contact)
+          .then((syncMsg) => {
+            this.log('onmessage', syncMsg);
+            switch (syncMsg.msgType) {
+              case MessageType.FILE:
+                this._blobs.receiveFile(contact.id, syncMsg.msg);
+                break;
+              default:
+                // automerge document
+                let fn = listeners[syncMsg.msgType];
+                if (fn) fn(syncMsg.msg);
+                break;
+            }
+          })
+          .catch((err) => {
+            console.error('Failed to decrypt message');
+          });
       };
       socket.addEventListener('message', onmessage);
 
@@ -714,13 +627,13 @@ export class Backchannel extends EventEmitter {
     client.on('server.connect', () => {
       this.emit(EVENTS.RELAY_CONNECT);
       this.log('on server connect');
-      this._open = true;
+      this.open = true;
     });
 
     client.on('server.disconnect', () => {
       this.log('on server disconnect');
       this.emit(EVENTS.RELAY_DISCONNECT);
-      this._open = false;
+      this.open = false;
     });
 
     client.on('peer.connect', ({ socket, documentId, userName }) => {
@@ -758,8 +671,33 @@ export class Backchannel extends EventEmitter {
     });
     return res;
   }
+
+  async _addContact(key: Key, device?: boolean): Promise<ContactId> {
+    let name = '';
+    let id;
+    if (device) {
+      id = await this.db.addDevice(key);
+    } else {
+      id = await this.db.addContact(key, name);
+    }
+    let contact = this.db.getContactById(id);
+    this.log('adding contact', contact.discoveryKey, contact);
+    await this._addContactDocument(contact);
+    return contact.id;
+  }
+
+  async _addContactDocument(contact: IContact) {
+    let docId = contact.discoveryKey;
+    await this.db.addDocument(docId, (doc: Mailbox) => {
+      doc.messages = [];
+    });
+    return this.db.getDocument(docId);
+  }
+
+
 }
 
 function isOpen(ws) {
   return ws.readyState === ws.OPEN;
 }
+
