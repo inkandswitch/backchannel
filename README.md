@@ -60,6 +60,7 @@ backchannel.once(EVENTS.OPEN, () => {
 Two users decide upon a single number that is at least 6 characters long OR generate a one-time invitation code for them:
 
 ```js
+let random = crypto.randomBytes(3)
 let code = parseInt(Buffer.from(random).toString('hex'), 16)
 ```
 
