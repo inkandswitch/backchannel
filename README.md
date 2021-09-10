@@ -116,7 +116,7 @@ The docs can be auto-generated locally. The following command outputs the genera
 `build/docs/api`. 
 
 ```
-npm run build:docs
+npm run docs
 ```
 
 Then you can view the docs locally with an http-server, you can use something
@@ -167,12 +167,8 @@ To deploy the minified production build, run
 
 To build the api documentation, run
 
-```npm run build:docs```
+```npm run docs```
 
-To build both the production build and the docs for deployment on a static
-server, run
-
-```npm run deploy```
 
 ## Contributors
 
