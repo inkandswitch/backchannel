@@ -53,7 +53,7 @@ const SETTINGS = {
 }
 let backchannel = new Backchannel(DBNAME, SETTINGS)
 backchannel.once(EVENTS.OPEN, () => {
-	let contacts = backchannel.listContacts()
+  let contacts = backchannel.listContacts()
 })
 ```
 
