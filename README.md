@@ -109,12 +109,6 @@ await backchannel.unlinkDevice()
 * [Contributing & Code of Conduct](docs/contributing.md)
 
 
-```
-npm run relay
-```
-
-Look in the `example/` directory for a simple contact list prototype.
-
 ## Viewing the Documentation
 
 The docs can be auto-generated locally. The following command outputs the generated documentation into
