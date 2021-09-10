@@ -1,40 +1,119 @@
 # Backchannel
 
-THIS PROJECT IS STILL IN EARLY DEVELOPMENT. IT HAS NOT HAD ANY KIND OF SECURITY
-OR CRYPTOGRAPHY REVIEW. THIS SOFTWARE MIGHT BE UNSAFE.
+THIS IS A PROOF OF CONCEPT PROTOTYPE. IT HAS NOT HAD ANY KIND OF SECURITY OR
+CRYPTOGRAPHY REVIEW. THIS SOFTWARE MIGHT BE UNSAFE.
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/b91ac61c-abc1-40d0-9563-e05c189190ae/deploy-status)](https://app.netlify.com/sites/gallant-lewin-1c93b0/deploys) [![CI](https://github.com/inkandswitch/backchannel/actions/workflows/ci.yml/badge.svg)](https://github.com/inkandswitch/backchannel/actions)
 
+## Application prototypes
 
-[Try it now!](https://gallant-lewin-1c93b0.netlify.app/)
+* [Backchat](https://github.com/inkandswitch/backchat)
+* [Here](https://github.com/inkandswitch/here)
+* [Simple example](example/index.js)
 
-Backchannel is a cross platform progressive web application combining novel
-out-of-band identity verification techniques with a modernised pet name address book system. 
+## Usage
 
-This prototype will allow two people to chat with high recognition of their recipient. It will satisfy certain
-cases of heightened risk without dramatic configuration or expertise required
-on behalf of network participants.
+This library is intended for use in a browser-like environment (progressive web app and electron would work too) as a websocket client. 
 
-## Getting started
+```
+npm install backchannel
+```
 
-* [Read the API docs](https://gallant-lewin-1c93b0.netlify.app/docs/api/)
+Backchannel depends upon [@local-first/relay](https://github.com/local-first-web/relay), which is a websocket relay. Clients need to connect to the same relay in order to find each other. You can run the relay either on the local machine or in the cloud. One way to do this in the cloud quickly is to [remix it on Glitch](https://glitch.com/edit/#!/import/github/local-first-web/relay-deployable).
+
+You can use the relay provided in this repository at [bin/server.js](bin/server.js):
+
+```js
+const { Server } = require('@localfirst/relay/dist')
+
+const DEFAULT_PORT = 3001 
+const port = Number(process.env.PORT) || DEFAULT_PORT
+
+const server = new Server({ port })
+
+server.listen()
+```
+
+And run it with
+
+```bash
+$ node bin/server.js
+```
+
+### Basics 
+
+Get a list of contacts
+
+```js
+import Backchannel, { EVENTS } from 'backchannel';
+
+const DBNAME = 'myapp'
+const SETTINGS = {
+  relay: 'ws://localhost:3001'
+}
+let backchannel = new Backchannel(DBNAME, SETTINGS)
+backchannel.once(EVENTS.OPEN, () => {
+	let contacts = backchannel.listContacts()
+})
+```
+
+Two users decide upon a single number that is at least 6 characters long OR generate a one-time invitation code for them:
+
+```js
+let code = parseInt(Buffer.from(random).toString('hex'), 16)
+```
+
+
+Once both users have entered in a code, split the code into 'mailbox' and
+'password' pieces. The password should be kept secret! The mailbox is public to
+the relay and so should not be derivative or in any way related to the password.
+
+```js
+let mailbox = code.slice(0, 3)
+let password = code.slice(3)
+let key = await backchannel.accept(mailbox, password)
+```
+
+Add a contact and assign them a name and avatar
+
+```js
+let id = await backchannel.addContact(key)
+await backchannel.editName(id, 'jennie')
+await backchannel.editAvatar(id, [avatarbytes])
+```
+
+Send an end to end encrypted message
+
+```js
+let message = await backchannel.sendMessage(id, 'hi jennie')
+```
+
+Link a device, this works the same as adding a contact, but you call addDevice instead
+```js
+let key = await backchannel.accept(mailbox, password)
+let id = await backchannel.addDevice(key)
+```
+
+Unlink all devices
+
+```js
+backchannel.on(EVENTS.ACK, ({ contactId }) => {
+  console.log('Unlinked device with id=', contactId)
+})
+await backchannel.unlinkDevice()
+```
+
+## Contributing
+
+* [API documentation](https://gallant-lewin-1c93b0.netlify.app/docs/api/)
 * [Contributing & Code of Conduct](docs/contributing.md)
 
-```
-npm install
-```
-
-The websocket relay must be run in the background in a separate terminal.
 
 ```
 npm run relay
 ```
 
-Then, you can build the javascript bundle which includes hotreloading.
-
-```
-npm start
-```
+Look in the `example/` directory for a simple contact list prototype.
 
 ## Viewing the Documentation
 

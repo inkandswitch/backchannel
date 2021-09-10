@@ -313,7 +313,7 @@ export class Backchannel extends EventEmitter {
    * @param {string} id The device id
    * @returns 
    */
-  async sendTombstone(id: ContactId): Promise<void> {
+  async unlinkDevice(id: ContactId): Promise<void> {
     let messages = await this.getMessagesByContactId(id);
     let maybe_tombstone = messages.pop();
     if (maybe_tombstone?.type === MessageType.TOMBSTONE) return;
@@ -332,7 +332,7 @@ export class Backchannel extends EventEmitter {
    * connected with the contact from listening to the `contact.connected` event
    * @param {WebSocket} socket: the open socket for the contact
    */
-  async sendMessage(contactId: ContactId, text: string) {
+  async sendMessage(contactId: ContactId, text: string): Promise<TextMessage> {
     let msg: TextMessage = {
       id: uuid(),
       target: contactId,
@@ -443,29 +443,6 @@ export class Backchannel extends EventEmitter {
     let contact = this.db.getContactById(id);
     this._client.leave(PREFIX + contact.discoveryKey);
     await this.db.deleteDevice(id);
-  }
-
-  /**
-   * Unlink this device. Delete all devices you're linked with.
-   * @returns
-   */
-  unlinkDevice(): Promise<void> {
-    this._client.disconnectServer();
-    return new Promise<void>((resolve, reject) => {
-      this._client.on('server.disconnect', () => {
-        let tasks = [];
-        this.devices.forEach((d) => {
-          tasks.push(this.deleteDevice(d.id));
-        });
-
-        Promise.all(tasks)
-          .then((_) => {
-            this._client = this._createClient(this.relay);
-            resolve();
-          })
-          .catch(reject);
-      });
-    });
   }
 
   /**

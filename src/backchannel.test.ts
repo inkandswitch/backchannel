@@ -269,16 +269,6 @@ test('integration send multiple messages', async () => {
   expect(alices).toStrictEqual(bobs);
 });
 
-test('unlink device', (done) => {
-  multidevice(({ android, alice, bob }) => {
-    // oops, lost my android.
-    alice.unlinkDevice().then((_) => {
-      expect(alice.devices.length).toBe(0);
-      done();
-    });
-  });
-});
-
 test('lost my device', (done) => {
   multidevice(({ android, alice, bob }) => {
     // oops, lost my android.
@@ -288,7 +278,7 @@ test('lost my device', (done) => {
       expect(android_loaded.devices.length).toBe(1);
       expect(android_loaded.contacts.length).toBe(1);
       android_loaded = null;
-      alice.sendTombstone(android_id).then((_) => {
+      alice.unlinkDevice(android_id).then((_) => {
         let pending = 2;
         android.once(EVENTS.CLOSE, () => {
           pending--;

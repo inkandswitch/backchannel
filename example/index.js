@@ -1,11 +1,10 @@
-import Backchannel, { EVENTS } from 'backchannel';
+import { Backchannel, EVENTS } from 'backchannel';
 import { Buffer } from 'buffer';
 import randomBytes from 'randombytes';
 
 let feedback = document.querySelector('#feedback')
 let contactsDiv = document.querySelector('#contacts')
 let codeInput = document.querySelector('#my-code')
-
 
 // system-defined settings for database location
 const DBNAME = 'bc-example'
