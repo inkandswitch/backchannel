@@ -307,34 +307,11 @@ export class Backchannel extends EventEmitter {
     return this.contacts;
   }
 
-  async _addContact(key: Key, device?: boolean): Promise<ContactId> {
-    let name = '';
-    let id;
-    if (device) {
-      id = await this.db.addDevice(key);
-    } else {
-      id = await this.db.addContact(key, name);
-    }
-    let contact = this.db.getContactById(id);
-    this.log('adding contact', contact.discoveryKey, contact);
-    await this._addContactDocument(contact);
-    return contact.id;
-  }
-
-  async _addContactDocument(contact: IContact) {
-    let docId = contact.discoveryKey;
-    await this.db.addDocument(docId, (doc: Mailbox) => {
-      doc.messages = [];
-    });
-    return this.db.getDocument(docId);
-  }
-
-
   /**
-   * Sends a tombstone message, which tells the other device
+   * Sends a tombstone message, which instructs other devices
    * to unlink itself and self-destruct.
    * @param {string} id The device id
-   * @returns Once the message has been added to automerge
+   * @returns 
    */
   async sendTombstone(id: ContactId): Promise<void> {
     let messages = await this.getMessagesByContactId(id);
@@ -369,6 +346,12 @@ export class Backchannel extends EventEmitter {
     return msg;
   }
 
+  /**
+   * Send a file to a contact
+   * @param {ContactId} contactId 
+   * @param {File} file 
+   * @returns 
+   */
   async sendFile(contactId: ContactId, file: File): Promise<FileMessage> {
     let msg: FileMessage = {
       id: uuid(),
@@ -688,8 +671,33 @@ export class Backchannel extends EventEmitter {
     });
     return res;
   }
+
+  async _addContact(key: Key, device?: boolean): Promise<ContactId> {
+    let name = '';
+    let id;
+    if (device) {
+      id = await this.db.addDevice(key);
+    } else {
+      id = await this.db.addContact(key, name);
+    }
+    let contact = this.db.getContactById(id);
+    this.log('adding contact', contact.discoveryKey, contact);
+    await this._addContactDocument(contact);
+    return contact.id;
+  }
+
+  async _addContactDocument(contact: IContact) {
+    let docId = contact.discoveryKey;
+    await this.db.addDocument(docId, (doc: Mailbox) => {
+      doc.messages = [];
+    });
+    return this.db.getDocument(docId);
+  }
+
+
 }
 
 function isOpen(ws) {
   return ws.readyState === ws.OPEN;
 }
+
