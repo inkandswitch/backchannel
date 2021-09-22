@@ -312,9 +312,8 @@ export class Database<T> extends EventEmitter {
   }
 
   changeContactList(changeFn: Automerge.ChangeFn<ContactList>) {
-    return this.change(CONTACT_LIST, changeFn)
+    return this.change(CONTACT_LIST, changeFn);
   }
-
 
   getContactById(id: ContactId): IContact {
     let contacts = this.all.filter((c) => c.id === id);

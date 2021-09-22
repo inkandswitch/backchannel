@@ -23,7 +23,7 @@ import {
   FileState,
   MessageType,
   BackchannelSettings,
-  EVENTS
+  EVENTS,
 } from './types';
 import { symmetric, EncryptedProtocolMessage } from './crypto';
 
@@ -39,7 +39,7 @@ export interface Mailbox {
 }
 /**
  * The backchannel class is a client that manages it's own database and relay
- * connections between other backchannel clients.  
+ * connections between other backchannel clients.
  */
 export class Backchannel extends EventEmitter {
   public db: Database<Mailbox>;
@@ -88,7 +88,10 @@ export class Backchannel extends EventEmitter {
       changes.forEach((c) => {
         let change = Automerge.decodeChange(c);
 
-        if (change.message === MessageType.TEXT || change.message == MessageType.FILE) {
+        if (
+          change.message === MessageType.TEXT ||
+          change.message == MessageType.FILE
+        ) {
           let contact = this.db.getContactByDiscoveryKey(docId);
           this.emit(EVENTS.MESSAGE, { contactId: contact.id, docId });
         }
@@ -131,14 +134,16 @@ export class Backchannel extends EventEmitter {
       let tasks = [];
       this.contacts.forEach((c) => {
         try {
-          let doc = this.db.getDocument(c.discoveryKey) as Automerge.Doc<Mailbox>;
+          let doc = this.db.getDocument(
+            c.discoveryKey
+          ) as Automerge.Doc<Mailbox>;
           if (!doc.messages) throw new Error();
         } catch (err) {
           this.log('creating a document for contact');
           tasks.push(this._addContactDocument(c));
         }
       });
-  
+
       Promise.all(tasks).then(() => {
         this.emit(EVENTS.CONTACT_LIST_SYNC);
       });
@@ -158,7 +163,7 @@ export class Backchannel extends EventEmitter {
   /**
    * Update the settings.
    * @param {BackchannelSettings} newSettings New settings
-   * @returns 
+   * @returns
    */
   async updateSettings(newSettings: BackchannelSettings) {
     const documentIds = this.db.documents;
@@ -228,7 +233,8 @@ export class Backchannel extends EventEmitter {
       );
     await this.db.changeContactList((doc: ContactList) => {
       let contacts = doc.contacts.filter((c) => c.id === contactId);
-      if (!contacts.length) return (new Error('Could not find contact with id=' + contactId));
+      if (!contacts.length)
+        return new Error('Could not find contact with id=' + contactId);
       contacts[0].name = name;
     });
 
@@ -249,7 +255,8 @@ export class Backchannel extends EventEmitter {
     this.log('editAvatar,', contactId, avatar);
     await this.db.changeContactList((doc: ContactList) => {
       let contacts = doc.contacts.filter((c) => c.id === contactId);
-      if (!contacts.length) return(new Error('Could not find contact with id=' + contactId));
+      if (!contacts.length)
+        return new Error('Could not find contact with id=' + contactId);
       contacts[0].avatar = avatar;
     });
     return this.db.getContactById(contactId);
@@ -266,10 +273,10 @@ export class Backchannel extends EventEmitter {
   }
 
   /**
-  * Get messages with another contact.
-  * @param contactId The ID of the contact
-  * @returns
-  */
+   * Get messages with another contact.
+   * @param contactId The ID of the contact
+   * @returns
+   */
   async getMessagesByContactId(contactId: ContactId): Promise<IMessage[]> {
     let contact = this.db.getContactById(contactId);
     try {
@@ -311,7 +318,7 @@ export class Backchannel extends EventEmitter {
    * Sends a tombstone message, which instructs other devices
    * to unlink itself and self-destruct.
    * @param {string} id The device id
-   * @returns 
+   * @returns
    */
   async unlinkDevice(id: ContactId): Promise<void> {
     let messages = await this.getMessagesByContactId(id);
@@ -348,9 +355,9 @@ export class Backchannel extends EventEmitter {
 
   /**
    * Send a file to a contact
-   * @param {ContactId} contactId 
-   * @param {File} file 
-   * @returns 
+   * @param {ContactId} contactId
+   * @param {File} file
+   * @returns
    */
   async sendFile(contactId: ContactId, file: File): Promise<FileMessage> {
     let msg: FileMessage = {
@@ -367,7 +374,6 @@ export class Backchannel extends EventEmitter {
     let contact = this.db.getContactById(contactId);
     await this._addMessage(msg, contact);
     try {
-
       let meta = {
         id: msg.id,
         lastModified: msg.lastModified,
@@ -381,7 +387,7 @@ export class Backchannel extends EventEmitter {
         file,
       });
     } catch (err) {
-      this.log('got error', err)
+      this.log('got error', err);
       this._updateFileState(msg.id, contactId, FileState.ERROR);
     }
     return msg;
@@ -670,11 +676,8 @@ export class Backchannel extends EventEmitter {
     });
     return this.db.getDocument(docId);
   }
-
-
 }
 
 function isOpen(ws) {
   return ws.readyState === ws.OPEN;
 }
-

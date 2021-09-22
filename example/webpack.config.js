@@ -10,4 +10,12 @@ module.exports = {
 	  asyncWebAssembly: true
   },
   mode: "development",
+  resolve: {
+	  fallback: {
+		  "fs": false,
+		  "crypto": require.resolve('crypto-browserify'),
+		  "stream": require.resolve('stream-browserify')
+	  },
+	  extensions: ['.wasm', '.ts', '.js'],
+  },
 };
