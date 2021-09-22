@@ -10,35 +10,16 @@ CRYPTOGRAPHY REVIEW. THIS SOFTWARE MIGHT BE UNSAFE.
 * [Backchat](https://github.com/inkandswitch/backchat)
 * [Here](https://github.com/inkandswitch/here)
 * [Simple example](example/index.js)
+* [API documentation](https://backchannel.netlify.app/docs/api/)
 
 ## Usage
 
 This library is intended for use in a browser-like environment (progressive web app and electron would work too) as a websocket client. 
 
 ```
-npm install backchannel
+npm install @inkandswitch/backchannel
 ```
 
-Backchannel depends upon [@local-first/relay](https://github.com/local-first-web/relay), which is a websocket relay. Clients need to connect to the same relay in order to find each other. You can run the relay either on the local machine or in the cloud. One way to do this in the cloud quickly is to [remix it on Glitch](https://glitch.com/edit/#!/import/github/local-first-web/relay-deployable).
-
-You can use the relay provided in this repository at [bin/server.js](bin/server.js):
-
-```js
-const { Server } = require('@localfirst/relay/dist')
-
-const DEFAULT_PORT = 3001 
-const port = Number(process.env.PORT) || DEFAULT_PORT
-
-const server = new Server({ port })
-
-server.listen()
-```
-
-And run it with
-
-```bash
-$ node bin/server.js
-```
 
 ### Basics 
 
@@ -104,11 +85,33 @@ backchannel.on(EVENTS.ACK, ({ contactId }) => {
 await backchannel.unlinkDevice()
 ```
 
+### Running a Relay
+
+Backchannel depends upon [@local-first/relay](https://github.com/local-first-web/relay), which is a websocket relay. Clients need to connect to the same relay in order to find each other. You can run the relay either on the local machine or in the cloud. One way to do this in the cloud quickly is to [remix it on Glitch](https://glitch.com/edit/#!/import/github/local-first-web/relay-deployable).
+
+You can use the relay provided in this repository at [bin/server.js](bin/server.js):
+
+```js
+const { Server } = require('@localfirst/relay/dist')
+
+const DEFAULT_PORT = 3001 
+const port = Number(process.env.PORT) || DEFAULT_PORT
+
+const server = new Server({ port })
+
+server.listen()
+```
+
+And run it with
+
+```bash
+$ node bin/server.js
+```
+
 ## Contributing
 
-* [API documentation](https://gallant-lewin-1c93b0.netlify.app/docs/api/)
 * [Contributing & Code of Conduct](docs/contributing.md)
-
+* [API documentation](https://backchannel.netlify.app/docs/api/)
 
 ## Viewing the Documentation
 
