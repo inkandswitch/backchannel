@@ -34,7 +34,7 @@ npm install @inkandswitch/backchannel
 Get a list of contacts
 
 ```js
-import Backchannel, { EVENTS } from 'backchannel';
+import Backchannel, { EVENTS } from '@inkandswitch/backchannel';
 
 const DBNAME = 'myapp'
 const SETTINGS = {
