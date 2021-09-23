@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "backchannel": "file:..",
+    "@inkandswitch/backchannel": "file:..",
     "buffer": "^6.0.3",
     "copy-webpack-plugin": "^5.1.2",
     "randombytes": "^2.1.0",

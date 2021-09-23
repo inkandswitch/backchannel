@@ -1,4 +1,4 @@
-import { Backchannel, EVENTS } from 'backchannel';
+import { Backchannel, EVENTS } from '@inkandswitch/backchannel';
 import { Buffer } from 'buffer';
 import randomBytes from 'randombytes';
 
