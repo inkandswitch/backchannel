@@ -3,13 +3,21 @@
 THIS IS A PROOF OF CONCEPT PROTOTYPE. IT HAS NOT HAD ANY KIND OF SECURITY OR
 CRYPTOGRAPHY REVIEW. THIS SOFTWARE MIGHT BE UNSAFE.
 
-[![Netlify Status](https://api.netlify.com/api/v1/badges/b91ac61c-abc1-40d0-9563-e05c189190ae/deploy-status)](https://app.netlify.com/sites/gallant-lewin-1c93b0/deploys) [![CI](https://github.com/inkandswitch/backchannel/actions/workflows/ci.yml/badge.svg)](https://github.com/inkandswitch/backchannel/actions)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/b91ac61c-abc1-40d0-9563-e05c189190ae/deploy-status)](https://app.netlify.com/sites/backchannel/deploys) [![CI](https://github.com/inkandswitch/backchannel/actions/workflows/ci.yml/badge.svg)](https://github.com/inkandswitch/backchannel/actions)
 
-## Application prototypes
+Identities in Backchannel are created by redeeming a one-time invitation code. The code, much like the role of a phone number, is a lookup method to connect two people. Unlike a phone number, the code is temporary, and immediately discarded after use. The expiration of invitation codes gives certain advantages. There is no equivalent of “giving someone your permanent address or number” with this design. Although perhaps inconvenient for some use cases, this property can also be a strength. This design is inherently resistant to anonymous spam.
 
+Once a user passes this code to another, both of their applications generate a strong shared cryptographic secret using [SPAKE2](https://npmjs.org/spake2-wasm), a PAKE protocol. This shared secret represents the relationships between those two users, and is used to generate a secure end-to-end encrypted connection. 
+
+Users then assign a name for each other, rather than naming themselves. Names in Backchannel are private – i.e., they are only seen by the person who created them, just like in a phone’s contact list. Naming contacts privately is important. Because there is no self-described user profile system, a user cannot be impersonated by someone else within the application. 
+
+Read more about Backchannel in our paper, at [https://www.inkandswitch.com/backchannel/](https://www.inkandswitch.com/backchannel/)
+
+## Application prototype examples
+
+* [Simple Rolodex](example/index.js)
 * [Backchat](https://github.com/inkandswitch/backchat)
 * [Here](https://github.com/inkandswitch/here)
-* [Simple example](example/index.js)
 * [API documentation](https://backchannel.netlify.app/docs/api/)
 
 ## Usage
