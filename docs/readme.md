@@ -10,7 +10,7 @@ function, class, or module in the corresponding JSdoc.
 There are many ways to navigate this documentation, but here are the key
 classes to know about:
 
-* [Backchannel](backchannel.backchannel-1.html)
+* [Backchannel](classes/backchannel.backchannel-1.html)
 * [Database](classes/db.database.html)
 * [Types](modules/types.html)
 
