@@ -1,5 +1,5 @@
 {
-  "name": "backchannel",
+  "name": "@inkandswitch/backchannel",
   "version": "1.0.0",
   "description": "",
   "main": "dist/cjs/index.js",
